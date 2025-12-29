@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    /* Verhindert Scrollen */
+    overscroll-behavior: none;
+    background-color: #f8f5e6;
+    color: #333;
+  }
+}
+
+/* Eigene Klassen für das Budget */
+.budget-positive {
+  color: #16a34a !important;
+  /* Ein sattes Grün */
+}
+
+.budget-negative {
+  color: #dc2626 !important;
+  /* Ein kräftiges Rot */
+}
+
+/* Hintergrund für die gesamte Seite */
+.app-background-pink {
+  background-color: #fce7f3 !important;
+  /* Ein sanftes Pastell-Rosa (Pink-100) */
+  min-height: 100vh;
+  /* Garantiert, dass es bis ganz unten geht */
+}
