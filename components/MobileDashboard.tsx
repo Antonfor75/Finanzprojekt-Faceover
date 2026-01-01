@@ -390,7 +390,7 @@ export default function MobileDashboard({
                     {/* BEREICH 2: Ausgaben diese Woche */}
                     <div className="row-start-1 row-span-4 col-start-8 col-span-4 flex flex-col justify-center items-center">
                         <div className="font-bold leading-none text-center" style={{ fontSize: '4vh', color: 'var(--text-main)' }}>
-                            Hallo
+                            test 2
                         </div>
                     </div>
 
