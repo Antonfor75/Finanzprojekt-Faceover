@@ -357,7 +357,7 @@ export default function MobileDashboard({
     }
 
     return (
-        <div className={`h-[100dvh] w-screen overflow-hidden relative transition-colors duration-300 ${getThemeBg()}`}>
+        <div className={`min-h-screen w-screen relative transition-colors duration-300 ${getThemeBg()}`}>
 
             {/* === ENTRY VIEW === */}
             {view === 'entry' && (

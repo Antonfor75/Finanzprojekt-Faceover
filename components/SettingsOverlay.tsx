@@ -506,17 +506,17 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
     // --- MAIN SETTINGS VIEW ---
     return (
-        <div className={`fixed inset-0 z-50 h-dvh w-screen overflow-y-auto bg-black/20 backdrop-blur-sm animate-in fade-in slide-in-from-right duration-300 flex justify-center theme-${theme}`}>
-            <div className="min-h-full w-5/6 bg-background/90 backdrop-blur-md shadow-2xl flex flex-col border-x border-primary/10">
+        <div className={`fixed inset-0 z-50 h-dvh w-screen bg-black/20 backdrop-blur-sm animate-in fade-in slide-in-from-right duration-300 flex justify-center theme-${theme}`}>
+            <div className="h-full w-full md:w-5/6 md:max-w-2xl bg-background/90 backdrop-blur-md shadow-2xl flex flex-col md:border-x border-primary/10 overflow-y-auto">
                 {/* Header */}
-                <div className="p-8 flex items-center justify-between border-b border-primary/10 shrink-0 bg-transparent sticky top-0 z-20">
-                    <div className="flex items-center gap-4">
+                <div className="p-4 md:p-8 flex items-center justify-between border-b border-primary/10 shrink-0 bg-transparent sticky top-0 z-20 backdrop-blur-xl">
+                    <div className="flex items-center gap-3 md:gap-4">
                         <button onClick={onBack} className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors">
                             <ArrowLeft className="w-6 h-6" />
                         </button>
-                        <h1 className="text-2xl font-bold text-foreground">Einstellungen</h1>
+                        <h1 className="text-xl md:text-3xl font-bold text-foreground">Einstellungen</h1>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 md:gap-2">
                         <label className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors cursor-pointer" title="Backup wiederherstellen">
                             <Upload className="w-6 h-6" />
                             <input
@@ -536,11 +536,11 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                     </div>
                 </div>
 
-                <div className="p-8 space-y-8 flex-1 pb-20">
+                <div className="p-4 md:p-10 space-y-6 md:space-y-8 flex-1 pb-32">
 
                     {/* Monthly Budget Section */}
-                    <div className="bg-card shadow-md rounded-2xl p-6 space-y-4">
-                        <h3 className="font-bold text-foreground">Finanzen</h3>
+                    <div className="bg-card shadow-md rounded-2xl p-4 md:p-8 space-y-4">
+                        <h3 className="text-lg md:text-2xl font-bold text-foreground">Finanzen</h3>
 
                         <div>
                             <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">Monatsbudget (€)</label>
@@ -548,36 +548,36 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                 type="number"
                                 value={budget}
                                 onChange={(e) => setBudget(e.target.value)}
-                                className="w-full px-4 py-3 text-lg bg-muted/30 rounded-xl text-foreground font-bold focus:ring-2 focus:ring-primary/50 outline-none transition-all"
+                                className="w-full h-14 px-4 text-lg bg-muted/30 rounded-xl text-foreground font-bold focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             />
                         </div>
 
                         {/* Konten Button */}
                         <button
                             onClick={() => setShowAccounts(true)}
-                            className="w-full py-4 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-between px-6 font-bold group"
+                            className="w-full h-16 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-between px-6 font-bold group"
                         >
-                            <span className="flex items-center gap-2">
+                            <span className="flex items-center gap-3">
                                 <Wallet className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                                Konten
+                                <span className="text-base md:text-lg">Konten</span>
                             </span>
-                            <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                            <span className="text-xs bg-primary/20 text-primary px-3 py-1 rounded-full">
                                 {accounts.length} Aktiv
                             </span>
                         </button>
 
                         <button
                             onClick={handleSave}
-                            className="w-full py-3 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center shadow-md font-bold"
+                            className="w-full h-14 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center shadow-md font-bold text-lg"
                         >
                             <Save className="w-6 h-6 mr-2" /> Speichern
                         </button>
                     </div>
 
                     {/* Fixed Costs Section */}
-                    <div className="bg-card shadow-md rounded-2xl p-6 space-y-4">
+                    <div className="bg-card shadow-md rounded-2xl p-4 md:p-8 space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-foreground">Fixkosten</h3>
+                            <h3 className="text-lg md:text-2xl font-bold text-foreground">Fixkosten</h3>
                             <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
                                 Summe: €{totalFixed.toFixed(2)}
                             </span>
@@ -588,12 +588,12 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                             {fixedCosts.map(cost => (
                                 <div key={cost.id} className="flex items-center justify-between p-4 bg-background/50 rounded-xl border border-primary/5 group">
                                     <div className="min-w-0 flex-1 mr-4">
-                                        <p className="font-bold text-foreground truncate">{cost.title}</p>
+                                        <p className="font-bold text-foreground truncate text-base md:text-lg">{cost.title}</p>
                                         <p className="text-xs text-muted-foreground font-medium">-€{cost.amount.toFixed(2)}</p>
                                     </div>
                                     <button
                                         onClick={() => handleDeleteCost(cost.id)}
-                                        className="p-2 text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                        className="p-3 text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                     >
                                         <Trash2 className="w-5 h-5" />
                                     </button>
@@ -609,18 +609,18 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                     placeholder="Titel"
                                     value={newCostTitle}
                                     onChange={(e) => setNewCostTitle(e.target.value)}
-                                    className="flex-[2] min-w-0 px-4 py-4 text-lg bg-muted/40 rounded-lg outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground/70"
+                                    className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-muted/40 rounded-lg outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground/70"
                                 />
                                 <input
                                     type="number"
                                     placeholder="€"
                                     value={newCostAmount}
                                     onChange={(e) => setNewCostAmount(e.target.value)}
-                                    className="flex-1 min-w-0 px-4 py-4 text-lg bg-muted/40 rounded-lg outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground/70"
+                                    className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-muted/40 rounded-lg outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground/70"
                                 />
                                 <button
                                     onClick={handleAddCost}
-                                    className="p-3 bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-colors shadow-sm"
+                                    className="h-14 w-14 bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-colors shadow-sm flex items-center justify-center"
                                     title="Add"
                                 >
                                     <Plus className="w-6 h-6" />
@@ -630,13 +630,13 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                     </div>
 
                     {/* Design Section */}
-                    <div className="bg-card shadow-md rounded-2xl p-6 space-y-4">
-                        <h3 className="font-bold text-foreground">Design</h3>
+                    <div className="bg-card shadow-md rounded-2xl p-4 md:p-8 space-y-4">
+                        <h3 className="text-lg md:text-2xl font-bold text-foreground">Design</h3>
                         <div className="w-full">
                             <select
                                 value={theme}
                                 onChange={(e) => setTheme(e.target.value)}
-                                className="w-full text-center border-none shadow-sm rounded-xl py-4 bg-muted/30 outline-none focus:ring-2 focus:ring-primary/50 appearance-none font-bold text-foreground text-lg cursor-pointer"
+                                className="w-full h-16 text-center border-none shadow-sm rounded-xl bg-muted/30 outline-none focus:ring-2 focus:ring-primary/50 appearance-none font-bold text-foreground text-lg cursor-pointer"
                             >
                                 <option value="white">Papier Weiß 📄</option>
                                 <option value="pink">Rosa 🌸</option>
