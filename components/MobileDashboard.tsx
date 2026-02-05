@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Wallet, TrendingDown, Calendar, ChevronRight, ArrowLeft, Settings, AlertCircle, Trash2, Plus, List, Pencil, X } from 'lucide-react'
+import { Wallet, TrendingDown, Calendar, ChevronRight, ArrowLeft, Settings, AlertCircle, Trash2, Plus, List, Pencil, X, Home } from 'lucide-react'
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, differenceInCalendarWeeks, min } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
@@ -357,7 +357,7 @@ export default function MobileDashboard({
     }
 
     return (
-        <div className={`min-h-dvh w-screen relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${getThemeBg()}`}>
+        <div className={`fixed inset-0 h-dvh w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${getThemeBg()}`}>
 
             {/* === ENTRY VIEW === */}
             {view === 'entry' && (
@@ -385,26 +385,7 @@ export default function MobileDashboard({
                         <AddExpenseForm accounts={initialAccounts} onRefresh={onUpdate} />
                     </div>
 
-                    {/* BEREICH 4: Historie Button */}
-                    <div className="row-start-13 row-span-1 col-start-3 col-span-4">
-                        <button
-                            onClick={() => setView('history')}
-                            className="w-full h-full bg-primary/90 text-primary-foreground backdrop-blur-md rounded-xl shadow-md flex items-center justify-center hover:bg-primary transition-all active:scale-95 border border-primary/20"
-                        >
-                            <List className="w-8 h-8 mr-2" />
-                            <span className="font-bold text-2vh">Historie</span>
-                        </button>
-                    </div>
-
-                    {/* BEREICH 5: Einstellungen */}
-                    <div className="row-start-13 row-span-1 col-start-10 col-span-2 flex justify-center items-center">
-                        <button
-                            onClick={() => setIsSettingsOpen(true)}
-                            className="bg-gray-200 text-gray-700 p-3 rounded-full hover:bg-gray-300 transition-colors shadow-sm"
-                        >
-                            <Settings className="w-8 h-8" />
-                        </button>
-                    </div>
+                    {/* BEREICH 4 & 5: Buttons removed in favor of Bottom Nav */}
 
                 </div>
             )}
@@ -425,29 +406,29 @@ export default function MobileDashboard({
                     </div>
 
                     {/* BEREICH 2: Reiter */}
-                    <div className="row-start-2 row-span-1 col-start-4 col-span-6 flex justify-around items-center bg-white rounded-lg border border-black text-xs shadow-sm overflow-hidden p-1">
+                    <div className="row-start-2 row-span-1 col-start-4 col-span-6 flex justify-around items-center bg-white/30 backdrop-blur-xl border border-white/40 rounded-2xl shadow-sm p-1 z-10">
                         <button
                             onClick={() => setHistoryMode('calendar')}
-                            className={`flex-1 text-center py-2 rounded-md font-bold transition-colors ${historyMode === 'calendar' ? 'bg-black text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                            className={`flex-1 text-center py-2 rounded-xl font-bold transition-all duration-300 text-xs ${historyMode === 'calendar' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
                         >
                             Kalender
                         </button>
                         <button
                             onClick={() => setHistoryMode('list')}
-                            className={`flex-1 text-center py-2 rounded-md font-bold transition-colors ${historyMode === 'list' ? 'bg-black text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                            className={`flex-1 text-center py-2 rounded-xl font-bold transition-all duration-300 text-xs ${historyMode === 'list' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
                         >
                             Liste
                         </button>
                         <button
                             onClick={() => setHistoryMode('analysis')}
-                            className={`flex-1 text-center py-2 rounded-md font-bold transition-colors ${historyMode === 'analysis' ? 'bg-black text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                            className={`flex-1 text-center py-2 rounded-xl font-bold transition-all duration-300 text-xs ${historyMode === 'analysis' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
                         >
                             Analyse
                         </button>
                     </div>
 
                     {/* BEREICH 3: Inhalt */}
-                    <div className="row-start-3 row-span-12 col-start-1 col-span-12 bg-white rounded-t-3xl p-4 overflow-y-auto shadow-[0_-5px_20px_rgba(0,0,0,0.1)] relative border-t border-gray-100">
+                    <div className="row-start-3 row-span-12 col-start-1 col-span-12 bg-white rounded-t-3xl p-4 pb-28 overflow-y-auto shadow-[0_-5px_20px_rgba(0,0,0,0.1)] relative border-t border-gray-100">
                         {historyMode === 'list' && (
                             <button
                                 onClick={generatePDF}
@@ -459,7 +440,7 @@ export default function MobileDashboard({
                         )}
 
                         {historyMode === 'analysis' ? (
-                            <AnalysisView expenses={expenses} />
+                            <AnalysisView expenses={expenses} budget={weeklyBudget} />
                         ) : historyMode === 'calendar' ? (
                             <CalendarHistory
                                 expenses={expenses}
@@ -537,6 +518,32 @@ export default function MobileDashboard({
 
                 </div>
             )}
+
+            {/* === BOTTOM NAVIGATION BAR === */}
+            <div className="fixed bottom-0 left-0 w-full bg-white/60 backdrop-blur-xl border-t border-white/40 pb-[env(safe-area-inset-bottom)] z-40 transition-all duration-300 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+                <div className="flex justify-around items-center h-20 px-6">
+                    <button
+                        onClick={() => setView('entry')}
+                        className={`p-3 rounded-2xl transition-all duration-300 ${view === 'entry' ? 'bg-black text-white shadow-lg scale-110' : 'text-gray-400 hover:bg-black/5'}`}
+                    >
+                        <Home className="w-8 h-8" />
+                    </button>
+
+                    <button
+                        onClick={() => setView('history')}
+                        className={`p-3 rounded-2xl transition-all duration-300 ${view === 'history' ? 'bg-black text-white shadow-lg scale-110' : 'text-gray-400 hover:bg-black/5'}`}
+                    >
+                        <List className="w-8 h-8" />
+                    </button>
+
+                    <button
+                        onClick={() => setIsSettingsOpen(true)}
+                        className={`p-3 rounded-2xl transition-all duration-300 ${isSettingsOpen ? 'bg-black text-white shadow-lg scale-110' : 'text-gray-400 hover:bg-black/5'}`}
+                    >
+                        <Settings className="w-8 h-8" />
+                    </button>
+                </div>
+            </div>
 
         </div>
     )
