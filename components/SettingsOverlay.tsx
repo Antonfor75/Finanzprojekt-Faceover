@@ -157,7 +157,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
     const handleDownloadFullReport = () => {
         const doc = new jsPDF()
-        const totalFixed = fixedCosts.reduce((acc, curr) => acc + curr.amount, 0)
+        const totalFixed = fixedCosts.reduce((acc, curr) => acc + Number(curr.amount), 0)
         const available = Number(budget) - totalFixed
 
         // Header
@@ -371,15 +371,15 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         }
     }
 
-    const totalFixed = fixedCosts.reduce((acc, curr) => acc + curr.amount, 0)
+    const totalFixed = fixedCosts.reduce((acc, curr) => acc + Number(curr.amount), 0)
     const available = Number(budget) - totalFixed
 
     // --- ACCOUNTS SUB-VIEW ---
     if (showAccounts) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen overflow-y-auto bg-white animate-in fade-in slide-in-from-right duration-300">
-                <div className="min-h-full w-full max-w-md mx-auto bg-white shadow-2xl flex flex-col">
-                    <div className="p-8 flex items-center justify-between border-b border-gray-100 shrink-0 bg-white sticky top-0 z-20">
+            <div className="fixed inset-0 z-50 h-dvh w-screen overflow-y-auto bg-black/20 backdrop-blur-sm animate-in fade-in slide-in-from-right duration-300 flex justify-center">
+                <div className="min-h-full w-5/6 bg-background/80 backdrop-blur-md shadow-2xl flex flex-col border-x border-white/20">
+                    <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
                             <button onClick={() => setShowAccounts(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
                                 <ArrowLeft className="w-6 h-6" />
@@ -506,18 +506,18 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
     // --- MAIN SETTINGS VIEW ---
     return (
-        <div className="fixed inset-0 z-50 h-dvh w-screen overflow-y-auto bg-white animate-in fade-in slide-in-from-right duration-300">
-            <div className="min-h-full w-full max-w-md mx-auto bg-white shadow-2xl flex flex-col">
+        <div className={`fixed inset-0 z-50 h-dvh w-screen overflow-y-auto bg-black/20 backdrop-blur-sm animate-in fade-in slide-in-from-right duration-300 flex justify-center theme-${theme}`}>
+            <div className="min-h-full w-5/6 bg-background/90 backdrop-blur-md shadow-2xl flex flex-col border-x border-primary/10">
                 {/* Header */}
-                <div className="p-8 flex items-center justify-between border-b border-gray-100 shrink-0 bg-white sticky top-0 z-20">
+                <div className="p-8 flex items-center justify-between border-b border-primary/10 shrink-0 bg-transparent sticky top-0 z-20">
                     <div className="flex items-center gap-4">
-                        <button onClick={onBack} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+                        <button onClick={onBack} className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors">
                             <ArrowLeft className="w-6 h-6" />
                         </button>
-                        <h1 className="text-2xl font-bold text-gray-800">Einstellungen</h1>
+                        <h1 className="text-2xl font-bold text-foreground">Einstellungen</h1>
                     </div>
                     <div className="flex gap-2">
-                        <label className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors cursor-pointer" title="Backup wiederherstellen">
+                        <label className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors cursor-pointer" title="Backup wiederherstellen">
                             <Upload className="w-6 h-6" />
                             <input
                                 type="file"
@@ -528,7 +528,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </label>
                         <button
                             onClick={handleDownloadFullReport}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                            className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
                             title="PDF Report & Backup Laden"
                         >
                             <Download className="w-6 h-6" />
@@ -539,46 +539,46 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                 <div className="p-8 space-y-8 flex-1 pb-20">
 
                     {/* Monthly Budget Section */}
-                    <div className="bg-white shadow-md rounded-2xl p-6 border border-gray-100 space-y-4">
-                        <h3 className="font-bold text-gray-800">Finanzen</h3>
+                    <div className="bg-card shadow-md rounded-2xl p-6 space-y-4">
+                        <h3 className="font-bold text-foreground">Finanzen</h3>
 
                         <div>
-                            <label className="block text-xs font-bold text-pink-600 uppercase tracking-wide mb-1">Monatsbudget (€)</label>
+                            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1">Monatsbudget (€)</label>
                             <input
                                 type="number"
                                 value={budget}
                                 onChange={(e) => setBudget(e.target.value)}
-                                className="w-full px-4 py-3 text-lg bg-gray-100 rounded-xl text-gray-900 font-bold focus:ring-2 focus:ring-pink-300 outline-none transition-all"
+                                className="w-full px-4 py-3 text-lg bg-muted/30 rounded-xl text-foreground font-bold focus:ring-2 focus:ring-primary/50 outline-none transition-all"
                             />
                         </div>
 
                         {/* Konten Button */}
                         <button
                             onClick={() => setShowAccounts(true)}
-                            className="w-full py-4 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors flex items-center justify-between px-6 font-bold group"
+                            className="w-full py-4 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-between px-6 font-bold group"
                         >
                             <span className="flex items-center gap-2">
-                                <Wallet className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                <Wallet className="w-6 h-6 group-hover:scale-110 transition-transform" />
                                 Konten
                             </span>
-                            <span className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded-full">
+                            <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
                                 {accounts.length} Aktiv
                             </span>
                         </button>
 
                         <button
                             onClick={handleSave}
-                            className="w-full py-3 bg-gray-800 text-white rounded-xl hover:bg-black transition-colors flex items-center justify-center shadow-md font-bold"
+                            className="w-full py-3 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center shadow-md font-bold"
                         >
-                            <Save className="w-5 h-5 mr-2" /> Speichern
+                            <Save className="w-6 h-6 mr-2" /> Speichern
                         </button>
                     </div>
 
                     {/* Fixed Costs Section */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between px-1">
-                            <h3 className="font-bold text-gray-800">Fixkosten</h3>
-                            <span className="text-xs font-bold text-pink-600 bg-pink-50 px-3 py-1 rounded-full">
+                    <div className="bg-card shadow-md rounded-2xl p-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-bold text-foreground">Fixkosten</h3>
+                            <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
                                 Summe: €{totalFixed.toFixed(2)}
                             </span>
                         </div>
@@ -586,55 +586,57 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         {/* List */}
                         <div className="space-y-3">
                             {fixedCosts.map(cost => (
-                                <div key={cost.id} className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100 group">
-                                    <div>
-                                        <p className="font-bold text-gray-800">{cost.title}</p>
-                                        <p className="text-xs text-gray-400 font-medium">-€{cost.amount.toFixed(2)}</p>
+                                <div key={cost.id} className="flex items-center justify-between p-4 bg-background/50 rounded-xl border border-primary/5 group">
+                                    <div className="min-w-0 flex-1 mr-4">
+                                        <p className="font-bold text-foreground truncate">{cost.title}</p>
+                                        <p className="text-xs text-muted-foreground font-medium">-€{cost.amount.toFixed(2)}</p>
                                     </div>
                                     <button
                                         onClick={() => handleDeleteCost(cost.id)}
-                                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                        className="p-2 text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                     >
-                                        <Trash2 className="w-4 h-4" />
+                                        <Trash2 className="w-5 h-5" />
                                     </button>
                                 </div>
                             ))}
                         </div>
 
                         {/* Add New */}
-                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-3">
-                            <span className="text-xs font-bold text-gray-400 uppercase">Neue Fixkosten hinzufügen</span>
+                        <div className="bg-primary/5 p-4 rounded-xl border border-primary/5 flex flex-col gap-3">
+                            <span className="text-xs font-bold text-muted-foreground uppercase">Neue Fixkosten hinzufügen</span>
                             <div className="flex gap-2">
                                 <input
                                     placeholder="Titel"
                                     value={newCostTitle}
                                     onChange={(e) => setNewCostTitle(e.target.value)}
-                                    className="flex-[2] px-4 py-4 text-lg bg-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-pink-300"
+                                    className="flex-[2] min-w-0 px-4 py-4 text-lg bg-muted/40 rounded-lg outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground/70"
                                 />
                                 <input
                                     type="number"
                                     placeholder="€"
                                     value={newCostAmount}
                                     onChange={(e) => setNewCostAmount(e.target.value)}
-                                    className="flex-1 px-4 py-4 text-lg bg-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-pink-300"
+                                    className="flex-1 min-w-0 px-4 py-4 text-lg bg-muted/40 rounded-lg outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground/70"
                                 />
                                 <button
                                     onClick={handleAddCost}
-                                    className="p-3 bg-pink-100 text-pink-600 hover:bg-pink-500 hover:text-white rounded-lg transition-colors"
+                                    className="p-3 bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-colors shadow-sm"
+                                    title="Add"
                                 >
-                                    <Plus className="w-5 h-5" />
+                                    <Plus className="w-6 h-6" />
                                 </button>
                             </div>
                         </div>
                     </div>
+
                     {/* Design Section */}
-                    <div className="space-y-4">
-                        <h3 className="font-bold text-gray-800 px-1">Design</h3>
+                    <div className="bg-card shadow-md rounded-2xl p-6 space-y-4">
+                        <h3 className="font-bold text-foreground">Design</h3>
                         <div className="w-full">
                             <select
                                 value={theme}
                                 onChange={(e) => setTheme(e.target.value)}
-                                className="w-full text-center border-none shadow-sm rounded-xl py-4 bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400 appearance-none font-bold text-gray-800 text-lg cursor-pointer"
+                                className="w-full text-center border-none shadow-sm rounded-xl py-4 bg-muted/30 outline-none focus:ring-2 focus:ring-primary/50 appearance-none font-bold text-foreground text-lg cursor-pointer"
                             >
                                 <option value="white">Papier Weiß 📄</option>
                                 <option value="pink">Rosa 🌸</option>
@@ -646,15 +648,15 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                     </div>
 
                     {/* Summary */}
-                    <div className="p-6 bg-pink-50 border border-pink-100 rounded-2xl shadow-sm">
+                    <div className="p-6 bg-primary/5 border border-primary/10 rounded-2xl shadow-sm">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-pink-700 font-medium">Verfügbar nach Fixkosten</span>
-                            <span className="text-xl font-bold text-pink-700">€{available.toFixed(2)}</span>
+                            <span className="text-sm text-muted-foreground font-medium">Verfügbar nach Fixkosten</span>
+                            <span className="text-xl font-bold text-primary">€{available.toFixed(2)}</span>
                         </div>
-                        <div className="h-px bg-pink-200 w-full my-2"></div>
+                        <div className="h-px bg-primary/10 w-full my-2"></div>
                         <div className="flex justify-between items-center mt-2">
-                            <span className="text-sm text-pink-800 font-bold uppercase tracking-wide">Wöchentliches Budget</span>
-                            <span className="text-2xl font-extrabold text-pink-600">€{(available / 4).toFixed(2)}</span>
+                            <span className="text-sm text-primary/80 font-bold uppercase tracking-wide">Wöchentliches Budget</span>
+                            <span className="text-2xl font-extrabold text-primary">€{(available / 4).toFixed(2)}</span>
                         </div>
                     </div>
 

@@ -72,7 +72,7 @@ export default function Home() {
       }
 
       // Calculate Total Budget: Base (Settings) + Distributed Accounts
-      const baseBudget = finalSettings.monthly_budget || 0
+      const baseBudget = Number(finalSettings.monthly_budget) || 0
 
       const accountDistributions = accountsList.reduce((sum: number, acc: Account) => {
         if (acc.type === 'distribution' && acc.months > 0 && acc.amount > 0) {

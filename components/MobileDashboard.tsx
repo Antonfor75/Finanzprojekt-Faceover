@@ -5,6 +5,7 @@ import { Wallet, TrendingDown, Calendar, ChevronRight, ArrowLeft, Settings, Aler
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, differenceInCalendarWeeks, min } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
+import { applyTheme } from '@/utils/theme'
 
 import AddExpenseForm from './AddExpenseForm'
 import SettingsOverlay from './SettingsOverlay'
@@ -56,19 +57,7 @@ export default function MobileDashboard({
     // --- EFFECT: SAVE THEME & SYNC BODY BG ---
     useEffect(() => {
         localStorage.setItem('theme', theme)
-        const getThemeColors = (t: string) => {
-            switch (t) {
-                case 'pink': return { bg: '#fce7f3', main: '#831843', muted: '#db2777' }
-                case 'blue': return { bg: '#dbeafe', main: '#1e3a8a', muted: '#2563eb' }
-                case 'green': return { bg: '#dcfce7', main: '#14532d', muted: '#16a34a' }
-                case 'yellow': return { bg: '#fef9c3', main: '#713f12', muted: '#d97706' }
-                default: return { bg: '#f8f5e6', main: '#1f2937', muted: '#9ca3af' }
-            }
-        }
-        const colors = getThemeColors(theme)
-        document.body.style.backgroundColor = colors.bg
-        document.body.style.setProperty('--text-main', colors.main)
-        document.body.style.setProperty('--text-muted', colors.muted)
+        applyTheme(theme)
     }, [theme])
 
     // --- EFFECT: PROCESS SAVINGS ON MOUNT ---
@@ -147,7 +136,7 @@ export default function MobileDashboard({
     }
 
     // Budget Calculations
-    const totalFixed = initialFixedCosts.reduce((acc, curr) => acc + curr.amount, 0)
+    const totalFixed = initialFixedCosts.reduce((acc, curr) => acc + Number(curr.amount), 0)
     const availableMonthly = initialBudget - totalFixed
     const weeklyBudget = availableMonthly / 4
     const getDate = (e: Expense) => new Date(e.expense_date || e.created_at)
@@ -167,7 +156,7 @@ export default function MobileDashboard({
     // Total Budget = (Weeks Passed + 1) * Weekly Budget
     const totalAccumulatedBudget = weeklyBudget * (weeksPassed + 1)
 
-    const totalSpentRelevant = relevantExpenses.reduce((acc, curr) => acc + curr.amount, 0)
+    const totalSpentRelevant = relevantExpenses.reduce((acc, curr) => acc + Number(curr.amount), 0)
     const currentBalance = totalAccumulatedBudget - totalSpentRelevant
     const isPositive = currentBalance >= 0
 
@@ -179,7 +168,7 @@ export default function MobileDashboard({
             const start = startOfWeek(date, { weekStartsOn: 1 })
             const key = start.toISOString()
             if (!groups[key]) groups[key] = { start, total: 0, count: 0 }
-            groups[key].total += e.amount
+            groups[key].total += Number(e.amount)
             groups[key].count += 1
         })
         return Object.values(groups).sort((a, b) => a.start.getTime() - b.start.getTime())
@@ -193,7 +182,7 @@ export default function MobileDashboard({
             const date = getDate(e)
             const key = format(date, 'yyyy-MM-dd')
             if (!groups[key]) groups[key] = { date, total: 0, count: 0 }
-            groups[key].total += e.amount
+            groups[key].total += Number(e.amount)
             groups[key].count += 1
         })
         return Object.values(groups).sort((a, b) => a.date.getTime() - b.date.getTime())
@@ -238,7 +227,7 @@ export default function MobileDashboard({
                 weekKeys.push(key)
             }
             grouped[key].expenses.push(e)
-            grouped[key].total += e.amount
+            grouped[key].total += Number(e.amount)
         })
 
         weekKeys.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
@@ -376,26 +365,23 @@ export default function MobileDashboard({
 
                     {/* BEREICH 1: Verfügbares Budget */}
                     <div className="row-start-1 row-span-4 col-start-3 col-span-4 flex flex-col justify-center items-center">
-                        <h2 className="font-bold uppercase tracking-widest text-center" style={{ fontSize: '2vh', color: 'var(--text-muted)' }}>
+                        <h2 className="font-bold uppercase tracking-widest text-center text-2vh text-muted-foreground">
                             Verfügbar
                         </h2>
-                        <div
-                            className="font-bold tracking-tight leading-none text-center"
-                            style={{ color: isPositive ? '#16a34a' : '#dc2626', fontSize: '5vh' }}
-                        >
-                            €{Math.floor(currentBalance)}<span style={{ fontSize: '3vh', color: 'var(--text-muted)' }}>.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
+                        <div className={`font-bold tracking-tight leading-none text-center text-5vh ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                            €{Math.floor(currentBalance)}<span className="text-3vh text-muted-foreground">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
                         </div>
                     </div>
 
                     {/* BEREICH 2: Ausgaben diese Woche */}
                     <div className="row-start-1 row-span-4 col-start-8 col-span-4 flex flex-col justify-center items-center">
-                        <div className="font-bold leading-none text-center" style={{ fontSize: '4vh', color: 'var(--text-main)' }}>
+                        <div className="font-bold leading-none text-center text-4vh text-foreground">
                             test 2
                         </div>
                     </div>
 
                     {/* BEREICH 3: Eingabe-Panel */}
-                    <div className="row-start-6 row-span-4 col-start-2 col-span-10 flex flex-col justify-evenly bg-white border-2 border-black rounded-2xl p-2 shadow-lg z-10 overflow-hidden">
+                    <div className="row-start-6 row-span-4 col-start-2 col-span-10 flex flex-col justify-evenly bg-white/90 backdrop-blur-md border border-white/40 rounded-2xl p-2 shadow-xl z-10 overflow-hidden">
                         <AddExpenseForm accounts={initialAccounts} onRefresh={onUpdate} />
                     </div>
 
@@ -403,10 +389,10 @@ export default function MobileDashboard({
                     <div className="row-start-13 row-span-1 col-start-3 col-span-4">
                         <button
                             onClick={() => setView('history')}
-                            className="w-full h-full bg-gray-800 text-white rounded-xl shadow-md flex items-center justify-center hover:bg-black transition-all active:scale-95"
+                            className="w-full h-full bg-primary/90 text-primary-foreground backdrop-blur-md rounded-xl shadow-md flex items-center justify-center hover:bg-primary transition-all active:scale-95 border border-primary/20"
                         >
                             <List className="w-6 h-6 mr-2" />
-                            <span className="font-bold" style={{ fontSize: '2vh' }}>Historie</span>
+                            <span className="font-bold text-2vh">Historie</span>
                         </button>
                     </div>
 

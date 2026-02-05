@@ -35,7 +35,7 @@ export default function AnalysisView({ expenses }: Props) {
         const groups: Record<string, number> = {}
         currentWeekExpenses.forEach(e => {
             const cat = e.category || 'Sonstiges'
-            groups[cat] = (groups[cat] || 0) + e.amount
+            groups[cat] = (groups[cat] || 0) + Number(e.amount)
         })
 
         return Object.entries(groups)
@@ -43,7 +43,7 @@ export default function AnalysisView({ expenses }: Props) {
             .sort((a, b) => b.value - a.value) // Sort by value desc
     }, [expenses])
 
-    const total = data.reduce((acc, curr) => acc + curr.value, 0)
+    const total = data.reduce((acc, curr) => acc + Number(curr.value), 0)
 
     if (data.length === 0) {
         return (

@@ -30,7 +30,7 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
     const getDailyTotal = (date: Date) => {
         return expenses
             .filter(e => isSameDay(new Date(e.expense_date || e.created_at), date))
-            .reduce((acc, curr) => acc + curr.amount, 0)
+            .reduce((acc, curr) => acc + Number(curr.amount), 0)
     }
 
     return (

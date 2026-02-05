@@ -1,36 +1,58 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  /* Dynamic Semantic Colors */
+  --color-background: var(--bg-background);
+  --color-foreground: var(--text-foreground);
+
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--text-primary-foreground);
+
+  --color-muted: var(--bg-muted);
+  --color-muted-foreground: var(--text-muted-foreground);
+
+  --color-border: var(--color-border);
+
+  /* Static/Legacy */
+  --color-paper: #f8f5e6;
+
+  /* Viewport Fonts */
+  --text-2vh: 2vh;
+  --text-3vh: 3vh;
+  --text-4vh: 4vh;
+  --text-5vh: 5vh;
+}
 
 @layer base {
 
-  html,
+  :root {
+    /* DEFAULT VALUES (White Theme) */
+    --bg-background: #f8f5e6;
+    --text-foreground: #333333;
+    --color-primary: #1f2937;
+    --text-primary-foreground: #ffffff;
+    --bg-muted: #e5e7eb;
+    --text-muted-foreground: #6b7280;
+    --color-border: #d1d5db;
+  }
+
   body {
     height: 100%;
     margin: 0;
     overflow: hidden;
-    /* Verhindert Scrollen */
     overscroll-behavior: none;
-    background-color: #f8f5e6;
-    color: #333;
+
+    /* Apply Semantic Variables */
+    background-color: var(--bg-background);
+    color: var(--text-foreground);
   }
 }
 
-/* Eigene Klassen für das Budget */
-.budget-positive {
-  color: #16a34a !important;
-  /* Ein sattes Grün */
+/* Utilities used by old code, mapped to Tailwind logic where possible */
+.text-budget-positive {
+  @apply text-green-600;
 }
 
-.budget-negative {
-  color: #dc2626 !important;
-  /* Ein kräftiges Rot */
-}
-
-/* Hintergrund für die gesamte Seite */
-.app-background-pink {
-  background-color: #fce7f3 !important;
-  /* Ein sanftes Pastell-Rosa (Pink-100) */
-  min-height: 100vh;
-  /* Garantiert, dass es bis ganz unten geht */
+.text-budget-negative {
+  @apply text-red-600;
 }
