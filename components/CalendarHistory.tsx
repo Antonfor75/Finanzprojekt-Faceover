@@ -38,13 +38,13 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
                 <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-full">
-                    <ChevronLeft className="w-6 h-6" />
+                    <ChevronLeft className="w-8 h-8" />
                 </button>
                 <h2 className="text-2xl font-bold">
                     {format(currentMonth, 'MMMM yyyy', { locale: de })}
                 </h2>
                 <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-full">
-                    <ChevronRight className="w-6 h-6" />
+                    <ChevronRight className="w-8 h-8" />
                 </button>
             </div>
 

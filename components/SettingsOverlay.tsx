@@ -382,7 +382,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                     <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
                             <button onClick={() => setShowAccounts(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
-                                <ArrowLeft className="w-6 h-6" />
+                                <ArrowLeft className="w-8 h-8" />
                             </button>
                             <h1 className="text-2xl font-bold text-gray-800">Konten Verwalten</h1>
                         </div>
@@ -483,7 +483,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 }}
                                                 className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-5 h-5" />
                                             </button>
                                         </div>
                                     ))}
@@ -512,13 +512,13 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                 <div className="p-4 md:p-8 flex items-center justify-between border-b border-primary/10 shrink-0 bg-transparent sticky top-0 z-20 backdrop-blur-xl">
                     <div className="flex items-center gap-3 md:gap-4">
                         <button onClick={onBack} className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors">
-                            <ArrowLeft className="w-6 h-6" />
+                            <ArrowLeft className="w-8 h-8" />
                         </button>
                         <h1 className="text-xl md:text-3xl font-bold text-foreground">Einstellungen</h1>
                     </div>
                     <div className="flex gap-1 md:gap-2">
                         <label className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors cursor-pointer" title="Backup wiederherstellen">
-                            <Upload className="w-6 h-6" />
+                            <Upload className="w-8 h-8" />
                             <input
                                 type="file"
                                 accept=".pdf"
@@ -531,7 +531,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                             className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
                             title="PDF Report & Backup Laden"
                         >
-                            <Download className="w-6 h-6" />
+                            <Download className="w-8 h-8" />
                         </button>
                     </div>
                 </div>
@@ -558,7 +558,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                             className="w-full h-16 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-between px-6 font-bold group"
                         >
                             <span className="flex items-center gap-3">
-                                <Wallet className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                                <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
                                 <span className="text-base md:text-lg">Konten</span>
                             </span>
                             <span className="text-xs bg-primary/20 text-primary px-3 py-1 rounded-full">
@@ -570,7 +570,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                             onClick={handleSave}
                             className="w-full h-14 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center shadow-md font-bold text-lg"
                         >
-                            <Save className="w-6 h-6 mr-2" /> Speichern
+                            <Save className="w-8 h-8 mr-2" /> Speichern
                         </button>
                     </div>
 
@@ -595,7 +595,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         onClick={() => handleDeleteCost(cost.id)}
                                         className="p-3 text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                     >
-                                        <Trash2 className="w-5 h-5" />
+                                        <Trash2 className="w-6 h-6" />
                                     </button>
                                 </div>
                             ))}
@@ -623,7 +623,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                     className="h-14 w-14 bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-colors shadow-sm flex items-center justify-center"
                                     title="Add"
                                 >
-                                    <Plus className="w-6 h-6" />
+                                    <Plus className="w-8 h-8" />
                                 </button>
                             </div>
                         </div>
@@ -665,7 +665,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         onClick={onLogout}
                         className="w-full border-2 border-red-500 text-red-500 font-bold py-3 rounded-xl hover:bg-red-50 transition flex items-center justify-center gap-2 mb-8"
                     >
-                        <LogOut className="w-5 h-5" />
+                        <LogOut className="w-6 h-6" />
                         Abmelden
                     </button>
                 </div>

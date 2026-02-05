@@ -41,7 +41,7 @@ export default function LoginScreen() {
             <div className="w-full max-w-sm z-10">
                 <div className="text-center mb-10">
                     <div className="bg-black text-white inline-flex p-4 rounded-3xl mb-4 shadow-xl rotate-[-3deg]">
-                        <Lock className="w-8 h-8" />
+                        <Lock className="w-10 h-10" />
                     </div>
                     <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Login</h1>
                     <p className="text-gray-500 font-medium">Willkommen zurück!</p>
@@ -57,7 +57,7 @@ export default function LoginScreen() {
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div className="relative group">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-black transition-colors" />
+                            <Mail className="h-6 w-6 text-gray-400 group-focus-within:text-black transition-colors" />
                         </div>
                         <input
                             type="email"
@@ -71,7 +71,7 @@ export default function LoginScreen() {
 
                     <div className="relative group">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-black transition-colors" />
+                            <Lock className="h-6 w-6 text-gray-400 group-focus-within:text-black transition-colors" />
                         </div>
                         <input
                             type="password"
@@ -89,10 +89,10 @@ export default function LoginScreen() {
                         className="w-full bg-black text-white p-4 rounded-2xl font-bold text-lg hover:bg-gray-800 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 mt-4"
                     >
                         {loading ? (
-                            <Loader2 className="w-6 h-6 animate-spin" />
+                            <Loader2 className="w-8 h-8 animate-spin" />
                         ) : (
                             <>
-                                Anmelden <ArrowRight className="w-5 h-5" />
+                                Anmelden <ArrowRight className="w-6 h-6" />
                             </>
                         )}
                     </button>

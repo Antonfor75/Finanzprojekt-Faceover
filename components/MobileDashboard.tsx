@@ -306,7 +306,7 @@ export default function MobileDashboard({
                         onClick={() => setEditingExpense(null)}
                         className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full"
                     >
-                        <X className="w-8 h-8" />
+                        <X className="w-10 h-10" />
                     </button>
                     <h2 className="text-4xl font-bold mb-8 text-center">Eintrag bearbeiten</h2>
                     <form action={handleEditSave} className="space-y-6">
@@ -391,7 +391,7 @@ export default function MobileDashboard({
                             onClick={() => setView('history')}
                             className="w-full h-full bg-primary/90 text-primary-foreground backdrop-blur-md rounded-xl shadow-md flex items-center justify-center hover:bg-primary transition-all active:scale-95 border border-primary/20"
                         >
-                            <List className="w-6 h-6 mr-2" />
+                            <List className="w-8 h-8 mr-2" />
                             <span className="font-bold text-2vh">Historie</span>
                         </button>
                     </div>
@@ -402,7 +402,7 @@ export default function MobileDashboard({
                             onClick={() => setIsSettingsOpen(true)}
                             className="bg-gray-200 text-gray-700 p-3 rounded-full hover:bg-gray-300 transition-colors shadow-sm"
                         >
-                            <Settings className="w-6 h-6" />
+                            <Settings className="w-8 h-8" />
                         </button>
                     </div>
 
@@ -419,7 +419,7 @@ export default function MobileDashboard({
                             onClick={() => setView('entry')}
                             className="flex items-center gap-2 text-gray-600 hover:text-black transition-transform active:scale-95"
                         >
-                            <ArrowLeft className="w-8 h-8" />
+                            <ArrowLeft className="w-10 h-10" />
                             <span className="font-bold text-xl hidden sm:inline">Zurück</span>
                         </button>
                     </div>
@@ -470,7 +470,7 @@ export default function MobileDashboard({
                             <div className="space-y-4 pt-2">
                                 {viewLevel !== 'weeks' && (
                                     <button onClick={handleBackHistory} className="mb-4 flex items-center gap-2 text-pink-600 font-bold text-lg">
-                                        <ArrowLeft className="w-5 h-5" /> Zurück
+                                        <ArrowLeft className="w-6 h-6" /> Zurück
                                     </button>
                                 )}
 
@@ -514,7 +514,7 @@ export default function MobileDashboard({
                                                     }}
                                                     className="p-1.5 text-gray-400 hover:text-blue-500 bg-gray-50 rounded-lg"
                                                 >
-                                                    <Pencil className="w-4 h-4" />
+                                                    <Pencil className="w-5 h-5" />
                                                 </button>
                                                 <button
                                                     onClick={async (e) => {
@@ -525,7 +525,7 @@ export default function MobileDashboard({
                                                     }}
                                                     className="p-1.5 text-gray-400 hover:text-red-500 bg-gray-50 rounded-lg"
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    <Trash2 className="w-5 h-5" />
                                                 </button>
                                             </div>
                                         </div>
