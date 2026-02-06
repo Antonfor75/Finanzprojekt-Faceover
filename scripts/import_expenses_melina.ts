@@ -27,7 +27,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const USER_EMAIL = 'melina@test.de';
 const USER_PASSWORD = '123';
 
-const EXPENSES = [
+const EXPENSES: { date: string; amount: number; category: string; description?: string }[] = [
     { date: '2026-01-20', amount: 9, category: 'Essen' },
     { date: '2026-01-21', amount: 10, category: 'Essen' },
     { date: '2026-01-26', amount: 1.30, category: 'Essen' },

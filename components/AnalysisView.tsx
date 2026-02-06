@@ -92,8 +92,8 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
 
 
         // --- 2. CASHFLOW DATA ---
-        const cashflowData: any[] = []
-
+        // 12 Months Logic
+        const cashflowData12M: any[] = []
         const expensesByMonth: Record<string, number> = {}
         expenses.forEach(e => {
             const date = new Date(e.expense_date || e.created_at)
@@ -101,52 +101,50 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
             expensesByMonth[key] = (expensesByMonth[key] || 0) + Number(e.amount)
         })
 
-        if (cashflowRange === '12m') {
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+            const key = getMonthKey(d)
+            const monthLabel = format(d, 'MMM', { locale: de })
 
-            for (let i = 11; i >= 0; i--) {
-                const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-                const key = getMonthKey(d)
-                const monthLabel = format(d, 'MMM', { locale: de })
+            const income = budget
+            const expense = expensesByMonth[key] || 0
+            const savings = income - expense
+            const rate = income > 0 ? (savings / income) * 100 : 0
 
-                const income = budget
-                const expense = expensesByMonth[key] || 0
-                const savings = income - expense
-                const rate = income > 0 ? (savings / income) * 100 : 0
+            cashflowData12M.push({
+                month: monthLabel,
+                fullDate: key,
+                income: income,
+                expenses: expense,
+                savingsRate: Math.max(-100, Math.min(100, rate))
+            })
+        }
 
-                cashflowData.push({
-                    month: monthLabel,
-                    fullDate: key,
-                    income: income,
-                    expenses: expense,
-                    savingsRate: Math.max(-100, Math.min(100, rate))
-                })
-            }
-        } else {
-            // 4 Weeks Logic
-            for (let i = 3; i >= 0; i--) {
-                const d = subWeeks(now, i)
-                const start = startOfWeek(d, { weekStartsOn: 1 })
-                const end = endOfWeek(d, { weekStartsOn: 1 })
-                const rangeLabel = `${format(start, 'dd.MM')} - ${format(end, 'dd.MM')}`
+        // 4 Weeks Logic
+        const cashflowData4W: any[] = []
+        for (let i = 3; i >= 0; i--) {
+            const d = subWeeks(now, i)
+            const start = startOfWeek(d, { weekStartsOn: 1 })
+            const end = endOfWeek(d, { weekStartsOn: 1 })
+            const rangeLabel = `${format(start, 'dd.MM')} - ${format(end, 'dd.MM')}`
 
-                const weeklyIncome = budget / 4.33
+            const weeklyIncome = budget / 4.33
 
-                const weeklyExpenses = expenses.filter(e => {
-                    const ed = new Date(e.expense_date || e.created_at)
-                    return isWithinInterval(ed, { start, end })
-                }).reduce((acc, curr) => acc + Number(curr.amount), 0)
+            const weeklyExpenses = expenses.filter(e => {
+                const ed = new Date(e.expense_date || e.created_at)
+                return isWithinInterval(ed, { start, end })
+            }).reduce((acc, curr) => acc + Number(curr.amount), 0)
 
-                const savings = weeklyIncome - weeklyExpenses
-                const rate = weeklyIncome > 0 ? (savings / weeklyIncome) * 100 : 0
+            const savings = weeklyIncome - weeklyExpenses
+            const rate = weeklyIncome > 0 ? (savings / weeklyIncome) * 100 : 0
 
-                cashflowData.push({
-                    month: rangeLabel,
-                    fullDate: rangeLabel,
-                    income: weeklyIncome,
-                    expenses: weeklyExpenses,
-                    savingsRate: Math.max(-100, Math.min(100, rate))
-                })
-            }
+            cashflowData4W.push({
+                month: rangeLabel,
+                fullDate: rangeLabel,
+                income: weeklyIncome,
+                expenses: weeklyExpenses,
+                savingsRate: Math.max(-100, Math.min(100, rate))
+            })
         }
 
         // --- 3. STRUCTURE DATA (Current Month) ---
@@ -233,7 +231,8 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
             graphData,
             total: totalW,
             gradientOffset,
-            cashflowData,
+            cashflowData12M,
+            cashflowData4W,
             structureData: fixVsVarData,
             topCategories,
             wealthData: wealthSeries
@@ -315,7 +314,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
                                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9CA3AF' }} />
                                     <Tooltip
                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        formatter={(value: number) => [`€${Number(value || 0).toFixed(2)}`, 'Kumulativ']}
+                                        formatter={(value: any) => [`€${Number(value || 0).toFixed(2)}`, 'Kumulativ']}
                                     />
                                     <ReferenceLine y={budget} stroke="#9CA3AF" strokeDasharray="3 3" label={{ position: 'insideTopLeft', value: 'Wochenbudget', fill: '#9CA3AF', fontSize: 10 }} />
                                     <Area type="monotone" dataKey="amount" stroke="#000" strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
@@ -365,7 +364,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
                                         formatter={(value, entry: any) => <span className="text-gray-600 dark:text-gray-400 font-medium text-xs ml-1">{value}</span>}
                                     />
                                     <Tooltip
-                                        formatter={(value: number) => `€${value.toFixed(2)}`}
+                                        formatter={(value: any) => `€${Number(value).toFixed(2)}`}
                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     />
                                 </PieChart>
