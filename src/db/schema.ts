@@ -1,4 +1,5 @@
-import { integer, pgTable, serial, text, numeric, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { integer, pgTable, serial, text, numeric, timestamp, boolean, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const expensesTable = pgTable('expenses', {
     id: serial('id').primaryKey(),
@@ -7,6 +8,7 @@ export const expensesTable = pgTable('expenses', {
     amount: numeric('amount').notNull(),
     expense_date: text('expense_date'), // Stored as string/ISO in actions.ts
     category: text('category'),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 
 export const fixedCostsTable = pgTable('fixed_costs', {
@@ -14,6 +16,7 @@ export const fixedCostsTable = pgTable('fixed_costs', {
     created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     title: text('title').notNull(),
     amount: numeric('amount').notNull(),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 
 export const settingsTable = pgTable('settings', {
@@ -23,6 +26,7 @@ export const settingsTable = pgTable('settings', {
     savings_balance: numeric('savings_balance').default('0'),
     savings_months_remaining: integer('savings_months_remaining').default(0),
     last_processed_month: text('last_processed_month'),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 
 export const accountsTable = pgTable('accounts', {
@@ -33,11 +37,22 @@ export const accountsTable = pgTable('accounts', {
     months: integer('months').notNull(),
     type: text('type'), // 'distribution' | 'savings'
     processed_month: text('processed_month'),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 
-// Keeping the original users table for reference, though likely unused
-export const usersTable = pgTable('users', {
+export const incomeSourcesTable = pgTable('income_sources', {
     id: serial('id').primaryKey(),
-    name: text('name').notNull(),
-    email: text('email').notNull().unique(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    title: text('title').notNull(),
+    amount: numeric('amount').notNull(),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
+
+export const budgetLogsTable = pgTable('budget_logs', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    amount: numeric('amount').notNull(),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
+});
+
+// public.users table removed. Using auth.users instead.

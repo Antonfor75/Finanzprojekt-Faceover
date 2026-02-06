@@ -1,0 +1,26 @@
+🔍 Diagnosing RLS Status...
+
+Table: expenses
+  - RLS Enabled: ✅ YES
+  - Policies: ❌ NONE FOUND
+
+Table: fixed_costs
+  - RLS Enabled: ✅ YES
+  - Policies:
+    • Users can view own fixed_costs (SELECT)
+    • Users can insert own fixed_costs (INSERT)
+    • Users can update own fixed_costs (UPDATE)
+    • Users can delete own fixed_costs (DELETE)
+
+Table: settings
+  - RLS Enabled: ✅ YES
+  - Policies: ❌ NONE FOUND
+
+Table: accounts
+  - RLS Enabled: ✅ YES
+  - Policies:
+    • Users can view own accounts (SELECT)
+    • Users can insert own accounts (INSERT)
+    • Users can update own accounts (UPDATE)
+    • Users can delete own accounts (DELETE)
+

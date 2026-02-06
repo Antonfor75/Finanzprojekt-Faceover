@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Wallet, TrendingDown, Calendar, ChevronRight, ArrowLeft, Settings, AlertCircle, Trash2, Plus, List, Pencil, X, Home } from 'lucide-react'
-import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, differenceInCalendarWeeks, min } from 'date-fns'
+import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, differenceInCalendarWeeks, min, startOfMonth, endOfMonth } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
 import { applyTheme } from '@/utils/theme'
@@ -12,11 +12,12 @@ import SettingsOverlay from './SettingsOverlay'
 import CalendarHistory from './CalendarHistory'
 import AnalysisView from './AnalysisView'
 import WeeklyBarChart from './WeeklyBarChart'
+import DashboardHealth from './DashboardHealth'
 
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
-import { Expense, FixedCost, Settings as SettingsType, Account } from '@/app/types'
+import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource } from '@/app/types'
 
 type MainView = 'entry' | 'history'
 
@@ -26,6 +27,7 @@ export default function MobileDashboard({
     initialFixedCosts,
     initialSettings,
     initialAccounts,
+    initialIncomeSources,
     onUpdate
 }: {
     expenses: Expense[],
@@ -33,6 +35,7 @@ export default function MobileDashboard({
     initialFixedCosts: FixedCost[],
     initialSettings: SettingsType,
     initialAccounts: Account[],
+    initialIncomeSources: IncomeSource[],
     onUpdate?: () => void
 }) {
     // --- APP STATE ---
@@ -44,6 +47,7 @@ export default function MobileDashboard({
     const [historyMode, setHistoryMode] = useState<'calendar' | 'list' | 'analysis'>('calendar')
 
     const [theme, setTheme] = useState('white')
+    const [darkMode, setDarkMode] = useState(false)
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
 
     // --- EFFECT: LOAD THEME ---
@@ -59,6 +63,26 @@ export default function MobileDashboard({
         localStorage.setItem('theme', theme)
         applyTheme(theme)
     }, [theme])
+
+    // --- EFFECT: DARK MODE ---
+    useEffect(() => {
+        const savedDark = localStorage.getItem('darkMode')
+        if (savedDark === 'true') {
+            setDarkMode(true)
+            document.documentElement.classList.add('dark')
+        }
+    }, [])
+
+    const toggleDarkMode = () => {
+        const newMode = !darkMode
+        setDarkMode(newMode)
+        localStorage.setItem('darkMode', String(newMode))
+        if (newMode) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+    }
 
     // --- EFFECT: PROCESS SAVINGS ON MOUNT ---
     useEffect(() => {
@@ -136,12 +160,27 @@ export default function MobileDashboard({
     }
 
     // Budget Calculations
+    // Budget Calculations
+    const CONST_WEEKS_PER_MONTH = 4.33
     const totalFixed = initialFixedCosts.reduce((acc, curr) => acc + Number(curr.amount), 0)
-    const availableMonthly = initialBudget - totalFixed
-    const weeklyBudget = availableMonthly / 4
-    const getDate = (e: Expense) => new Date(e.expense_date || e.created_at)
+
+    // Convert everything to weekly first
+    const weeklyGrossBudget = initialBudget / CONST_WEEKS_PER_MONTH
+    const weeklyFixedCosts = totalFixed / CONST_WEEKS_PER_MONTH
+
+    // Net Weekly Budget = Weekly Gross - Weekly Fixed
+    const weeklyBudget = weeklyGrossBudget - weeklyFixedCosts
 
     const now = new Date()
+
+    // Monthly Expenses Calculation for Dashboard Health
+    const currentMonthStart = startOfMonth(now)
+    const currentMonthEnd = endOfMonth(now)
+    const currentMonthExpenses = expenses.filter(e =>
+        isWithinInterval(new Date(e.expense_date || e.created_at), { start: currentMonthStart, end: currentMonthEnd })
+    ).reduce((acc, curr) => acc + Number(curr.amount), 0)
+
+    const getDate = (e: Expense) => new Date(e.expense_date || e.created_at)
     const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 })
     const currentWeekEnd = endOfWeek(now, { weekStartsOn: 1 })
 
@@ -289,11 +328,14 @@ export default function MobileDashboard({
                 settings={initialSettings}
                 fixedCosts={initialFixedCosts}
                 accounts={initialAccounts}
+                incomeSources={initialIncomeSources}
                 theme={theme}
                 setTheme={setTheme}
                 onLogout={handleLogout}
                 onUpdate={onUpdate}
                 expenses={expenses}
+                isDarkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
             />
         )
     }
@@ -357,31 +399,33 @@ export default function MobileDashboard({
     }
 
     return (
-        <div className={`fixed inset-0 h-dvh w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${getThemeBg()}`}>
+        <div className={`fixed inset-0 h-dvh w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${getThemeBg()} ${darkMode ? 'dark z-0' : ''}`}>
 
             {/* === ENTRY VIEW === */}
             {view === 'entry' && (
                 <div className="grid grid-cols-12 grid-rows-[repeat(14,minmax(0,1fr))] w-full h-full">
 
-                    {/* BEREICH 1: Verfügbares Budget */}
-                    <div className="row-start-1 row-span-4 col-start-3 col-span-4 flex flex-col justify-center items-center">
-                        <h2 className="font-bold uppercase tracking-widest text-center text-2vh text-muted-foreground">
-                            Verfügbar
+                    {/* BEREICH 1: Verfügbares Budget (Top Center) */}
+                    <div className="row-start-1 row-span-2 col-start-2 col-span-10 flex flex-col justify-end items-center pb-2">
+                        <h2 className="font-bold uppercase tracking-widest text-center text-xs text-muted-foreground dark:text-gray-400 mb-1">
+                            Verfügbar (Woche)
                         </h2>
-                        <div className={`font-bold tracking-tight leading-none text-center text-5vh ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                            €{Math.floor(currentBalance)}<span className="text-3vh text-muted-foreground">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
+                        <div className={`font-bold tracking-tight leading-none text-center text-5xl ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            €{Math.floor(currentBalance)}<span className="text-2xl text-muted-foreground/60 dark:text-gray-500">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
                         </div>
                     </div>
 
-                    {/* BEREICH 2: Ausgaben diese Woche */}
-                    <div className="row-start-1 row-span-4 col-start-8 col-span-4 flex flex-col justify-center items-center">
-                        <div className="font-bold leading-none text-center text-4vh text-foreground">
-                            test 2
-                        </div>
+                    {/* BEREICH 2: Dashboard Health (Below Budget) */}
+                    <div className="row-start-3 row-span-3 col-start-2 col-span-10 flex flex-col justify-center">
+                        <DashboardHealth
+                            budget={initialSettings?.monthly_budget || initialBudget || 0}
+                            totalExpenses={currentMonthExpenses}
+                            totalAssets={initialAccounts.reduce((sum, acc) => sum + Number(acc.amount), 0)}
+                        />
                     </div>
 
                     {/* BEREICH 3: Eingabe-Panel */}
-                    <div className="row-start-6 row-span-4 col-start-2 col-span-10 flex flex-col justify-evenly bg-white/90 backdrop-blur-md border border-white/40 rounded-2xl p-2 shadow-xl z-10 overflow-hidden">
+                    <div className="row-start-6 row-span-4 col-start-2 col-span-10 flex flex-col justify-evenly bg-white/90 dark:bg-gray-900/60 dark:backdrop-blur-md dark:border dark:border-white/10 backdrop-blur-md border border-white/40 rounded-2xl p-2 shadow-xl z-10 overflow-hidden">
                         <AddExpenseForm accounts={initialAccounts} onRefresh={onUpdate} />
                     </div>
 
@@ -440,7 +484,12 @@ export default function MobileDashboard({
                         )}
 
                         {historyMode === 'analysis' ? (
-                            <AnalysisView expenses={expenses} budget={weeklyBudget} />
+                            <AnalysisView
+                                expenses={expenses}
+                                budget={weeklyBudget}
+                                fixedCosts={initialFixedCosts}
+                                accounts={initialAccounts}
+                            />
                         ) : historyMode === 'calendar' ? (
                             <CalendarHistory
                                 expenses={expenses}
@@ -523,6 +572,7 @@ export default function MobileDashboard({
             <div className="fixed bottom-0 left-0 w-full bg-white/60 backdrop-blur-xl border-t border-white/40 pb-[env(safe-area-inset-bottom)] z-40 transition-all duration-300 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
                 <div className="flex justify-around items-center h-20 px-6">
                     <button
+                        data-testid="nav-home"
                         onClick={() => setView('entry')}
                         className={`p-3 rounded-2xl transition-all duration-300 ${view === 'entry' ? 'bg-black text-white shadow-lg scale-110' : 'text-gray-400 hover:bg-black/5'}`}
                     >
@@ -530,6 +580,7 @@ export default function MobileDashboard({
                     </button>
 
                     <button
+                        data-testid="nav-history"
                         onClick={() => setView('history')}
                         className={`p-3 rounded-2xl transition-all duration-300 ${view === 'history' ? 'bg-black text-white shadow-lg scale-110' : 'text-gray-400 hover:bg-black/5'}`}
                     >
@@ -537,6 +588,7 @@ export default function MobileDashboard({
                     </button>
 
                     <button
+                        data-testid="nav-settings"
                         onClick={() => setIsSettingsOpen(true)}
                         className={`p-3 rounded-2xl transition-all duration-300 ${isSettingsOpen ? 'bg-black text-white shadow-lg scale-110' : 'text-gray-400 hover:bg-black/5'}`}
                     >

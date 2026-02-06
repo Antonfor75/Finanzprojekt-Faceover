@@ -72,14 +72,18 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                 description = category // Ensure description matches if it was auto-set
             }
 
-            // Insert Expense with auth.uid() automatically handled by RLS if default is set, 
-            // but explicit user_id is safer if default isn't perfect, though RLS usually relies on default.
-            // Based on user sql, "ALTER TABLE expenses ALTER COLUMN user_id SET DEFAULT auth.uid();" 
-            // So we don't need to send user_id.
+            // Explicitly fetch user to ensure RLS compliance
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) {
+                alert('Fehler: Nicht eingeloggt')
+                setLoading(false)
+                return
+            }
+
             const { error: insertError } = await supabase
                 .from('expenses')
                 .insert([
-                    { description, amount, expense_date, category }
+                    { description, amount, expense_date, category, user_id: user.id }
                 ])
 
             if (insertError) {
@@ -115,7 +119,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     defaultValue={new Date().toISOString().split('T')[0]}
                     required
                     onClick={(e) => e.currentTarget.showPicker()}
-                    className="w-full text-center border-none bg-transparent outline-none cursor-pointer font-bold text-gray-700"
+                    className="w-full text-center border-none bg-transparent outline-none cursor-pointer font-bold text-gray-700 dark:text-gray-200"
                     style={{ fontSize: '2.5vh' }}
                 />
             </div>
@@ -123,7 +127,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
             <div className="w-full px-4">
                 <select
                     name="category"
-                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400 appearance-none font-bold"
+                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-gray-50 dark:bg-gray-800/50 outline-none focus:ring-2 focus:ring-blue-400 appearance-none font-bold text-gray-900 dark:text-white"
                     style={{ fontSize: '2vh' }}
                     defaultValue="Essen"
                 >
@@ -161,7 +165,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     placeholder="€"
                     required
                     autoFocus
-                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 font-bold"
+                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-gray-50 dark:bg-gray-800/50 outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600 font-bold text-gray-900 dark:text-white"
                     style={{ fontSize: '3vh' }}
                 />
             </div>

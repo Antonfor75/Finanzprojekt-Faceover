@@ -5,7 +5,7 @@ import { supabase } from '@/utils/supabase'
 import MobileDashboard from '@/components/MobileDashboard'
 import LoginScreen from '@/components/LoginScreen'
 import { Loader2 } from 'lucide-react'
-import { Expense, FixedCost, Settings, Account } from '@/app/types'
+import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
 
 
 
@@ -16,7 +16,8 @@ export default function Home() {
     monthlyBudget: number,
     fixedCosts: FixedCost[],
     settings: Settings,
-    accounts: Account[]
+    accounts: Account[],
+    incomeSources: IncomeSource[]
   } | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [dataLoading, setDataLoading] = useState(false)
@@ -44,23 +45,28 @@ export default function Home() {
   const fetchData = async () => {
     setDataLoading(true)
     try {
-      const [expensesRes, fixedCostsRes, accountsRes, settingsRes] = await Promise.all([
+      const [expensesRes, fixedCostsRes, accountsRes, settingsRes, incomeSourcesRes] = await Promise.all([
         supabase.from('expenses').select('*').order('created_at', { ascending: false }),
         supabase.from('fixed_costs').select('*'),
         supabase.from('accounts').select('*'),
-        supabase.from('settings').select('*').single()
+        supabase.from('settings').select('*').single(),
+        supabase.from('income_sources').select('*')
       ])
 
       const settingsObj = settingsRes.data
       const fixedCostsList = fixedCostsRes.data || []
       const accountsList = accountsRes.data || []
+      const incomeSourcesList = incomeSourcesRes.data || []
+
+      console.log('DEBUG: incomeSourcesRes', incomeSourcesRes)
+      console.log('DEBUG: settingsRes', settingsRes)
 
       // Create default settings if missing
       let finalSettings = settingsObj
       if (!settingsObj && settingsRes.error && settingsRes.error.code === 'PGRST116') {
         const { data: newSettings } = await supabase
           .from('settings')
-          .insert([{ monthly_budget: 0 }])
+          .insert([{ monthly_budget: 0, user_id: session?.user?.id }])
           .select()
           .single()
         finalSettings = newSettings
@@ -71,8 +77,9 @@ export default function Home() {
         finalSettings = { monthly_budget: 0, savings_balance: 0, savings_months_remaining: 0, id: 0, last_processed_month: null }
       }
 
-      // Calculate Total Budget: Base (Settings) + Distributed Accounts
-      const baseBudget = Number(finalSettings.monthly_budget) || 0
+      // Calculate Total Budget: Sum of Income Sources + Distributed Accounts
+      const totalIncome = incomeSourcesList.reduce((sum: number, src: any) => sum + Number(src.amount), 0)
+      const baseBudget = totalIncome || 0
 
       const accountDistributions = accountsList.reduce((sum: number, acc: Account) => {
         if (acc.type === 'distribution' && acc.months > 0 && acc.amount > 0) {
@@ -88,7 +95,8 @@ export default function Home() {
         monthlyBudget, // Passing the computed total
         fixedCosts: fixedCostsList,
         settings: finalSettings,
-        accounts: accountsList
+        accounts: accountsList,
+        incomeSources: incomeSourcesList
       })
     } catch (error) {
       console.error("Failed to load data", error)
@@ -127,6 +135,7 @@ export default function Home() {
         initialFixedCosts={data?.fixedCosts || []}
         initialSettings={data?.settings!}
         initialAccounts={data?.accounts || []}
+        initialIncomeSources={data?.incomeSources || []}
         onUpdate={fetchData}
       />
     </main>
