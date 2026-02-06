@@ -36,7 +36,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
     const [activeTab, setActiveTab] = useState<'daily' | 'cashflow' | 'structure' | 'wealth'>('cashflow')
     const [cashflowRange, setCashflowRange] = useState<'12m' | '4w'>('12m')
 
-    const { pieData, graphData, total, gradientOffset, cashflowData, structureData, topCategories, wealthData } = useMemo(() => {
+    const { pieData, graphData, total, gradientOffset, cashflowData12M, cashflowData4W, structureData, topCategories, wealthData } = useMemo(() => {
         const now = new Date()
         const currentMonthKey = getMonthKey(now)
 
@@ -291,7 +291,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
             <div className="flex-1 overflow-y-auto p-4 space-y-8">
 
                 {/* --- TAB CONTENT --- */}
-                {activeTab === 'cashflow' && <CashflowTab data={cashflowData} range={cashflowRange} setRange={setCashflowRange} />}
+                {activeTab === 'cashflow' && <CashflowTab data12M={cashflowData12M} data4W={cashflowData4W} />}
                 {activeTab === 'structure' && <StructureTab fixVsVarData={structureData} topCatsData={topCategories} />}
                 {activeTab === 'wealth' && <WealthTab data={wealthData} />}
 
