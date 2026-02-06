@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
 import MobileDashboard from '@/components/MobileDashboard'
 import LoginScreen from '@/components/LoginScreen'
@@ -10,6 +11,7 @@ import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types
 
 
 export default function Home() {
+  const router = useRouter()
   const [session, setSession] = useState<any>(null)
   const [data, setData] = useState<{
     expenses: Expense[],
@@ -40,6 +42,13 @@ export default function Home() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Admin Redirect
+  useEffect(() => {
+    if (session?.user?.email === 'chef@anton.de') {
+      router.replace('/admin')
+    }
+  }, [session, router])
 
   // 2. DATA FETCHING
   const fetchData = async () => {
@@ -107,13 +116,13 @@ export default function Home() {
 
   // Trigger Fetch
   useEffect(() => {
-    if (session && !data) {
+    if (session && !data && session.user.email !== 'chef@anton.de') {
       fetchData()
     }
   }, [session, data])
 
   // LOADING STATE (Auth or Initial Data)
-  if (authLoading || (session && dataLoading && !data)) {
+  if (authLoading || (session && dataLoading && !data) || (session?.user?.email === 'chef@anton.de')) {
     return (
       <div className="h-[100dvh] w-full flex items-center justify-center bg-[#f8f5e6]">
         <Loader2 className="w-10 h-10 animate-spin text-black" />

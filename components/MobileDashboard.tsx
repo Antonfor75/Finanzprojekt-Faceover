@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Wallet, TrendingDown, Calendar, ChevronRight, ArrowLeft, Settings, AlertCircle, Trash2, Plus, List, Pencil, X, Home } from 'lucide-react'
+import { processWeeklySavings } from '@/app/actions/savings'
+import { Wallet, TrendingDown, Calendar, ChevronRight, ArrowLeft, Settings, AlertCircle, Trash2, Plus, List, Pencil, X, Home, PiggyBank } from 'lucide-react'
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, differenceInCalendarWeeks, min, startOfMonth, endOfMonth } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
@@ -12,7 +13,7 @@ import SettingsOverlay from './SettingsOverlay'
 import CalendarHistory from './CalendarHistory'
 import AnalysisView from './AnalysisView'
 import WeeklyBarChart from './WeeklyBarChart'
-import DashboardHealth from './DashboardHealth'
+// import DashboardHealth from './DashboardHealth' // REMOVED
 
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -84,10 +85,17 @@ export default function MobileDashboard({
         }
     }
 
-    // --- EFFECT: PROCESS SAVINGS ON MOUNT ---
+    // --- EFFECT: PROCESS SAVINGS & DISTRIBUTION ON MOUNT ---
     useEffect(() => {
-        const processSavings = async () => {
-            console.log('--- Processing Savings ---')
+        const initDashboard = async () => {
+            console.log('--- Init Dashboard ---')
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            // 1. Process Weekly Savings (The "Sunday Logic")
+            await processWeeklySavings(user.id)
+
+            // 2. Process Monthly Distributions (The existing logic)
             const { data: accounts } = await supabase.from('accounts').select('*')
             const { data: settings } = await supabase.from('settings').select('*').single()
 
@@ -117,15 +125,16 @@ export default function MobileDashboard({
             }
 
             if (updatesMade && budgetIncrease > 0) {
-                const { error } = await supabase.from('settings').update({
+                await supabase.from('settings').update({
                     monthly_budget: settings.monthly_budget + budgetIncrease
                 }).eq('id', settings.id)
-
-                if (error) console.error('Error updating settings:', error)
-                else onUpdate?.()
+                onUpdate?.()
+            } else {
+                // Just refresh to show new savings if any
+                onUpdate?.() // Always refresh to show new savings balance
             }
         }
-        processSavings()
+        initDashboard()
     }, [])
 
     const handleLogout = async () => {
@@ -415,13 +424,37 @@ export default function MobileDashboard({
                         </div>
                     </div>
 
-                    {/* BEREICH 2: Dashboard Health (Below Budget) */}
-                    <div className="row-start-3 row-span-3 col-start-2 col-span-10 flex flex-col justify-center">
-                        <DashboardHealth
-                            budget={initialSettings?.monthly_budget || initialBudget || 0}
-                            totalExpenses={currentMonthExpenses}
-                            totalAssets={initialAccounts.reduce((sum, acc) => sum + Number(acc.amount), 0)}
-                        />
+                    {/* BEREICH 2: Spaarkonto (Formerly DashboardHealth) */}
+                    <div className="row-start-3 row-span-3 col-start-2 col-span-10 flex flex-col justify-center gap-2">
+                        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-white/20 dark:border-white/5 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                            <div className="flex items-center justify-between z-10 relative">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-3 bg-pink-100 dark:bg-pink-900/30 rounded-xl text-pink-600 dark:text-pink-400">
+                                        <PiggyBank className="w-8 h-8" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Spaarkonto</p>
+                                        <p className={`text-2xl font-bold ${Number(initialSettings?.savings_balance || 0) < 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-100'}`}>
+                                            €{Number(initialSettings?.savings_balance || 0).toFixed(2)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="h-full flex flex-col justify-center items-end">
+                                    {Number(initialSettings?.savings_balance || 0) > 0 && (
+                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
+                                            +Sparen
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            {/* Decorative Background for visuals */}
+                            <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-pink-500/10 rounded-full blur-2xl group-hover:bg-pink-500/20 transition-all"></div>
+                        </div>
+
+                        {/* Optional small helper text or indicator */}
+                        <p className="text-[10px] text-center text-muted-foreground/50 italic">
+                            Wird jeden Sonntag automatisch aktualisiert.
+                        </p>
                     </div>
 
                     {/* BEREICH 3: Eingabe-Panel */}

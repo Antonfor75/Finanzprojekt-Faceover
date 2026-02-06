@@ -24,8 +24,13 @@ export default function LoginScreen() {
             setError(error.message)
             setLoading(false)
         } else {
-            // Success - session state in page.tsx will take over via onAuthStateChange
-            // No need to explicitly redirect or stop loading, component will unmount
+            // Check for admin
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user?.email === 'chef@anton.de') {
+                window.location.href = '/admin' // Force reload/redirect
+                return
+            }
+            // Success - session state in page.tsx will take over
         }
     }
 

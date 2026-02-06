@@ -26,6 +26,7 @@ export const settingsTable = pgTable('settings', {
     savings_balance: numeric('savings_balance').default('0'),
     savings_months_remaining: integer('savings_months_remaining').default(0),
     last_processed_month: text('last_processed_month'),
+    last_processed_week: text('last_processed_week'),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 
