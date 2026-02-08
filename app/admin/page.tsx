@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
 import { getUsers, createUser, deleteUserData as deleteUser, resetUserData as resetUser } from '@/app/actions/admin'
-import { Plus, Users, LogOut, Check, ShieldAlert, RefreshCcw, Calculator } from 'lucide-react'
+import { Plus, Users, LogOut, Check, ShieldAlert, RefreshCcw, Calculator, Loader2, AlertCircle } from 'lucide-react'
 
 // Hardcoded Admin Email
 const ADMIN_EMAIL = 'chef@anton.de'
@@ -14,6 +14,7 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(true)
     const [users, setUsers] = useState<any[]>([])
     const [isAdmin, setIsAdmin] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     // Form State
     const [newUserEmail, setNewUserEmail] = useState('')
@@ -23,29 +24,60 @@ export default function AdminPage() {
 
     // 1. Check Auth & Fetch Users
     useEffect(() => {
-        const init = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
+        let mounted = true
 
-            if (!session || session.user.email !== ADMIN_EMAIL) {
-                // Not authorized
-                router.replace('/')
-                return
+        // Timeout safety for Auth check (max 5 seconds)
+        const initTimeout = setTimeout(() => {
+            if (mounted && loading) {
+                setLoading(false)
+                setError("Zeitüberschreitung beim Laden des Admin-Bereichs.")
             }
+        }, 8000)
 
-            setIsAdmin(true)
-            await fetchUsers()
-            setLoading(false)
+        const init = async () => {
+            try {
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+                if (sessionError) throw new Error("Session Error: " + sessionError.message)
+
+                if (!session || session.user.email !== ADMIN_EMAIL) {
+                    // Not authorized
+                    if (mounted) router.replace('/')
+                    return
+                }
+
+                if (mounted) setIsAdmin(true)
+                await fetchUsers()
+            } catch (err: any) {
+                console.error("Admin Init Error:", err)
+                if (mounted) setError("Fehler: " + (err.message || "Unbekannt"))
+            } finally {
+                if (mounted) {
+                    setLoading(false)
+                    clearTimeout(initTimeout)
+                }
+            }
         }
 
         init()
+
+        return () => {
+            mounted = false
+            clearTimeout(initTimeout)
+        }
     }, [router])
 
     const fetchUsers = async () => {
-        const res = await getUsers()
-        if (res.success && res.users) {
-            setUsers(res.users)
-        } else {
-            console.error('Failed to fetch users:', res.error)
+        try {
+            const res = await getUsers()
+            if (res.success && res.users) {
+                setUsers(res.users)
+            } else {
+                console.error('Failed to fetch users:', res.error)
+                // Don't block UI on user fetch fail, just show empty
+            }
+        } catch (e) {
+            console.error('Fetch Users Exception:', e)
         }
     }
 
@@ -54,18 +86,23 @@ export default function AdminPage() {
         setCreateStatus('loading')
         setErrorMessage('')
 
-        const res = await createUser(newUserEmail, newUserPassword)
+        try {
+            const res = await createUser(newUserEmail, newUserPassword)
 
-        if (res.success) {
-            setCreateStatus('success')
-            setNewUserEmail('')
-            setNewUserPassword('')
-            // Refresh list
-            await fetchUsers()
-            setTimeout(() => setCreateStatus('idle'), 3000)
-        } else {
+            if (res.success) {
+                setCreateStatus('success')
+                setNewUserEmail('')
+                setNewUserPassword('')
+                // Refresh list
+                await fetchUsers()
+                setTimeout(() => setCreateStatus('idle'), 3000)
+            } else {
+                setCreateStatus('error')
+                setErrorMessage(res.error || 'Fehler beim Erstellen.')
+            }
+        } catch (e: any) {
             setCreateStatus('error')
-            setErrorMessage(res.error || 'Fehler beim Erstellen.')
+            setErrorMessage(e.message || 'Ausnahmefehler')
         }
     }
 
@@ -76,8 +113,24 @@ export default function AdminPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#f8f5e6] flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <div className="min-h-screen bg-[#f8f5e6] flex flex-col gap-4 items-center justify-center">
+                <Loader2 className="w-10 h-10 animate-spin text-black" />
+                <p className="text-gray-500 font-bold animate-pulse">Lade Admin-Bereich...</p>
+            </div>
+        )
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-[#f8f5e6] flex flex-col gap-4 items-center justify-center p-4 text-center">
+                <AlertCircle className="w-12 h-12 text-red-500" />
+                <h1 className="text-xl font-bold">Admin Zugriff Fehler</h1>
+                <p className="text-gray-600 bg-white p-4 rounded-xl shadow-sm border border-red-100">{error}</p>
+                <div className="flex gap-4">
+                    <button onClick={() => window.location.reload()} className="px-4 py-2 bg-black text-white rounded-lg">Neu laden</button>
+                    <button onClick={() => router.replace('/')} className="px-4 py-2 bg-gray-200 rounded-lg">Zurück Startseite</button>
+                    <button onClick={handleLogout} className="px-4 py-2 text-red-500 underline">Logout</button>
+                </div>
             </div>
         )
     }
@@ -246,3 +299,4 @@ export default function AdminPage() {
         </div>
     )
 }
+
