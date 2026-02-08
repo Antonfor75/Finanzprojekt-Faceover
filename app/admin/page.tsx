@@ -108,7 +108,7 @@ export default function AdminPage() {
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
-        router.replace('/')
+        window.location.href = '/' // Force full reload to clear any state
     }
 
     if (loading) {
