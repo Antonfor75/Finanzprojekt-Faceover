@@ -47,7 +47,8 @@ export default function AdminPage() {
                 }
 
                 if (mounted) setIsAdmin(true)
-                await fetchUsers()
+                // Don't await users, fetch in background
+                fetchUsers()
             } catch (err: any) {
                 console.error("Admin Init Error:", err)
                 if (mounted) setError("Fehler: " + (err.message || "Unbekannt"))
@@ -108,6 +109,8 @@ export default function AdminPage() {
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
+        localStorage.clear() // Clear all local storage
+        sessionStorage.clear()
         window.location.href = '/' // Force full reload to clear any state
     }
 
@@ -116,6 +119,12 @@ export default function AdminPage() {
             <div className="min-h-screen bg-[#f8f5e6] flex flex-col gap-4 items-center justify-center">
                 <Loader2 className="w-10 h-10 animate-spin text-black" />
                 <p className="text-gray-500 font-bold animate-pulse">Lade Admin-Bereich...</p>
+                <button
+                    onClick={handleLogout}
+                    className="mt-4 px-4 py-2 bg-red-100 text-red-600 rounded-lg text-sm hover:bg-red-200 transition-colors"
+                >
+                    Notfall Logout
+                </button>
             </div>
         )
     }
