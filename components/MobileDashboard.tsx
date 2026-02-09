@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { processWeeklySavings } from '@/app/actions/savings'
 import { Wallet, TrendingDown, Calendar, ChevronRight, ArrowLeft, Settings, AlertCircle, Trash2, Plus, List, Pencil, X, Home, PiggyBank } from 'lucide-react'
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, differenceInCalendarWeeks, min, startOfMonth, endOfMonth } from 'date-fns'
@@ -129,13 +129,77 @@ export default function MobileDashboard({
                     monthly_budget: settings.monthly_budget + budgetIncrease
                 }).eq('id', settings.id)
                 onUpdate?.()
-            } else {
-                // Just refresh to show new savings if any
-                onUpdate?.() // Always refresh to show new savings balance
             }
         }
         initDashboard()
-    }, [])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []) // Run ONCE on mount. onUpdate dependency caused infinite loop.
+
+    // --- CALCULATE GIROKONTO BALANCE (Dynamic Net Cashflow) ---
+    const currentGiroBalance = useMemo(() => {
+        if (expenses.length === 0 && initialIncomeSources.length === 0) return 0
+
+        // 1. Determine Start Date based on actual data
+        const expenseDates = expenses.map(e => new Date(e.expense_date || e.created_at).getTime())
+        const incomeDates = initialIncomeSources
+            .filter(s => s.valid_from)
+            .map(s => new Date(s.valid_from!).getTime())
+
+        let minDateMs = Math.min(...expenseDates, ...incomeDates)
+        if (minDateMs === Infinity) minDateMs = Date.now()
+
+        const startDate = new Date(minDateMs)
+        startDate.setDate(1)
+        startDate.setHours(0, 0, 0, 0)
+
+        const now = new Date()
+        const loopEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0) // End of current month
+        let tempDate = new Date(startDate)
+        let totalNet = 0
+
+        // Helper
+        const getMonthKey = (date: Date) => format(date, 'yyyy-MM')
+
+        // Pre-calculate expenses by month
+        const expensesByMonth: Record<string, number> = {}
+        expenses.forEach(e => {
+            const d = new Date(e.expense_date || e.created_at)
+            const key = getMonthKey(d)
+            expensesByMonth[key] = (expensesByMonth[key] || 0) + Number(e.amount)
+        })
+
+        const totalFixed = initialFixedCosts.reduce((acc, fc) => acc + Number(fc.amount), 0)
+
+        while (tempDate <= loopEnd) {
+            const mKey = getMonthKey(tempDate)
+            const d = new Date(tempDate) // 1st of month
+
+            // Top-up Income
+            const monthIncome = initialIncomeSources.filter(src => {
+                const from = src.valid_from ? new Date(src.valid_from) : null
+                const to = src.valid_to ? new Date(src.valid_to) : null
+                // Check if source valid in this month
+                if (from && d < new Date(from.getFullYear(), from.getMonth(), 1)) return false
+                if (to && d > to) return false
+                return true
+            }).reduce((sum, src) => sum + Number(src.amount), 0)
+
+            // Heuristic: Only subtract fixed costs if there was AT LEAST one expense in this month
+            // OR if it is the current month or recent past (to avoid punishing gaps in history)
+            // Actually, if we have Income defined for this month, we should probably subtract Fixed Costs.
+            // Let's assume: If (Income > 0 OR VariableExpenses > 0) -> User was 'active', so subtract Fixed Costs.
+            const hasActivity = monthIncome > 0 || (expensesByMonth[mKey] || 0) > 0
+
+            const monthFixed = hasActivity ? totalFixed : 0
+            const monthVariable = expensesByMonth[mKey] || 0
+
+            totalNet += (monthIncome - monthVariable - monthFixed)
+
+            tempDate.setMonth(tempDate.getMonth() + 1)
+        }
+
+        return totalNet
+    }, [expenses, initialFixedCosts, initialIncomeSources])
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
@@ -172,41 +236,82 @@ export default function MobileDashboard({
     // Budget Calculations
     const CONST_WEEKS_PER_MONTH = 4.33
     const totalFixed = initialFixedCosts.reduce((acc, curr) => acc + Number(curr.amount), 0)
-
-    // Convert everything to weekly first
-    const weeklyGrossBudget = initialBudget / CONST_WEEKS_PER_MONTH
     const weeklyFixedCosts = totalFixed / CONST_WEEKS_PER_MONTH
 
-    // Net Weekly Budget = Weekly Gross - Weekly Fixed
-    const weeklyBudget = weeklyGrossBudget - weeklyFixedCosts
-
+    // --- DYNAMIC WEEKLY INCOME CALCULATION ---
     const now = new Date()
+    const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 }) // Monday
+    const currentWeekEnd = endOfWeek(now, { weekStartsOn: 1 }) // Sunday
 
-    // Monthly Expenses Calculation for Dashboard Health
-    const currentMonthStart = startOfMonth(now)
-    const currentMonthEnd = endOfMonth(now)
-    const currentMonthExpenses = expenses.filter(e =>
-        isWithinInterval(new Date(e.expense_date || e.created_at), { start: currentMonthStart, end: currentMonthEnd })
-    ).reduce((acc, curr) => acc + Number(curr.amount), 0)
+    const calculateWeeklyIncome = () => {
+        // Fallback to static budget if no sources defined
+        if (initialIncomeSources.length === 0) {
+            return initialBudget / CONST_WEEKS_PER_MONTH
+        }
+
+        return initialIncomeSources.reduce((sum, src) => {
+            const from = src.valid_from ? new Date(src.valid_from) : null
+            const to = src.valid_to ? new Date(src.valid_to) : null
+
+            // Check if source is active/valid in general for this period
+            // If from/to are defined, they must overlap with current week
+            // Actually, we need to distinguish One-Time vs Recurring
+
+            // 1. One-Time Income (Project work, etc)
+            // Logic: If the income's VALIDITY range is fully contained within this week?
+            // User said: "wenn der bereich einer einnahme in dieser woche anfängt und endet"
+            if (from && to && from >= currentWeekStart && to <= currentWeekEnd) {
+                return sum + Number(src.amount)
+            }
+
+            // 2. Regular Income (Monthly/Weekly)
+            // Check if active ('from' is before end of week, 'to' is after start of week)
+            const isActive = (!from || from <= currentWeekEnd) && (!to || to >= currentWeekStart)
+
+            if (isActive) {
+                // If it's a one-time income that spans multiple weeks, we might treat it differently?
+                // But user differentiation was "starts and ends in this week".
+                // If it doesn't default to monthly logic?
+                // We rely on 'frequency' if available, defaulting to monthly.
+
+                switch (src.frequency) {
+                    case 'daily': return sum + (Number(src.amount) * 7)
+                    case 'weekly': return sum + Number(src.amount)
+                    case 'yearly': return sum + (Number(src.amount) / 52)
+                    case 'monthly':
+                    default:
+                        return sum + (Number(src.amount) / CONST_WEEKS_PER_MONTH)
+                }
+            }
+            return sum
+        }, 0)
+    }
+
+    const weeklyIncome = calculateWeeklyIncome()
+
+    // Expenses for CURRENT WEEK ONLY
+    // Filter out 'Konto:' expenses? Assuming yes.
+    const relevantExpensesThisWeek = expenses.filter(e => {
+        const d = new Date(e.expense_date || e.created_at)
+        return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }) && !e.category?.startsWith('Konto:')
+    })
+
+    const totalSpentThisWeek = relevantExpensesThisWeek.reduce((acc, curr) => acc + Number(curr.amount), 0)
+
+    // "Verfügbar (Woche)" = Weekly Income - Weekly Fixed - Spent This Week
+    // We define weeklyBudget as the amount available BEFORE variable expenses
+    const weeklyBudget = weeklyIncome - weeklyFixedCosts
+
+    const currentBalance = weeklyBudget - totalSpentThisWeek
+    const isPositive = currentBalance >= 0
+
+    // (Unused legacy variables commented out/removed to clean up)
+    // const weeklyGrossBudget = ...
+    // const weeksPassed = ...
+    // const totalAccumulatedBudget = ...
 
     const getDate = (e: Expense) => new Date(e.expense_date || e.created_at)
-    const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 })
-    const currentWeekEnd = endOfWeek(now, { weekStartsOn: 1 })
 
-    // Calculate Budget based on Total Weeks Passed since First Expense
-    // Filter out 'Konto:' expenses from budget calculation?
-    // Based on previous logic: e.category.startsWith('Konto:') excluded from accumulated budget logic?
-    const relevantExpenses = expenses.filter(e => !e.category?.startsWith('Konto:'))
-    const allDates = relevantExpenses.map(e => getDate(e))
-    const firstExpenseDate = allDates.length > 0 ? min(allDates) : now
-    const weeksPassed = differenceInCalendarWeeks(now, firstExpenseDate, { weekStartsOn: 1 })
-
-    // Total Budget = (Weeks Passed + 1) * Weekly Budget
-    const totalAccumulatedBudget = weeklyBudget * (weeksPassed + 1)
-
-    const totalSpentRelevant = relevantExpenses.reduce((acc, curr) => acc + Number(curr.amount), 0)
-    const currentBalance = totalAccumulatedBudget - totalSpentRelevant
-    const isPositive = currentBalance >= 0
 
     // Groups logic
     const getWeeklyGroups = () => {
@@ -424,7 +529,7 @@ export default function MobileDashboard({
                         </div>
                     </div>
 
-                    {/* BEREICH 2: Spaarkonto (Formerly DashboardHealth) */}
+                    {/* BEREICH 2: Girokonto (formerly Sparkonto) */}
                     <div className="row-start-3 row-span-3 col-start-2 col-span-10 flex flex-col justify-center gap-2">
                         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-white/20 dark:border-white/5 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:scale-[1.02] transition-transform">
                             <div className="flex items-center justify-between z-10 relative">
@@ -433,16 +538,16 @@ export default function MobileDashboard({
                                         <PiggyBank className="w-8 h-8" />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Spaarkonto</p>
-                                        <p className={`text-2xl font-bold ${Number(initialSettings?.savings_balance || 0) < 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-100'}`}>
-                                            €{Number(initialSettings?.savings_balance || 0).toFixed(2)}
+                                        <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Girokonto</p>
+                                        <p className={`text-2xl font-bold ${currentGiroBalance < 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-100'}`}>
+                                            €{currentGiroBalance.toFixed(2)}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="h-full flex flex-col justify-center items-end">
-                                    {Number(initialSettings?.savings_balance || 0) > 0 && (
+                                    {currentGiroBalance > 0 && (
                                         <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
-                                            +Sparen
+                                            +Liquide
                                         </span>
                                     )}
                                 </div>
@@ -453,7 +558,7 @@ export default function MobileDashboard({
 
                         {/* Optional small helper text or indicator */}
                         <p className="text-[10px] text-center text-muted-foreground/50 italic">
-                            Wird jeden Sonntag automatisch aktualisiert.
+                            Automatisch berechnet (Einnahmen - Ausgaben)
                         </p>
                     </div>
 
@@ -522,6 +627,7 @@ export default function MobileDashboard({
                                 budget={weeklyBudget}
                                 fixedCosts={initialFixedCosts}
                                 accounts={initialAccounts}
+                                incomeSources={initialIncomeSources}
                             />
                         ) : historyMode === 'calendar' ? (
                             <CalendarHistory

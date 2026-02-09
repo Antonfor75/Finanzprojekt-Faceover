@@ -36,7 +36,11 @@ export type FixedCost = {
 
 export type IncomeSource = {
     id: number
+    created_at?: string
     title: string
     amount: number
+    valid_from?: string
+    valid_to?: string | null
+    frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly'
     user_id?: string
 }

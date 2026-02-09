@@ -1,48 +1,26 @@
 # Page snapshot
 
 ```yaml
-- generic [ref=e1]:
+- generic [active] [ref=e1]:
   - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
     - img [ref=e8]
   - alert [ref=e11]
-  - main [ref=e12]:
-    - generic [ref=e13]:
-      - generic [ref=e14]:
-        - generic [ref=e15]:
-          - heading "Verfügbar (Woche)" [level=2] [ref=e16]
-          - generic [ref=e17]:
-            - text: €775
-            - generic [ref=e18]: ".73"
-        - generic [ref=e20]:
-          - generic [ref=e21]:
-            - heading "Sparquote" [level=3] [ref=e22]
-            - generic [ref=e23]:
-              - application [ref=e26]
-              - generic [ref=e35]: 92%
-            - img [ref=e37]
-          - generic [ref=e40]:
-            - heading "Runway" [level=3] [ref=e41]
-            - generic [ref=e42]:
-              - generic [ref=e43]: "0.0"
-              - generic [ref=e44]: Monate sicher
-            - img [ref=e48]
-        - generic [ref=e52]:
-          - textbox [ref=e54] [cursor=pointer]: 2026-02-06
-          - combobox [ref=e56]:
-            - option "Essen 🍔"
-            - option "Miete 🏠"
-            - option "Transport 🚌"
-            - option "Freizeit 🎉" [selected]
-            - option "Versicherung 🛡️"
-            - option "Sparen 💰"
-            - option "Sonstiges 📦"
-          - spinbutton [active] [ref=e58]: "123.45"
-          - button "Eintragen" [ref=e60]
-      - generic [ref=e62]:
-        - button [ref=e63]:
-          - img [ref=e64]
-        - button [ref=e67]:
-          - img [ref=e68]
-        - button [ref=e69]:
-          - img [ref=e70]
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - img [ref=e18]
+      - heading "Login" [level=1] [ref=e21]
+      - paragraph [ref=e22]: Willkommen zurück!
+    - generic [ref=e25]: Invalid login credentials
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - generic:
+          - img
+        - textbox "Email Adresse" [ref=e28]: test@example.com
+      - generic [ref=e29]:
+        - generic:
+          - img
+        - textbox "Passwort" [ref=e30]: password
+      - button "Anmelden" [ref=e31]:
+        - text: Anmelden
+        - img [ref=e32]
 ```

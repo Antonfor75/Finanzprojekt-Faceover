@@ -6,16 +6,17 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, AreaChart, A
 import CashflowTab from './analysis/CashflowTab'
 import StructureTab from './analysis/StructureTab'
 import WealthTab from './analysis/WealthTab'
-import { startOfWeek, endOfWeek, isWithinInterval, eachDayOfInterval, format, isSameDay, getDay, subWeeks, getISOWeek } from 'date-fns'
+import { startOfWeek, endOfWeek, isWithinInterval, eachDayOfInterval, format, isSameDay, getDay, subWeeks, getISOWeek, subDays, subYears, getYear, startOfYear, endOfYear, getISOWeekYear, startOfMonth, endOfMonth, addDays, addWeeks, addMonths, addYears } from 'date-fns'
 import { de } from 'date-fns/locale'
 
-import { Expense, FixedCost, Account } from '@/app/types'
+import { Expense, FixedCost, Account, IncomeSource } from '@/app/types'
 
 type Props = {
     expenses: Expense[]
     budget: number
     fixedCosts: FixedCost[]
     accounts: Account[]
+    incomeSources: IncomeSource[]
 }
 
 const COLORS = ['#FF8042', '#0088FE', '#00C49F', '#FFBB28', '#8884d8', '#ffc658', '#82ca9d']
@@ -32,13 +33,39 @@ const CATEGORY_COLORS: Record<string, string> = {
 // Helper for wealth calculation
 const getMonthKey = (date: Date) => format(date, 'yyyy-MM')
 
-export default function AnalysisView({ expenses, budget, fixedCosts, accounts }: Props) {
+export default function AnalysisView({ expenses, budget, fixedCosts, accounts, incomeSources }: Props) {
     const [activeTab, setActiveTab] = useState<'daily' | 'cashflow' | 'structure' | 'wealth'>('cashflow')
-    const [cashflowRange, setCashflowRange] = useState<'12m' | '4w'>('12m')
+    // Lifted state from CashflowTab
+    const [cashflowRange, setCashflowRange] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly')
+    const [customStartDate, setCustomStartDate] = useState<Date | null>(null)
 
-    const { pieData, graphData, total, gradientOffset, cashflowData12M, cashflowData4W, structureData, topCategories, wealthData } = useMemo(() => {
-        const now = new Date()
-        const currentMonthKey = getMonthKey(now)
+    const { pieData, graphData, total, gradientOffset, cashflowData12M, cashflowDataWeekly, cashflowDataDaily90, cashflowDataYearly, structureData, topCategories, wealthData } = useMemo(() => {
+        // Determine Anchor Date (The "End" of our analysis window)
+        // If Custom Start is set, End = Start + Range Interval
+        // If Custom Start is NULL, End = Now (showing history going back from now)
+        let anchorDate = new Date()
+
+        if (customStartDate) {
+            // If user picked a start date, we calculate the end date so that the loops (which go backwards)
+            // will arrive exactly at the start date.
+            // Example Daily: Loop goes i=90 down to 1. d = subDays(anchor, i).
+            // We want d(i=90) to be customStartDate.
+            // customStartDate = anchor - 90  =>  anchor = customStartDate + 90.
+            switch (cashflowRange) {
+                case 'daily': anchorDate = addDays(customStartDate, 90); break;
+                case 'weekly': anchorDate = addWeeks(customStartDate, 54); break;
+                case 'monthly': anchorDate = addMonths(customStartDate, 12); break;
+                case 'yearly': anchorDate = addYears(customStartDate, 3); break;
+            }
+        }
+        // If no custom date, anchorDate is NOW (default behavior: Last X days/weeks/years from today)
+
+        const now = anchorDate // We use 'now' as the reference point for all loops
+        const currentMonthKey = getMonthKey(new Date()) // For structure/wealth we still want simpler 'current', or should they follow?
+        // User request: "bei der analyse einstellen... graphen" (Analysis -> Cashflow Graphs).
+        // Structure/Wealth are separate tabs. Ideally they stay on "Today"?
+        // Let's keep Structure/Wealth on strict 'Today' for now to avoid side effects,
+        // unless requested. The prompt specifically mentioned "täglich... wochen... jahren" which maps to Cashflow.
 
         // --- 1. DAILY / WEEKLY DATA (Existing Logic) ---
         const start = startOfWeek(now, { weekStartsOn: 1 })
@@ -92,60 +119,209 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
 
 
         // --- 2. CASHFLOW DATA ---
-        // 12 Months Logic
-        const cashflowData12M: any[] = []
-        const expensesByMonth: Record<string, number> = {}
-        expenses.forEach(e => {
-            const date = new Date(e.expense_date || e.created_at)
-            const key = getMonthKey(date)
-            expensesByMonth[key] = (expensesByMonth[key] || 0) + Number(e.amount)
-        })
+        // --- 2. CASHFLOW DATA GENERATION ---
 
-        for (let i = 11; i >= 0; i--) {
-            const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-            const key = getMonthKey(d)
-            const monthLabel = format(d, 'MMM', { locale: de })
+        // Helper: Check if source overlaps with an interval [start, end]
+        // This fixes the issue where sources starting mid-month or ending mid-month were ignored,
+        // or where yearly data ignored sources not active on July 1st.
+        const isSourceActiveInInterval = (src: IncomeSource, intervalStart: Date, intervalEnd: Date) => {
+            const srcFrom = src.valid_from ? new Date(src.valid_from) : null
+            const srcTo = src.valid_to ? new Date(src.valid_to) : null
 
-            const income = budget
-            const expense = expensesByMonth[key] || 0
-            const savings = income - expense
-            const rate = income > 0 ? (savings / income) * 100 : 0
+            // Normalize dates to remove time (avoid timezone issues)
+            const iStart = new Date(intervalStart); iStart.setHours(0, 0, 0, 0)
+            const iEnd = new Date(intervalEnd); iEnd.setHours(23, 59, 59, 999)
 
-            cashflowData12M.push({
-                month: monthLabel,
-                fullDate: key,
-                income: income,
-                expenses: expense,
-                savingsRate: Math.max(-100, Math.min(100, rate))
-            })
+            if (srcFrom) srcFrom.setHours(0, 0, 0, 0)
+            if (srcTo) srcTo.setHours(23, 59, 59, 999)
+
+            // Overlap condition: SourceStart <= IntervalEnd && SourceEnd >= IntervalStart
+            // If srcFrom is null, it started beginning of time (always valid start)
+            // If srcTo is null, it ends end of time (always valid end)
+
+            const startCondition = !srcFrom || srcFrom <= iEnd
+            const endCondition = !srcTo || srcTo >= iStart
+
+            return startCondition && endCondition
         }
 
-        // 4 Weeks Logic
-        const cashflowData4W: any[] = []
-        for (let i = 3; i >= 0; i--) {
-            const d = subWeeks(now, i)
-            const start = startOfWeek(d, { weekStartsOn: 1 })
-            const end = endOfWeek(d, { weekStartsOn: 1 })
-            const rangeLabel = `${format(start, 'dd.MM')} - ${format(end, 'dd.MM')}`
 
-            const weeklyIncome = budget / 4.33
+        // --- Determine Global Start Date (Earliest Transaction or Income) ---
+        let earliestDate = subYears(now, 1) // Default 1 year if no data
 
-            const weeklyExpenses = expenses.filter(e => {
-                const ed = new Date(e.expense_date || e.created_at)
-                return isWithinInterval(ed, { start, end })
+        // Check Expenses
+        if (expenses.length > 0) {
+            const dates = expenses.map(e => new Date(e.expense_date || e.created_at).getTime())
+            const minDate = new Date(Math.min(...dates))
+            if (minDate < earliestDate) earliestDate = minDate
+        }
+
+        // Check Income Sources
+        if (incomeSources.length > 0) {
+            const dates = incomeSources
+                .filter(src => src.valid_from)
+                .map(src => new Date(src.valid_from!).getTime())
+
+            if (dates.length > 0) {
+                const minDate = new Date(Math.min(...dates))
+                if (minDate < earliestDate) earliestDate = minDate
+            }
+        }
+
+        // Ensure we don't go into the future or start after now (basic safety)
+        if (earliestDate > now) earliestDate = subYears(now, 1)
+
+
+        // --- 2. CASHFLOW DATA GENERATION (Full History) ---
+
+        // A. MONTHLY (Full History)
+        const cashflowData12M = []
+        // Iterate from Earliest Month up to Last Month
+        const mStart = startOfMonth(earliestDate)
+        const mEnd = endOfMonth(subDays(now, now.getDate())) // End of LAST month (to avoid incomplete current month if desired, or use 'now' for full)
+        // Actually user wants "current date" at the end, so let's include current partial month? 
+        // Standard practice: Show completed periods or up to now. 
+        // Let's go up to current month to show latest status.
+        let iterDateM = mStart
+        const mFinal = endOfMonth(now)
+
+        while (iterDateM <= mFinal) {
+            const monthStart = startOfMonth(iterDateM)
+            const monthEnd = endOfMonth(iterDateM)
+            const label = format(iterDateM, 'MMM yy', { locale: de })
+
+            // Income
+            const income = incomeSources.filter(src => isSourceActiveInInterval(src, monthStart, monthEnd)).reduce((sum, src) => {
+                switch (src.frequency) {
+                    case 'weekly': return sum + (Number(src.amount) * 4.33)
+                    case 'daily': return sum + (Number(src.amount) * 30.4)
+                    case 'yearly': return sum + (Number(src.amount) / 12)
+                    case 'monthly': default: return sum + Number(src.amount)
+                }
+            }, 0)
+
+            // Expenses
+            const expensesForMonth = expenses.filter(e => {
+                const eDate = new Date(e.expense_date || e.created_at)
+                return getMonthKey(eDate) === getMonthKey(iterDateM)
             }).reduce((acc, curr) => acc + Number(curr.amount), 0)
 
-            const savings = weeklyIncome - weeklyExpenses
-            const rate = weeklyIncome > 0 ? (savings / weeklyIncome) * 100 : 0
+            const totalFixed = fixedCosts.reduce((acc, fc) => acc + Number(fc.amount), 0)
 
-            cashflowData4W.push({
-                month: rangeLabel,
-                fullDate: rangeLabel,
-                income: weeklyIncome,
-                expenses: weeklyExpenses,
-                savingsRate: Math.max(-100, Math.min(100, rate))
-            })
+            cashflowData12M.push({ month: label, income, expenses: expensesForMonth + totalFixed })
+            iterDateM = addMonths(iterDateM, 1)
         }
+
+        // B. WEEKLY (Full History)
+        const cashflowDataWeekly = []
+        const wStart = startOfWeek(earliestDate, { weekStartsOn: 1 })
+        const wEnd = endOfWeek(now, { weekStartsOn: 1 })
+
+        let iterDateW = wStart
+        while (iterDateW <= wEnd) {
+            const weekStart = startOfWeek(iterDateW, { weekStartsOn: 1 })
+            const weekEnd = endOfWeek(iterDateW, { weekStartsOn: 1 })
+            const label = `KW ${getISOWeek(iterDateW)}`
+
+            // Income (Weekly Basis)
+            const income = incomeSources.filter(src => isSourceActiveInInterval(src, weekStart, weekEnd)).reduce((sum, src) => {
+                switch (src.frequency) {
+                    case 'monthly': return sum + (Number(src.amount) / 4.33)
+                    case 'daily': return sum + (Number(src.amount) * 7)
+                    case 'yearly': return sum + (Number(src.amount) / 52)
+                    case 'weekly': default: return sum + Number(src.amount)
+                }
+            }, 0)
+
+            // Expenses
+            const expensesForWeek = expenses.filter(e => {
+                const eDate = new Date(e.expense_date || e.created_at)
+                return isWithinInterval(eDate, { start: weekStart, end: weekEnd })
+            }).reduce((acc, curr) => acc + Number(curr.amount), 0)
+
+            // Fixed Costs (Weekly)
+            const totalFixedWeekly = fixedCosts.reduce((acc, fc) => acc + Number(fc.amount), 0) / 4.33
+
+            cashflowDataWeekly.push({ month: label, income, expenses: expensesForWeek + totalFixedWeekly, date: weekStart })
+            iterDateW = addWeeks(iterDateW, 1)
+        }
+
+        // C. DAILY (Full History)
+        const cashflowDataDaily90 = []
+        const dStart = earliestDate // Start from earliest
+        const dEnd = now // Up to Today
+
+        let iterDateD = dStart
+        while (iterDateD <= dEnd) {
+            const d = new Date(iterDateD)
+            const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(d); dayEnd.setHours(23, 59, 59, 999);
+            const label = format(d, 'dd.MM')
+
+            // Income (Daily Basis)
+            const income = incomeSources.filter(src => isSourceActiveInInterval(src, dayStart, dayEnd)).reduce((sum, src) => {
+                switch (src.frequency) {
+                    case 'monthly': return sum + (Number(src.amount) / 30.4)
+                    case 'weekly': return sum + (Number(src.amount) / 7)
+                    case 'yearly': return sum + (Number(src.amount) / 365)
+                    case 'daily': default: return sum + Number(src.amount)
+                }
+            }, 0)
+
+            // Expenses
+            const expensesForDay = expenses.filter(e => {
+                const eDate = new Date(e.expense_date || e.created_at)
+                return isSameDay(eDate, d)
+            }).reduce((acc, curr) => acc + Number(curr.amount), 0)
+
+            // Fixed Costs (Daily)
+            const totalFixedDaily = fixedCosts.reduce((acc, fc) => acc + Number(fc.amount), 0) / 30.4
+
+            cashflowDataDaily90.push({ month: label, income, expenses: expensesForDay + totalFixedDaily, fullDate: new Date(d) })
+            iterDateD = addDays(iterDateD, 1)
+        }
+
+        // D. YEARLY (Full History)
+        const cashflowDataYearly = []
+        const currentYear = getYear(now)
+        const startYear = getYear(earliestDate)
+
+        for (let y = startYear; y <= currentYear; y++) {
+            const label = String(y)
+
+            // Calculate Income by summing up 12 months (Check activity per month)
+            let yearlyIncome = 0
+            for (let m = 0; m < 12; m++) {
+                const mStart = new Date(y, m, 1)
+                const mEnd = endOfMonth(mStart)
+                // Don't count future months if we are in current year? 
+                // Strict cashflow: Yes, count active sources. 
+                // But users might prefer "Year to Date"? 
+                // Let's keep it full year projection or active.
+
+                const monthIncome = incomeSources.filter(src => isSourceActiveInInterval(src, mStart, mEnd)).reduce((sum, src) => {
+                    switch (src.frequency) {
+                        case 'weekly': return sum + (Number(src.amount) * 4.33)
+                        case 'daily': return sum + (Number(src.amount) * 30.4)
+                        case 'yearly': return sum + (Number(src.amount) / 12)
+                        case 'monthly': default: return sum + Number(src.amount)
+                    }
+                }, 0)
+                yearlyIncome += monthIncome
+            }
+
+            // Expenses
+            const expensesForYear = expenses.filter(e => {
+                const eDate = new Date(e.expense_date || e.created_at)
+                return getYear(eDate) === y
+            }).reduce((acc, curr) => acc + Number(curr.amount), 0)
+
+            // Fixed Costs (Yearly)
+            const totalFixedYearly = fixedCosts.reduce((acc, fc) => acc + Number(fc.amount), 0) * 12
+
+            cashflowDataYearly.push({ month: label, income: yearlyIncome, expenses: expensesForYear + totalFixedYearly })
+        }
+
 
         // --- 3. STRUCTURE DATA (Current Month) ---
         const totalFixed = fixedCosts.reduce((acc, fc) => acc + Number(fc.amount), 0)
@@ -178,39 +354,77 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
             .sort((a, b) => b.value - a.value)
             .slice(0, 5)
 
-        // --- 4. WEALTH DATA (Net Worth over Time) ---
+        // --- 4. WEALTH DATA (Net Worth over Time) & GIROKONTO AUTOMATION ---
+
+        // A. Determine Calculation Range (Start from earliest expense or 12 months ago)
         let startDate = new Date()
         if (expenses.length > 0) {
             const dates = expenses.map(e => new Date(e.expense_date || e.created_at).getTime())
             startDate = new Date(Math.min(...dates))
+            // Go back to start of that month
+            startDate.setDate(1)
+            startDate.setHours(0, 0, 0, 0)
         } else {
-            startDate.setMonth(startDate.getMonth() - 6)
+            startDate.setMonth(startDate.getMonth() - 12)
+            startDate.setDate(1)
         }
-        startDate.setDate(1) // Start of month
 
-        const initialWealth = accounts.reduce((acc, a) => acc + Number(a.amount), 0)
-
-        const monthlySavingsMap: Record<string, number> = {}
+        // B. Calculate Historical Net Cashflow per Month
         const tempDate = new Date(startDate)
-        const allMonths: string[] = []
-
         const loopEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
 
+        const monthlyNetFlow: Record<string, number> = {}
+        let cumulativeNetCashflow = 0
+
         while (tempDate <= loopEnd) {
-            allMonths.push(getMonthKey(tempDate))
+            const mKey = getMonthKey(tempDate)
+            const d = new Date(tempDate) // 1st of month
+
+            // 1. Dynamic Income for this month
+            const monthIncome = incomeSources.filter(src => {
+                const from = src.valid_from ? new Date(src.valid_from) : null
+                const to = src.valid_to ? new Date(src.valid_to) : null
+                if (from && d < new Date(from.getFullYear(), from.getMonth(), 1)) return false
+                if (to && d > to) return false
+                return true
+            }).reduce((sum, src) => sum + Number(src.amount), 0)
+
+            // 2. Expenses for this month
+            const monthExpenses = expenses.filter(e => {
+                const eDate = new Date(e.expense_date || e.created_at)
+                return getMonthKey(eDate) === mKey
+            }).reduce((acc, curr) => acc + Number(curr.amount), 0) + totalFixed
+
+            // 3. Net
+            const net = monthIncome - monthExpenses
+            monthlyNetFlow[mKey] = net
+            cumulativeNetCashflow += net
+
             tempDate.setMonth(tempDate.getMonth() + 1)
         }
 
-        allMonths.forEach(mKey => {
-            const exp = expensesByMonth[mKey] || 0
-            const save = budget - totalFixed - exp
-            monthlySavingsMap[mKey] = save
+        // C. Update 'Girokonto' (Savings) Account with Cumulative Result
+        // We find the 'savings' account and override its amount for the 'Current Wealth' calculation
+        let calculatedCurrentWealth = 0
+        const modifiedAccounts = accounts.map(acc => {
+            if (acc.type === 'savings') {
+                return { ...acc, amount: cumulativeNetCashflow }
+            }
+            return acc
         })
 
-        const wealthSeries = []
-        let runningWealth = initialWealth
+        // If no savings account exists, effectively we just ignore the 'Girokonto' part or should we add it?
+        // For now, only override if exists.
+        calculatedCurrentWealth = modifiedAccounts.reduce((acc, a) => acc + Number(a.amount), 0)
 
-        // Backwards calculation from NOW (Known Wealth)
+        // D. Build Wealth Series Backwards
+        const wealthSeries = []
+        let runningWealth = calculatedCurrentWealth
+
+        // Get all months in stats
+        const allMonths = Object.keys(monthlyNetFlow).sort() // Should be sorted by Key YYYY-MM
+
+        // We actually want to go backwards from NOW
         for (let i = allMonths.length - 1; i >= 0; i--) {
             const mKey = allMonths[i]
             const mDate = new Date(mKey + '-01')
@@ -222,8 +436,9 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
                 debt: 0
             })
 
-            // Previous wealth was Current - Savings (Approximation)
-            runningWealth -= monthlySavingsMap[mKey]
+            // To get Previous Month's Wealth, we SUBTRACT this month's Net Flow
+            // (Current = Previous + Net) => (Previous = Current - Net)
+            runningWealth -= monthlyNetFlow[mKey]
         }
 
         return {
@@ -232,12 +447,14 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
             total: totalW,
             gradientOffset,
             cashflowData12M,
-            cashflowData4W,
+            cashflowDataWeekly,
+            cashflowDataYearly,
+            cashflowDataDaily90,
             structureData: fixVsVarData,
             topCategories,
             wealthData: wealthSeries
         }
-    }, [expenses, budget, fixedCosts, accounts])
+    }, [expenses, budget, fixedCosts, accounts, incomeSources])
 
     return (
         <div className="flex flex-col h-full bg-white dark:bg-transparent rounded-t-3xl overflow-hidden shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 dark:border-white/5 pb-20">
@@ -290,9 +507,16 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts }:
             <div className="flex-1 overflow-y-auto p-4 space-y-8">
 
                 {/* --- TAB CONTENT --- */}
-                {activeTab === 'cashflow' && <CashflowTab data12M={cashflowData12M} data4W={cashflowData4W} />}
+                {activeTab === 'cashflow' && (
+                    <CashflowTab
+                        data12M={cashflowData12M}
+                        dataWeekly={cashflowDataWeekly}
+                        dataYearly={cashflowDataYearly}
+                        dataDaily={cashflowDataDaily90}
+                    />
+                )}
                 {activeTab === 'structure' && <StructureTab fixVsVarData={structureData} topCatsData={topCategories} />}
-                {activeTab === 'wealth' && <WealthTab data={wealthData} />}
+                {activeTab === 'wealth' && <WealthTab data={wealthData} currentAssets={wealthData.length > 0 ? wealthData[wealthData.length - 1].assets : 0} />}
 
                 {activeTab === 'daily' && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-500">

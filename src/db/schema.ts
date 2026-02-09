@@ -46,6 +46,8 @@ export const incomeSourcesTable = pgTable('income_sources', {
     created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     title: text('title').notNull(),
     amount: numeric('amount').notNull(),
+    valid_from: timestamp('valid_from', { withTimezone: true }).defaultNow().notNull(),
+    valid_to: timestamp('valid_to', { withTimezone: true }), // Nullable = Open End
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 

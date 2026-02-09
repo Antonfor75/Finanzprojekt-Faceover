@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, Plus, Trash2, Save, LogOut, Wallet, Download, Upload, ArrowDown, Calculator, LayoutDashboard, Moon, Sun } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Save, LogOut, Wallet, Download, Upload, ArrowDown, Calculator, LayoutDashboard, Moon, Sun, FileText } from 'lucide-react'
 import { startOfWeek, endOfWeek, isWithinInterval } from 'date-fns'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import ImportWizard from '@/components/ImportWizard'
 // Set worker source for pdfjs
 import { supabase } from '@/utils/supabase'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
@@ -27,10 +28,22 @@ type SettingsOverlayProps = {
 export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts = [], incomeSources = [], theme, setTheme, onLogout, onUpdate, expenses, isDarkMode, toggleDarkMode }: SettingsOverlayProps) {
     // const [budget, setBudget] = useState<string | number>(settings?.monthly_budget || 0) // REMOVED: Calculated dynamically now
     const [settingsTab, setSettingsTab] = useState<'settings' | 'calculation'>('settings')
+    const [showImportWizard, setShowImportWizard] = useState(false)
 
     // Income Sources State
+    const [showIncome, setShowIncome] = useState(false)
+    const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null)
+    const [editIncomeTitle, setEditIncomeTitle] = useState('')
+    const [editIncomeAmount, setEditIncomeAmount] = useState('')
+    const [editIncomeValidFrom, setEditIncomeValidFrom] = useState('')
+    const [editIncomeValidTo, setEditIncomeValidTo] = useState('')
+    const [editIncomeFrequency, setEditIncomeFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly')
+
     const [newIncomeTitle, setNewIncomeTitle] = useState('')
     const [newIncomeAmount, setNewIncomeAmount] = useState('')
+    const [newIncomeValidFrom, setNewIncomeValidFrom] = useState('')
+    const [newIncomeValidTo, setNewIncomeValidTo] = useState('')
+    const [newIncomeFrequency, setNewIncomeFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly')
 
     // Accounts State
     const [showAccounts, setShowAccounts] = useState(false)
@@ -44,7 +57,17 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
     // Calculated Budget
     const budget = useMemo(() => {
-        return incomeSources.reduce((sum, src) => sum + Number(src.amount), 0)
+        const now = new Date()
+        return incomeSources.filter(src => {
+            const from = src.valid_from ? new Date(src.valid_from) : null
+            const to = src.valid_to ? new Date(src.valid_to) : null
+
+            // Check if current date is within range
+            // We ignore time for the check, just compare dates
+            if (from && now < from) return false
+            if (to && now > to) return false
+            return true
+        }).reduce((sum, src) => sum + Number(src.amount), 0)
     }, [incomeSources])
 
     const handleAddIncome = async () => {
@@ -55,12 +78,54 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         const { error } = await supabase.from('income_sources').insert([{
             title: newIncomeTitle,
             amount: Number(newIncomeAmount),
+            valid_from: newIncomeValidFrom ? new Date(newIncomeValidFrom).toISOString() : new Date().toISOString(),
+            valid_to: newIncomeValidTo ? new Date(newIncomeValidTo).toISOString() : null,
+            frequency: newIncomeFrequency,
             user_id: user.id
         }])
         if (error) console.error(error)
         else onUpdate?.()
         setNewIncomeTitle('')
         setNewIncomeAmount('')
+        setNewIncomeValidFrom('')
+        setNewIncomeValidTo('')
+        setNewIncomeFrequency('monthly')
+    }
+
+    const handleStartEditIncome = (src: IncomeSource) => {
+        setEditingIncomeId(src.id)
+        setEditIncomeTitle(src.title)
+        setEditIncomeAmount(src.amount.toString())
+        setEditIncomeValidFrom(src.valid_from ? new Date(src.valid_from).toISOString().split('T')[0] : '')
+        setEditIncomeValidTo(src.valid_to ? new Date(src.valid_to).toISOString().split('T')[0] : '')
+        setEditIncomeFrequency(src.frequency || 'monthly')
+    }
+
+    const handleSaveEditIncome = async () => {
+        if (!editingIncomeId || !editIncomeTitle || !editIncomeAmount) return
+
+        const { error } = await supabase.from('income_sources').update({
+            title: editIncomeTitle,
+            amount: Number(editIncomeAmount),
+            valid_from: editIncomeValidFrom ? new Date(editIncomeValidFrom).toISOString() : new Date().toISOString(),
+            valid_to: editIncomeValidTo ? new Date(editIncomeValidTo).toISOString() : null,
+            frequency: editIncomeFrequency
+        }).eq('id', editingIncomeId)
+
+        if (error) console.error(error)
+        else onUpdate?.()
+
+        setEditingIncomeId(null)
+    }
+
+    const handleQuickEndDate = async (id: number, date: string) => {
+        if (!date) return
+        const { error } = await supabase.from('income_sources').update({
+            valid_to: new Date(date).toISOString()
+        }).eq('id', id)
+
+        if (error) console.error(error)
+        else onUpdate?.()
     }
 
     const handleDeleteIncome = async (id: number) => {
@@ -411,6 +476,18 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const weeklySavings = weeklyNet - currentWeekExpenses
     const projectedMonthlySavings = weeklySavings * 4.33
 
+    // --- IMPORT WIZARD ---
+    if (showImportWizard) {
+        return (
+            <ImportWizard
+                onClose={() => setShowImportWizard(false)}
+                onImportSuccess={() => {
+                    onUpdate?.()
+                }}
+            />
+        )
+    }
+
     // --- ACCOUNTS SUB-VIEW ---
     if (showAccounts) {
         return (
@@ -442,7 +519,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                     onClick={() => setNewAccountType('savings')}
                                     className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${newAccountType === 'savings' ? 'bg-white shadow-sm text-black' : 'text-gray-500'}`}
                                 >
-                                    Sparkonto
+                                    Girokonto
                                 </button>
                             </div>
 
@@ -502,7 +579,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 <div className="flex items-center gap-2">
                                                     <p className="font-bold text-gray-800">{acc.name}</p>
                                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${acc.type === 'savings' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                        {acc.type === 'savings' ? 'Spar' : 'Aufteilung'}
+                                                        {acc.type === 'savings' ? 'Giro' : 'Aufteilung'}
                                                     </span>
                                                 </div>
                                                 <div className="flex gap-2 text-xs text-gray-500 font-medium">
@@ -538,6 +615,244 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         )
     }
 
+    // --- INCOME SUB-VIEW ---
+    if (showIncome) {
+        return (
+            <div className="fixed inset-0 z-50 h-dvh w-screen overflow-y-auto bg-black/20 backdrop-blur-sm animate-in fade-in slide-in-from-right duration-300 flex justify-center">
+                <div className="min-h-full w-5/6 bg-background/80 backdrop-blur-md shadow-2xl flex flex-col border-x border-white/20">
+                    <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setShowIncome(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+                                <ArrowLeft className="w-8 h-8" />
+                            </button>
+                            <h1 className="text-2xl font-bold text-gray-800">Einnahmen Verwalten</h1>
+                        </div>
+                    </div>
+
+                    <div className="p-8 space-y-8 flex-1 pb-20">
+                        {/* Add New Income */}
+                        <div className="bg-green-50/50 p-6 rounded-2xl border border-green-100/50 space-y-4">
+                            <h3 className="font-bold text-gray-800">Neue Einnahme hinzufügen</h3>
+                            <div className="space-y-3">
+                                <div className="flex gap-2">
+                                    <input
+                                        placeholder="Quelle (z.B. Gehalt)"
+                                        value={newIncomeTitle}
+                                        onChange={(e) => setNewIncomeTitle(e.target.value)}
+                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none"
+                                    />
+                                    <input
+                                        type="number"
+                                        placeholder="€"
+                                        value={newIncomeAmount}
+                                        onChange={(e) => setNewIncomeAmount(e.target.value)}
+                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none"
+                                    />
+                                    <select
+                                        value={newIncomeFrequency}
+                                        onChange={(e: any) => setNewIncomeFrequency(e.target.value)}
+                                        className="h-14 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm font-medium text-gray-600"
+                                    >
+                                        <option value="monthly">Monatlich</option>
+                                        <option value="yearly">Jährlich</option>
+                                        <option value="weekly">Wöchentlich</option>
+                                        <option value="daily">Täglich</option>
+                                    </select>
+                                    <select
+                                        value={newIncomeFrequency}
+                                        onChange={(e: any) => setNewIncomeFrequency(e.target.value)}
+                                        className="h-14 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm font-medium text-gray-600"
+                                    >
+                                        <option value="monthly">Monatlich</option>
+                                        <option value="yearly">Jährlich</option>
+                                        <option value="weekly">Wöchentlich</option>
+                                        <option value="daily">Täglich</option>
+                                    </select>
+                                </div>
+                                <div className="flex gap-2">
+                                    <div className="flex-1">
+                                        <label className="text-xs text-gray-500 ml-2">Gültig ab</label>
+                                        <input
+                                            type="date"
+                                            value={newIncomeValidFrom}
+                                            onChange={(e) => setNewIncomeValidFrom(e.target.value)}
+                                            className="w-full h-12 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="text-xs text-gray-500 ml-2">Gültig bis (Optional)</label>
+                                        <input
+                                            type="date"
+                                            value={newIncomeValidTo}
+                                            onChange={(e) => setNewIncomeValidTo(e.target.value)}
+                                            className="w-full h-12 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm"
+                                        />
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleAddIncome}
+                                    disabled={!newIncomeTitle || !newIncomeAmount}
+                                    className="w-full h-12 bg-green-600 text-white hover:opacity-90 rounded-xl transition-colors shadow-md flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed font-bold"
+                                >
+                                    Hinzufügen
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Income List */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-gray-800">Deine Einnahmen</h3>
+                                <span className="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                                    Summe: €{Number(budget).toFixed(2)}
+                                </span>
+                            </div>
+
+                            {incomeSources.length === 0 ? (
+                                <p className="text-gray-400 text-center py-8">Noch keine Einnahmen eingetragen.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {incomeSources.sort((a, b) => {
+                                        // 1. Unlimited (no valid_to) first
+                                        if (!a.valid_to && b.valid_to) return -1
+                                        if (a.valid_to && !b.valid_to) return 1
+
+                                        // 2. Both unlimited -> sort by creation (optional, stable sort) or title
+                                        if (!a.valid_to && !b.valid_to) return 0
+
+                                        // 3. Both limited -> sort by End Date DESCENDING (latest end date first)
+                                        return new Date(b.valid_to!).getTime() - new Date(a.valid_to!).getTime()
+                                    }).map(src => {
+                                        const now = new Date()
+                                        const from = src.valid_from ? new Date(src.valid_from) : null
+                                        const to = src.valid_to ? new Date(src.valid_to) : null
+                                        const isActive = (!from || now >= from) && (!to || now <= to)
+                                        const isEditing = editingIncomeId === src.id
+
+                                        if (isEditing) {
+                                            return (
+                                                <div key={src.id} className="p-4 bg-white rounded-xl border-2 border-green-500 shadow-lg space-y-3">
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            value={editIncomeTitle}
+                                                            onChange={e => setEditIncomeTitle(e.target.value)}
+                                                            className="flex-[2] px-3 py-2 bg-gray-50 rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none"
+                                                            placeholder="Titel"
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            value={editIncomeAmount}
+                                                            onChange={e => setEditIncomeAmount(e.target.value)}
+                                                            className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none"
+                                                            placeholder="Amount"
+                                                        />
+                                                        <select
+                                                            value={editIncomeFrequency}
+                                                            onChange={(e: any) => setEditIncomeFrequency(e.target.value)}
+                                                            className="px-3 py-2 bg-gray-50 rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none"
+                                                        >
+                                                            <option value="monthly">Mtl.</option>
+                                                            <option value="yearly">Jährl.</option>
+                                                            <option value="weekly">Wöch.</option>
+                                                            <option value="daily">Tägl.</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="date"
+                                                            value={editIncomeValidFrom}
+                                                            onChange={e => setEditIncomeValidFrom(e.target.value)}
+                                                            className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-xs border"
+                                                        />
+                                                        <input
+                                                            type="date"
+                                                            value={editIncomeValidTo}
+                                                            onChange={e => setEditIncomeValidTo(e.target.value)}
+                                                            className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-xs border"
+                                                        />
+                                                    </div>
+                                                    <div className="flex justify-end gap-2 pt-2">
+                                                        <button onClick={() => setEditingIncomeId(null)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Abbrechen</button>
+                                                        <button onClick={handleSaveEditIncome} className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-sm">Speichern</button>
+                                                    </div>
+                                                </div>
+                                            )
+                                        }
+
+                                        return (
+                                            <div key={src.id} className={`flex flex-col p-4 rounded-xl border shadow-sm group transition-all ${isActive ? 'bg-white border-gray-100' : 'bg-gray-50 border-gray-200 opacity-70'}`}>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="min-w-0 flex-1 mr-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-bold text-gray-800 truncate text-lg">{src.title}</p>
+                                                            {!isActive && <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">Inaktiv</span>}
+                                                            {!src.valid_to && <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold border border-blue-100">Unbegrenzt</span>}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <p className="text-sm text-green-600 font-bold">
+                                                                +€{Number(src.amount).toFixed(2)}
+                                                                <span className="text-[10px] text-gray-400 font-normal ml-1">
+                                                                    ({src.frequency === 'daily' ? 'Tgl.' : src.frequency === 'weekly' ? 'Wöch.' : src.frequency === 'yearly' ? 'Jährl.' : 'Mtl.'})
+                                                                </span>
+                                                            </p>
+                                                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                                                {src.valid_from ? new Date(src.valid_from).toLocaleDateString('de-DE') : 'Start'}
+                                                                {' - '}
+                                                                {src.valid_to ? new Date(src.valid_to).toLocaleDateString('de-DE') : 'Unbegrenzt'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        {/* Quick End Date Button for Unlimited Sources */}
+                                                        {!src.valid_to && (
+                                                            <div className="relative group/end">
+                                                                <input
+                                                                    type="date"
+                                                                    className="absolute inset-0 opacity-0 cursor-pointer w-8"
+                                                                    onChange={(e) => handleQuickEndDate(src.id, e.target.value)}
+                                                                />
+                                                                <button className="p-2 text-blue-200 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Enddatum setzen">
+                                                                    <ArrowDown className="w-5 h-5 rotate-[-90deg]" />
+                                                                </button>
+                                                            </div>
+                                                        )}
+
+                                                        <button
+                                                            onClick={() => handleStartEditIncome(src)}
+                                                            className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                                                            title="Bearbeiten"
+                                                        >
+                                                            <FileText className="w-5 h-5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteIncome(src.id)}
+                                                            className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Löschen"
+                                                        >
+                                                            <Trash2 className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Info Box */}
+                        <div className="p-4 bg-green-50 border border-green-100 rounded-xl">
+                            <p className="text-xs text-green-700 leading-relaxed">
+                                💡 Diese Einnahmen bilden dein monatliches Grundbudget.
+                            </p>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     // --- MAIN SETTINGS VIEW ---
     return (
         <div className={`fixed inset-0 z-50 h-dvh w-screen bg-black/20 backdrop-blur-sm animate-in fade-in slide-in-from-right duration-300 flex justify-center theme-${theme} pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
@@ -551,6 +866,13 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         <h1 className="text-xl md:text-3xl font-bold text-foreground dark:text-white">Einstellungen</h1>
                     </div>
                     <div className="flex gap-1 md:gap-2">
+                        <button
+                            onClick={() => setShowImportWizard(true)}
+                            className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
+                            title="Kontoauszug Importieren"
+                        >
+                            <FileText className="w-8 h-8" />
+                        </button>
                         <label className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors cursor-pointer" title="Backup wiederherstellen">
                             <Upload className="w-8 h-8" />
                             <input
@@ -679,50 +1001,19 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                 </span>
                             </div>
 
-                            {/* Income List */}
-                            <div className="space-y-3">
-                                {incomeSources.map(src => (
-                                    <div key={src.id} className="flex items-center justify-between p-4 bg-background/50 dark:bg-gray-800/30 rounded-xl border border-primary/5 dark:border-white/5 group">
-                                        <div className="min-w-0 flex-1 mr-4">
-                                            <p className="font-bold text-foreground truncate text-base md:text-lg">{src.title}</p>
-                                            <p className="text-xs text-green-600 font-medium">+€{Number(src.amount).toFixed(2)}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => handleDeleteIncome(src.id)}
-                                            className="p-3 text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                        >
-                                            <Trash2 className="w-6 h-6" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Add New Income */}
-                            <div className="bg-green-50/50 p-4 rounded-xl border border-green-100/50 flex flex-col gap-3">
-                                <span className="text-xs font-bold text-muted-foreground uppercase">Neue Einnahme hinzufügen</span>
-                                <div className="flex gap-2">
-                                    <input
-                                        placeholder="Quelle (z.B. Gehalt)"
-                                        value={newIncomeTitle}
-                                        onChange={(e) => setNewIncomeTitle(e.target.value)}
-                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-muted/40 rounded-lg outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground/70"
-                                    />
-                                    <input
-                                        type="number"
-                                        placeholder="€"
-                                        value={newIncomeAmount}
-                                        onChange={(e) => setNewIncomeAmount(e.target.value)}
-                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-muted/40 rounded-lg outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground/70"
-                                    />
-                                    <button
-                                        onClick={handleAddIncome}
-                                        className="h-14 w-14 bg-green-600 text-white hover:opacity-90 rounded-lg transition-colors shadow-sm flex items-center justify-center"
-                                        title="Add"
-                                    >
-                                        <Plus className="w-8 h-8" />
-                                    </button>
+                            <button
+                                onClick={() => setShowIncome(true)}
+                                className="w-full h-16 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors flex items-center justify-between px-6 font-bold group"
+                            >
+                                <span className="flex items-center gap-3">
+                                    <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                                    <span className="text-base md:text-lg">Einnahmen verwalten</span>
+                                </span>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-sm font-bold">€{Number(budget).toFixed(2)}</span>
+                                    <span className="text-[10px] opacity-70">{incomeSources.length} Quellen</span>
                                 </div>
-                            </div>
+                            </button>
 
                             {/* Konten Button */}
                             <button

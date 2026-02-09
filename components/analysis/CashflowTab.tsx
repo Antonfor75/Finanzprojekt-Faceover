@@ -1,122 +1,165 @@
 'use client'
 
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    BarChart, Bar, ReferenceLine, Cell
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
-import { TrendingUp, Scale } from 'lucide-react'
-
-// Mock Data removed, now using props
+import { TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useRef, useLayoutEffect } from 'react'
+import NetCashflowChart from './NetCashflowChart'
 
 type Props = {
     data12M: any[]
-    data4W: any[]
+    dataWeekly: any[]
+    dataYearly: any[]
+    dataDaily: any[]
     currency?: string
 }
 
-export default function CashflowTab({ data12M, data4W, currency = '€' }: Props) {
+export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily, currency = '€' }: Props) {
+    const [range, setRange] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly')
+    const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+    // Select Data based on Range
+    let currentData = data12M
+    let title = 'Letzte 12 Monate'
+    let xDataKey = 'month'
+    let pointWidth = 50 // Pixels per data point default
+
+    switch (range) {
+        case 'daily':
+            currentData = dataDaily
+            title = 'Täglicher Verlauf'
+            xDataKey = 'month'
+            pointWidth = 20
+            break
+        case 'weekly':
+            currentData = dataWeekly
+            title = 'Wöchentlicher Verlauf'
+            pointWidth = 40
+            break
+        case 'yearly':
+            currentData = dataYearly
+            title = 'Jährlicher Verlauf'
+            pointWidth = 60
+            break
+        case 'monthly':
+        default:
+            currentData = data12M
+            title = 'Monatlicher Verlauf'
+            pointWidth = 50
+            break
+    }
+
+    // Auto-Scroll to the right (latest data) whenever data or range changes
+    useLayoutEffect(() => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth
+        }
+    }, [range, currentData])
+
+    // Manual Scroll Handlers
+    const scroll = (direction: 'left' | 'right') => {
+        if (scrollContainerRef.current) {
+            const scrollAmount = 300 // px to scroll
+            scrollContainerRef.current.scrollBy({
+                left: direction === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            })
+        }
+    }
+
+    // Dynamic Chart Width
+    // Min width 100% of container, otherwise calculated based on data points
+    // We assume the parent container is fixed width (screen width).
+    // Let's use a safe calc.
+    const chartWidth = Math.max(500, currentData.length * pointWidth)
+
     return (
         <div className="space-y-6">
 
-            {/* 1. TREND CHART (Letzte 12 Monate) */}
+            {/* TIME RANGE SWITCHER */}
+            <div className="flex bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl">
+                {['daily', 'weekly', 'monthly', 'yearly'].map((r) => (
+                    <button
+                        key={r}
+                        onClick={() => setRange(r as any)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${range === r
+                            ? 'bg-white dark:bg-gray-700 shadow-sm text-black dark:text-white'
+                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                            }`}
+                    >
+                        {r === 'daily' && 'Täglich'}
+                        {r === 'weekly' && 'Woche'}
+                        {r === 'monthly' && 'Monat'}
+                        {r === 'yearly' && 'Jahr'}
+                    </button>
+                ))}
+            </div>
+
+            {/* DYNAMIC TREND CHART (SCROLLABLE) */}
             <div className="bg-white dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 p-4 rounded-2xl shadow-sm border border-gray-100">
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="p-2 bg-blue-50 dark:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-400">
-                        <TrendingUp className="w-5 h-5" />
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <div className="p-2 bg-blue-50 dark:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-400">
+                            <TrendingUp className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-800 dark:text-gray-200">Verlauf</h3>
+                            <p className="text-xs text-gray-400 dark:text-gray-500">{title}</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="font-bold text-gray-800 dark:text-gray-200">Einnahmen vs. Ausgaben</h3>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">Letzte 12 Monate</p>
+
+                    {/* SCROLL CONTROLS */}
+                    <div className="flex gap-1">
+                        <button
+                            onClick={() => scroll('left')}
+                            className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={() => scroll('right')}
+                            className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all"
+                        >
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
                     </div>
                 </div>
 
-                <div className="h-[250px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data12M} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.1} />
-                                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1} />
-                                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                            <Tooltip
-                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" name="Einnahmen" />
-                            <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpenses)" name="Ausgaben" />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                <div
+                    ref={scrollContainerRef}
+                    className="h-[250px] w-full overflow-x-auto overflow-y-hidden"
+                    style={{ scrollBehavior: 'smooth' }}
+                >
+                    <div style={{ width: `${chartWidth}px`, height: '100%', minWidth: '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={currentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                <XAxis dataKey={xDataKey} axisLine={false} tickLine={false} tick={{ fontSize: 10 }} dy={10} minTickGap={30} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                                <Tooltip
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                />
+                                <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" name="Einnahmen" />
+                                <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpenses)" name="Ausgaben" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </div>
 
-            {/* 2. TREND CHART (Letzte 4 Wochen) */}
-            <div className="bg-white dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 p-4 rounded-2xl shadow-sm border border-gray-100">
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="p-2 bg-purple-50 dark:bg-purple-500/20 rounded-lg text-purple-600 dark:text-purple-400">
-                        <TrendingUp className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-gray-800 dark:text-gray-200">Einnahmen vs. Ausgaben</h3>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">Letzte 4 Wochen</p>
-                    </div>
-                </div>
-
-                <div className="h-[250px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data4W} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                            <Tooltip
-                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" name="Einnahmen" />
-                            <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpenses)" name="Ausgaben" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-
-            {/* 3. SAVINGS RATE CHART */}
-            <div className="bg-white dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 p-4 rounded-2xl shadow-sm border border-gray-100">
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="p-2 bg-green-50 dark:bg-green-500/20 rounded-lg text-green-600 dark:text-green-400">
-                        <Scale className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-gray-800 dark:text-gray-200">Sparquote Historie</h3>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">Letzte 6 Monate</p>
-                    </div>
-                </div>
-
-                <div className="h-[200px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={data12M} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                            <Tooltip
-                                cursor={{ fill: 'transparent' }}
-                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <ReferenceLine y={20} stroke="#3b82f6" strokeDasharray="3 3" label={{ position: 'insideTopLeft', value: 'Ziel 20%', fill: '#3b82f6', fontSize: 10 }} />
-                            <Bar dataKey="savingsRate" radius={[4, 4, 0, 0]} name="Sparquote (%)">
-                                {data12M.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.savingsRate >= 20 ? '#22c55e' : '#fbbf24'} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-
+            {/* 2. NET CASHFLOW (Dynamic) */}
+            <NetCashflowChart data={currentData} />
         </div>
     )
 }
