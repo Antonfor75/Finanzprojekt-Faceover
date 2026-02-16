@@ -19,8 +19,11 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
+    title: "Mein Cashflow",
   },
-  manifest: "/manifest.json",
+  icons: {
+    apple: "/app-icon.png",
+  },
 };
 
 export const viewport = {
