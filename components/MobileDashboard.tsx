@@ -13,6 +13,7 @@ import SettingsOverlay from './SettingsOverlay'
 import CalendarHistory from './CalendarHistory'
 import AnalysisView from './AnalysisView'
 import WeeklyBarChart from './WeeklyBarChart'
+import GirokontoView from './GirokontoView'
 // import DashboardHealth from './DashboardHealth' // REMOVED
 
 import jsPDF from 'jspdf'
@@ -42,6 +43,7 @@ export default function MobileDashboard({
     // --- APP STATE ---
     const [view, setView] = useState<MainView>('entry')
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+    const [showGirokonto, setShowGirokonto] = useState(false)
     const [viewLevel, setViewLevel] = useState<'weeks' | 'days' | 'transactions'>('weeks')
     const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null)
     const [selectedDay, setSelectedDay] = useState<Date | null>(null)
@@ -341,7 +343,7 @@ export default function MobileDashboard({
             groups[key].total += Number(e.amount)
             groups[key].count += 1
         })
-        return Object.values(groups).sort((a, b) => a.start.getTime() - b.start.getTime())
+        return Object.values(groups).sort((a, b) => b.start.getTime() - a.start.getTime())
     }
     const getDailyGroups = () => {
         if (!selectedWeekStart) return []
@@ -355,11 +357,13 @@ export default function MobileDashboard({
             groups[key].total += Number(e.amount)
             groups[key].count += 1
         })
-        return Object.values(groups).sort((a, b) => a.date.getTime() - b.date.getTime())
+        return Object.values(groups).sort((a, b) => b.date.getTime() - a.date.getTime())
     }
     const getTransactions = () => {
         if (!selectedDay) return []
-        return expenses.filter(e => isSameDay(getDate(e), selectedDay))
+        return expenses
+            .filter(e => isSameDay(getDate(e), selectedDay))
+            .sort((a, b) => getDate(b).getTime() - getDate(a).getTime())
     }
     // Navigation
     const handleWeekClick = (start: Date) => { setSelectedWeekStart(start); setViewLevel('days') }
@@ -471,6 +475,18 @@ export default function MobileDashboard({
         )
     }
 
+    if (showGirokonto) {
+        return (
+            <GirokontoView
+                expenses={expenses}
+                incomeSources={initialIncomeSources}
+                initialFixedCosts={initialFixedCosts}
+                currentGiroBalance={currentGiroBalance} // Pass the "True" value
+                onBack={() => setShowGirokonto(false)}
+            />
+        )
+    }
+
     if (editingExpense) {
         return (
             <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -548,7 +564,10 @@ export default function MobileDashboard({
 
                     {/* BEREICH 2: Girokonto (formerly Sparkonto) */}
                     <div className="row-start-3 row-span-3 col-start-2 col-span-10 flex flex-col justify-center gap-2">
-                        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-white/20 dark:border-white/5 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:scale-[1.02] transition-transform">
+                        <div
+                            onClick={() => setShowGirokonto(true)}
+                            className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-white/20 dark:border-white/5 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer active:scale-95"
+                        >
                             <div className="flex items-center justify-between z-10 relative">
                                 <div className="flex items-center gap-3">
                                     <div className="p-3 bg-pink-100 dark:bg-pink-900/30 rounded-xl text-pink-600 dark:text-pink-400">

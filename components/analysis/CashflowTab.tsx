@@ -1,7 +1,7 @@
 'use client'
 
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar
 } from 'recharts'
 import { TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState, useRef, useLayoutEffect } from 'react'
@@ -72,6 +72,8 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
     // Min width 100% of container, otherwise calculated based on data points
     // We assume the parent container is fixed width (screen width).
     // Let's use a safe calc.
+    // Calculate Max Value for Domain Synchronization
+    const maxValue = Math.max(...currentData.map(d => Math.max(Number(d.income || 0), Number(d.expenses || 0), 100))) * 1.1
     const chartWidth = Math.max(500, currentData.length * pointWidth)
 
     return (
@@ -96,8 +98,8 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
                 ))}
             </div>
 
-            {/* DYNAMIC TREND CHART (SCROLLABLE) */}
-            <div className="bg-white dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 p-4 rounded-2xl shadow-sm border border-gray-100">
+            {/* DYNAMIC TREND CHART (SPLIT LAYOUT) */}
+            <div className="bg-white dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 p-4 rounded-2xl shadow-sm border border-gray-100 relative">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                         <div className="p-2 bg-blue-50 dark:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-400">
@@ -126,34 +128,56 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
                     </div>
                 </div>
 
-                <div
-                    ref={scrollContainerRef}
-                    className="h-[250px] w-full overflow-x-auto overflow-y-hidden"
-                    style={{ scrollBehavior: 'smooth' }}
-                >
-                    <div style={{ width: `${chartWidth}px`, height: '100%', minWidth: '100%' }}>
+                <div className="flex h-[250px] w-full">
+                    {/* FIXED Y-AXIS LEFT */}
+                    <div className="w-[60px] h-full shrink-0 border-r border-gray-100 dark:border-white/5 bg-white dark:bg-transparent z-10">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={currentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.1} />
-                                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1} />
-                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                <XAxis dataKey={xDataKey} axisLine={false} tickLine={false} tick={{ fontSize: 10 }} dy={10} minTickGap={30} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            <BarChart data={[{ val: 0 }, { val: maxValue }]} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 10, fill: '#6B7280', fontWeight: '500' }} // Increased contrast
+                                    domain={[0, maxValue]}
+                                    width={60}
+                                    tickFormatter={(value) => `${value >= 1000 ? (value / 1000).toFixed(1) + 'k' : value}`}
                                 />
-                                <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" name="Einnahmen" />
-                                <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpenses)" name="Ausgaben" />
-                            </AreaChart>
+                                <Bar dataKey="val" fill="transparent" />
+                            </BarChart>
                         </ResponsiveContainer>
+                    </div>
+
+                    {/* SCROLLABLE CONTENT RIGHT */}
+                    <div
+                        ref={scrollContainerRef}
+                        className="flex-1 h-full overflow-x-auto overflow-y-hidden"
+                        style={{ scrollBehavior: 'smooth' }}
+                    >
+                        <div style={{ width: `${chartWidth}px`, height: '100%', minWidth: '100%' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={currentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.1} />
+                                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1} />
+                                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                    <XAxis dataKey={xDataKey} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9CA3AF' }} dy={10} minTickGap={30} />
+                                    {/* Hiden YAxis to maintain grid alignment structure if needed, but we use domain sync */}
+                                    <YAxis hide domain={[0, maxValue]} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        formatter={(value: any) => [`€${Number(value).toFixed(2)}`, '']}
+                                    />
+                                    <Area type="monotone" dataKey="income" stroke="#22c55e" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" name="Einnahmen" />
+                                    <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpenses)" name="Ausgaben" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
             </div>
