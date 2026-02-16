@@ -454,7 +454,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
     }, [expenses, budget, fixedCosts, accounts, incomeSources])
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-transparent rounded-t-3xl overflow-hidden shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 dark:border-white/5 pb-20 scale-[1.15] origin-top w-[87%] mx-auto">
+        <div className="flex flex-col h-full bg-white dark:bg-transparent rounded-t-3xl overflow-hidden shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 dark:border-white/5 pb-20 scale-[1.15] origin-top w-[86%] mx-auto overflow-x-hidden">
             {/* --- SCROLLABLE CONTENT --- */}
             <div className="flex-1 overflow-y-auto p-4 space-y-8">
                 <CashflowTab

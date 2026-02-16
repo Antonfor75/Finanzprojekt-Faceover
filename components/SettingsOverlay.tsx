@@ -617,8 +617,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- IMPORT WIZARD ---
     if (showImportWizard) {
         return (
-            <div className="fixed inset-0 z-[60] h-dvh w-screen bg-background overflow-y-auto animate-in fade-in slide-in-from-bottom duration-300 flex justify-center">
-                <div className="w-[87%] scale-[1.15] origin-top h-full">
+            <div className="fixed inset-0 z-[60] h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-bottom duration-300 flex justify-center">
+                <div className="w-[86%] scale-[1.15] origin-top h-full">
                     <ImportWizard
                         onClose={() => setShowImportWizard(false)}
                         onImportSuccess={() => {
@@ -633,8 +633,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- ACCOUNTS SUB-VIEW ---
     if (showAccounts) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto animate-in fade-in slide-in-from-right duration-300 flex justify-center">
-                <div className="w-[87%] scale-[1.15] origin-top min-h-full flex flex-col max-w-2xl mx-auto">
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right duration-300 flex justify-center">
+                <div className="w-[86%] scale-[1.15] origin-top min-h-full flex flex-col max-w-2xl mx-auto">
                     <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
                             <button onClick={() => setShowAccounts(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
@@ -872,8 +872,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- FIXED COSTS SUB-VIEW ---
     if (showFixedCosts) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto animate-in fade-in slide-in-from-right duration-300 flex justify-center">
-                <div className="w-[87%] scale-[1.15] origin-top min-h-full flex flex-col max-w-2xl mx-auto">
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right duration-300 flex justify-center">
+                <div className="w-[86%] scale-[1.15] origin-top min-h-full flex flex-col max-w-2xl mx-auto">
                     <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
                             <button onClick={() => setShowFixedCosts(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
@@ -996,8 +996,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- INCOME SUB-VIEW ---
     if (showIncome) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto animate-in fade-in slide-in-from-right duration-300 flex justify-center">
-                <div className="w-[87%] scale-[1.15] origin-top min-h-full flex flex-col max-w-2xl mx-auto">
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right duration-300 flex justify-center">
+                <div className="w-[86%] scale-[1.15] origin-top min-h-full flex flex-col max-w-2xl mx-auto">
                     <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
                             <button onClick={() => setShowIncome(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
@@ -1224,8 +1224,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
     // --- MAIN SETTINGS VIEW ---
     return (
-        <div className={`fixed inset-0 z-50 h-dvh w-screen bg-background animate-in fade-in slide-in-from-right duration-300 flex justify-center theme-${theme} pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto`} >
-            <div className={`w-[87%] scale-[1.15] origin-top min-h-full md:w-5/6 md:max-w-2xl flex flex-col md:border-x border-primary/10 dark:border-white/5 transition-colors duration-300`}>
+        <div className={`fixed inset-0 z-50 h-dvh w-screen bg-background animate-in fade-in slide-in-from-right duration-300 flex justify-center theme-${theme} pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none`} >
+            <div className={`w-[86%] scale-[1.15] origin-top min-h-full md:w-5/6 md:max-w-2xl flex flex-col md:border-x border-primary/10 dark:border-white/5 transition-colors duration-300`}>
                 {/* Header */}
                 <div className="p-4 md:p-8 flex items-center justify-between border-b border-primary/10 shrink-0 bg-transparent sticky top-0 z-20 backdrop-blur-xl">
                     <div className="flex items-center gap-3 md:gap-4">
