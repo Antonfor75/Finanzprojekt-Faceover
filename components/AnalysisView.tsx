@@ -454,19 +454,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
     }, [expenses, budget, fixedCosts, accounts, incomeSources])
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-transparent rounded-t-3xl overflow-hidden shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 dark:border-white/5 pb-20">
-            {/* --- HEADER --- */}
-            <div className="pt-2 px-2 shrink-0 bg-white dark:bg-transparent z-10">
-
-                {/* Upper Stats Row */}
-                <div className="flex justify-between items-end mb-4 px-2">
-                    <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Gesamt (Woche)</p>
-                        <h2 className="text-3xl font-black text-gray-800 dark:text-white">€{total.toFixed(2)}</h2>
-                    </div>
-                </div>
-            </div>
-
+        <div className="flex flex-col h-full bg-white dark:bg-transparent rounded-t-3xl overflow-hidden shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 dark:border-white/5 pb-20 scale-[1.15] origin-top w-[87%] mx-auto">
             {/* --- SCROLLABLE CONTENT --- */}
             <div className="flex-1 overflow-y-auto p-4 space-y-8">
                 <CashflowTab

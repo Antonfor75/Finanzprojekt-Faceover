@@ -550,61 +550,63 @@ export default function MobileDashboard({
 
             {/* === ENTRY VIEW === */}
             {view === 'entry' && (
-                <div className="grid grid-cols-12 grid-rows-[repeat(14,minmax(0,1fr))] w-full h-full">
+                <div className="w-full h-full flex justify-center overflow-hidden">
+                    <div className="grid grid-cols-12 grid-rows-[repeat(14,minmax(0,1fr))] w-[80%] h-full scale-[1.25] origin-top">
 
-                    {/* BEREICH 1: Verfügbares Budget (Top Center) */}
-                    <div className="row-start-1 row-span-2 col-start-2 col-span-10 flex flex-col justify-end items-center pb-2">
-                        <h2 className="font-bold uppercase tracking-widest text-center text-xs text-muted-foreground dark:text-gray-400 mb-1">
-                            Verfügbar (Woche)
-                        </h2>
-                        <div className={`font-bold tracking-tight leading-none text-center text-5xl ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            €{Math.floor(currentBalance)}<span className="text-2xl text-muted-foreground/60 dark:text-gray-500">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
-                        </div>
-                    </div>
-
-                    {/* BEREICH 2: Girokonto (formerly Sparkonto) */}
-                    <div className="row-start-3 row-span-3 col-start-2 col-span-10 flex flex-col justify-center gap-2">
-                        <div
-                            onClick={() => setShowGirokonto(true)}
-                            className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-white/20 dark:border-white/5 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer active:scale-95"
-                        >
-                            <div className="flex items-center justify-between z-10 relative">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 bg-pink-100 dark:bg-pink-900/30 rounded-xl text-pink-600 dark:text-pink-400">
-                                        <PiggyBank className="w-8 h-8" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Girokonto</p>
-                                        <p className={`text-2xl font-bold ${currentGiroBalance < 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-100'}`}>
-                                            €{currentGiroBalance.toFixed(2)}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="h-full flex flex-col justify-center items-end">
-                                    {currentGiroBalance > 0 && (
-                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
-                                            +Liquide
-                                        </span>
-                                    )}
-                                </div>
+                        {/* BEREICH 1: Verfügbares Budget (Top Center) */}
+                        <div className="row-start-1 row-span-2 col-start-2 col-span-10 flex flex-col justify-end items-center pb-2">
+                            <h2 className="font-bold uppercase tracking-widest text-center text-xs text-muted-foreground dark:text-gray-400 mb-1">
+                                Verfügbar (Woche)
+                            </h2>
+                            <div className={`font-bold tracking-tight leading-none text-center text-5xl ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                €{Math.floor(currentBalance)}<span className="text-2xl text-muted-foreground/60 dark:text-gray-500">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
                             </div>
-                            {/* Decorative Background for visuals */}
-                            <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-pink-500/10 rounded-full blur-2xl group-hover:bg-pink-500/20 transition-all"></div>
                         </div>
 
-                        {/* Optional small helper text or indicator */}
-                        <p className="text-[10px] text-center text-muted-foreground/50 italic">
-                            Automatisch berechnet (Einnahmen - Ausgaben)
-                        </p>
+                        {/* BEREICH 2: Girokonto (formerly Sparkonto) */}
+                        <div className="row-start-3 row-span-3 col-start-2 col-span-10 flex flex-col justify-center gap-2">
+                            <div
+                                onClick={() => setShowGirokonto(true)}
+                                className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-white/20 dark:border-white/5 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer active:scale-95"
+                            >
+                                <div className="flex items-center justify-between z-10 relative">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 bg-pink-100 dark:bg-pink-900/30 rounded-xl text-pink-600 dark:text-pink-400">
+                                            <PiggyBank className="w-8 h-8" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Girokonto</p>
+                                            <p className={`text-2xl font-bold ${currentGiroBalance < 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-100'}`}>
+                                                €{currentGiroBalance.toFixed(2)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="h-full flex flex-col justify-center items-end">
+                                        {currentGiroBalance > 0 && (
+                                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
+                                                +Liquide
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                {/* Decorative Background for visuals */}
+                                <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-pink-500/10 rounded-full blur-2xl group-hover:bg-pink-500/20 transition-all"></div>
+                            </div>
+
+                            {/* Optional small helper text or indicator */}
+                            <p className="text-[10px] text-center text-muted-foreground/50 italic">
+                                Automatisch berechnet (Einnahmen - Ausgaben)
+                            </p>
+                        </div>
+
+                        {/* BEREICH 3: Eingabe-Panel */}
+                        <div className="row-start-6 row-span-4 col-start-2 col-span-10 flex flex-col justify-evenly bg-white/90 dark:bg-gray-900/60 dark:backdrop-blur-md dark:border dark:border-white/10 backdrop-blur-md border border-white/40 rounded-2xl p-2 shadow-xl z-10 overflow-hidden">
+                            <AddExpenseForm accounts={initialAccounts} onRefresh={onUpdate} />
+                        </div>
+
+                        {/* BEREICH 4 & 5: Buttons removed in favor of Bottom Nav */}
+
                     </div>
-
-                    {/* BEREICH 3: Eingabe-Panel */}
-                    <div className="row-start-6 row-span-4 col-start-2 col-span-10 flex flex-col justify-evenly bg-white/90 dark:bg-gray-900/60 dark:backdrop-blur-md dark:border dark:border-white/10 backdrop-blur-md border border-white/40 rounded-2xl p-2 shadow-xl z-10 overflow-hidden">
-                        <AddExpenseForm accounts={initialAccounts} onRefresh={onUpdate} />
-                    </div>
-
-                    {/* BEREICH 4 & 5: Buttons removed in favor of Bottom Nav */}
-
                 </div>
             )}
 
@@ -627,19 +629,19 @@ export default function MobileDashboard({
                     <div className="row-start-2 row-span-1 col-start-4 col-span-6 flex justify-around items-center bg-white/30 backdrop-blur-xl border border-white/40 rounded-2xl shadow-sm p-1 z-10">
                         <button
                             onClick={() => setHistoryMode('calendar')}
-                            className={`flex-1 text-center py-2 rounded-xl font-bold transition-all duration-300 text-xs ${historyMode === 'calendar' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
+                            className={`flex-1 text-center py-3 rounded-xl font-bold transition-all duration-300 text-sm ${historyMode === 'calendar' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
                         >
                             Kalender
                         </button>
                         <button
                             onClick={() => setHistoryMode('list')}
-                            className={`flex-1 text-center py-2 rounded-xl font-bold transition-all duration-300 text-xs ${historyMode === 'list' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
+                            className={`flex-1 text-center py-3 rounded-xl font-bold transition-all duration-300 text-sm ${historyMode === 'list' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
                         >
                             Liste
                         </button>
                         <button
                             onClick={() => setHistoryMode('analysis')}
-                            className={`flex-1 text-center py-2 rounded-xl font-bold transition-all duration-300 text-xs ${historyMode === 'analysis' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
+                            className={`flex-1 text-center py-3 rounded-xl font-bold transition-all duration-300 text-sm ${historyMode === 'analysis' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
                         >
                             Analyse
                         </button>
