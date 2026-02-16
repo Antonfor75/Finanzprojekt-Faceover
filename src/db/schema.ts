@@ -8,6 +8,7 @@ export const expensesTable = pgTable('expenses', {
     amount: numeric('amount').notNull(),
     expense_date: text('expense_date'), // Stored as string/ISO in actions.ts
     category: text('category'),
+    account_id: integer('account_id'), // Optional link to an account
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 
@@ -16,6 +17,10 @@ export const fixedCostsTable = pgTable('fixed_costs', {
     created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     title: text('title').notNull(),
     amount: numeric('amount').notNull(),
+    account_id: integer('account_id'), // Optional link to an account (legacy?)
+    linked_account_id: integer('linked_account_id'), // Link to savings account for auto-generated costs
+    valid_from: timestamp('valid_from', { withTimezone: true }),
+    valid_to: timestamp('valid_to', { withTimezone: true }),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 
@@ -35,6 +40,9 @@ export const accountsTable = pgTable('accounts', {
     created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     name: text('name').notNull(),
     amount: numeric('amount').notNull(),
+    start_amount: numeric('start_amount'),
+    target_amount: numeric('target_amount'),
+    target_date: timestamp('target_date', { withTimezone: true }),
     months: integer('months').notNull(),
     type: text('type'), // 'distribution' | 'savings'
     processed_month: text('processed_month'),

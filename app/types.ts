@@ -5,6 +5,7 @@ export type Expense = {
     amount: number
     expense_date: string
     category?: string
+    account_id?: number | null
     user_id?: string
 }
 
@@ -21,6 +22,9 @@ export type Account = {
     id: number
     name: string
     amount: number
+    start_amount?: number // Initial value
+    target_amount?: number
+    target_date?: string
     months: number
     processed_month?: string
     type: 'distribution' | 'savings'
@@ -31,6 +35,10 @@ export type FixedCost = {
     id: number
     title: string
     amount: number
+    account_id?: number | null // Legacy / deprecated?
+    linked_account_id?: number | null // Link to savings account
+    valid_from?: string | null
+    valid_to?: string | null
     user_id?: string
 }
 

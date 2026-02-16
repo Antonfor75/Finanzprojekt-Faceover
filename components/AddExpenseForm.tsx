@@ -33,6 +33,8 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
         }
 
         try {
+            let accountIdForExpense: number | null = null
+
             // CHECK IF CATEGORY IS A SAVINGS ACCOUNT
             if (category.startsWith('account:')) {
                 const accountId = parseInt(category.split(':')[1])
@@ -67,6 +69,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     return
                 }
 
+                accountIdForExpense = accountId
                 // Rewrite category for display
                 category = `Konto: ${account.name}`
                 description = category // Ensure description matches if it was auto-set
@@ -80,10 +83,25 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                 return
             }
 
+            // Extract account ID if present (re-parse or use variable scope if possible, but simpler to parse again or reuse)
+            let finalAccountId = null
+            if (category.startsWith('Konto: ')) {
+                // We need the ID we just used. Ideally we should have declared it outside the if block or use a let.
+                // Let's refactor slightly to be cleaner
+            }
+            // Actually, we can just use a variable declared earlier
+
             const { error: insertError } = await supabase
                 .from('expenses')
                 .insert([
-                    { description, amount, expense_date, category, user_id: user.id }
+                    {
+                        description,
+                        amount,
+                        expense_date,
+                        category,
+                        user_id: user.id,
+                        account_id: accountIdForExpense
+                    }
                 ])
 
             if (insertError) {

@@ -222,6 +222,23 @@ export default function MobileDashboard({
     }
 
     const deleteExpenseLocal = async (id: number) => {
+        // 1. Get the expense to check for linked account
+        const { data: expense } = await supabase.from('expenses').select('*').eq('id', id).single()
+
+        if (expense?.account_id) {
+            // 2. Fetch account
+            const { data: account } = await supabase.from('accounts').select('*').eq('id', expense.account_id).single()
+            if (account) {
+                // 3. Refund the amount
+                const { error: refundError } = await supabase.from('accounts').update({
+                    amount: account.amount + Number(expense.amount)
+                }).eq('id', account.id)
+
+                if (refundError) console.error('Error refunding account:', refundError)
+            }
+        }
+
+        // 4. Delete the expense
         await supabase.from('expenses').delete().eq('id', id)
         onUpdate?.()
     }

@@ -1,8 +1,7 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, Plus, Trash2, Save, LogOut, Wallet, Download, Upload, ArrowDown, Calculator, LayoutDashboard, Moon, Sun, FileText } from 'lucide-react'
-import { startOfWeek, endOfWeek, isWithinInterval } from 'date-fns'
+import { ArrowLeft, Plus, Trash2, Save, LogOut, Wallet, Download, Upload, ArrowDown, Moon, Sun, FileText } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import ImportWizard from '@/components/ImportWizard'
@@ -27,8 +26,8 @@ type SettingsOverlayProps = {
 
 export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts = [], incomeSources = [], theme, setTheme, onLogout, onUpdate, expenses, isDarkMode, toggleDarkMode }: SettingsOverlayProps) {
     // const [budget, setBudget] = useState<string | number>(settings?.monthly_budget || 0) // REMOVED: Calculated dynamically now
-    const [settingsTab, setSettingsTab] = useState<'settings' | 'calculation'>('settings')
     const [showImportWizard, setShowImportWizard] = useState(false)
+    const [showFixedCosts, setShowFixedCosts] = useState(false)
 
     // Income Sources State
     const [showIncome, setShowIncome] = useState(false)
@@ -46,14 +45,44 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [newIncomeFrequency, setNewIncomeFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly')
 
     // Accounts State
+    // Accounts State
     const [showAccounts, setShowAccounts] = useState(false)
     const [newAccountName, setNewAccountName] = useState('')
-    const [newAccountAmount, setNewAccountAmount] = useState('')
-    const [newAccountMonths, setNewAccountMonths] = useState('')
+    const [newAccountAmount, setNewAccountAmount] = useState('') // Current Amount
+    const [newAccountStartAmount, setNewAccountStartAmount] = useState('') // Initial Amount (for savings)
+    const [newAccountTargetAmount, setNewAccountTargetAmount] = useState('') // Target Amount
+    const [newAccountTargetDate, setNewAccountTargetDate] = useState('') // Target Date
+    const [newAccountMonths, setNewAccountMonths] = useState('') // For distribution
     const [newAccountType, setNewAccountType] = useState<'distribution' | 'savings'>('distribution')
+
+    // Derived Weekly Rate for Savings (Display Only during creation)
+    const calculatedWeeklyRate = useMemo(() => {
+        if (newAccountType !== 'savings' || !newAccountTargetAmount || !newAccountTargetDate || !newAccountAmount) return null
+
+        const target = Number(newAccountTargetAmount)
+        const current = Number(newAccountAmount)
+        const targetDate = new Date(newAccountTargetDate)
+        const now = new Date()
+
+        if (targetDate <= now) return 0
+
+        const diffTime = Math.abs(targetDate.getTime() - now.getTime())
+        const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
+
+        if (diffWeeks <= 0) return 0
+
+        const needed = target - current
+        if (needed <= 0) return 0
+
+        return needed / diffWeeks
+    }, [newAccountType, newAccountTargetAmount, newAccountTargetDate, newAccountAmount])
+
 
     const [newCostTitle, setNewCostTitle] = useState('')
     const [newCostAmount, setNewCostAmount] = useState('')
+    const [newCostValidFrom, setNewCostValidFrom] = useState('')
+    const [newCostValidTo, setNewCostValidTo] = useState('')
+    // const [newCostAccountId, setNewCostAccountId] = useState<number | null>(null) // REMOVED
 
     // Calculated Budget
     const budget = useMemo(() => {
@@ -62,13 +91,27 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             const from = src.valid_from ? new Date(src.valid_from) : null
             const to = src.valid_to ? new Date(src.valid_to) : null
 
-            // Check if current date is within range
-            // We ignore time for the check, just compare dates
             if (from && now < from) return false
             if (to && now > to) return false
             return true
         }).reduce((sum, src) => sum + Number(src.amount), 0)
     }, [incomeSources])
+
+    // Filtered Fixed Costs (Active)
+    const activeFixedCosts = useMemo(() => {
+        const now = new Date()
+        return fixedCosts.filter(fc => {
+            const from = fc.valid_from ? new Date(fc.valid_from) : null
+            const to = fc.valid_to ? new Date(fc.valid_to) : null
+
+            if (from && now < from) return false
+            if (to && now > to) return false
+            return true
+        })
+    }, [fixedCosts])
+
+    const totalFixed = activeFixedCosts.reduce((acc, curr) => acc + Number(curr.amount), 0)
+    const available = Number(budget) - totalFixed
 
     const handleAddIncome = async () => {
         if (!newIncomeTitle || !newIncomeAmount) return
@@ -143,15 +186,33 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         const { error } = await supabase.from('fixed_costs').insert([{
             title: newCostTitle,
             amount: Number(newCostAmount),
+            valid_from: newCostValidFrom ? new Date(newCostValidFrom).toISOString() : new Date().toISOString(),
+            valid_to: newCostValidTo ? new Date(newCostValidTo).toISOString() : null,
+            // account_id: newCostAccountId, // REMOVED
             user_id: user.id
         }])
-        if (error) console.error(error)
+        if (error) {
+            console.error(error)
+            alert('Fehler beim Speichern: ' + error.message)
+        }
         else onUpdate?.()
         setNewCostTitle('')
         setNewCostAmount('')
+        setNewCostValidFrom('')
+        setNewCostValidTo('')
+        // setNewCostAccountId(null)
     }
 
     const handleDeleteCost = async (id: number) => {
+        // Check if it's a linked cost (from Savings)
+        const cost = fixedCosts.find(c => c.id === id)
+        if (cost?.linked_account_id) {
+            if (!confirm('Dieser Fixkosten-Eintrag ist mit einem Sparkonto verknüpft. Möchtest du ihn wirklich löschen? Dies stoppt die automatische Sparrate (das Konto bleibt erhalten).')) {
+                return
+            }
+            // Optional: Remove link from account? Or just let it be.
+        }
+
         const { error } = await supabase.from('fixed_costs').delete().eq('id', id)
         if (error) console.error(error)
         else onUpdate?.()
@@ -162,22 +223,154 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { alert('Nicht eingeloggt'); return }
 
-        const months = newAccountType === 'distribution' ? Number(newAccountMonths) : 0
-        const { error } = await supabase.from('accounts').insert([{
+        let months = 0
+        let accountData: any = {
             name: newAccountName,
             amount: Number(newAccountAmount),
-            months,
             type: newAccountType,
             user_id: user.id
-        }])
-        if (error) console.error(error)
-        else onUpdate?.()
+        }
+
+        if (newAccountType === 'distribution') {
+            months = Number(newAccountMonths)
+            accountData.months = months
+        } else {
+            // Savings Logic
+            // accountData.start_amount = newAccountStartAmount ? Number(newAccountStartAmount) : Number(newAccountAmount) // REMOVED
+            accountData.target_amount = newAccountTargetAmount ? Number(newAccountTargetAmount) : null
+            accountData.target_date = newAccountTargetDate ? new Date(newAccountTargetDate).toISOString() : null
+            accountData.months = 0 // Irrelevant for savings
+        }
+
+        // 1. Create Account
+        const { data: newAccount, error } = await supabase.from('accounts').insert([accountData]).select().single()
+
+        if (error) {
+            console.error(error)
+            return
+        }
+
+        // 2. If Savings & Rate Calculated -> Create Fixed Cost
+        if (newAccountType === 'savings' && calculatedWeeklyRate && calculatedWeeklyRate > 0) {
+            const { error: fcError } = await supabase.from('fixed_costs').insert([{
+                title: `Sparziel: ${newAccountName}`,
+                amount: calculatedWeeklyRate * 4.33,
+                valid_from: new Date().toISOString(),
+                valid_to: newAccountTargetDate ? new Date(newAccountTargetDate).toISOString() : null,
+                linked_account_id: newAccount.id,
+                user_id: user.id
+            }])
+            if (fcError) console.error('Error creating linked fixed cost:', fcError)
+        }
+
+        onUpdate?.()
         setNewAccountName('')
         setNewAccountAmount('')
         setNewAccountMonths('')
+        setNewAccountTargetAmount('')
+        setNewAccountTargetDate('')
+        setNewAccountStartAmount('')
+    }
+
+    const [editingAccountId, setEditingAccountId] = useState<number | null>(null)
+    const [editAccountName, setEditAccountName] = useState('')
+    const [editAccountAmount, setEditAccountAmount] = useState('')
+    const [editAccountTargetAmount, setEditAccountTargetAmount] = useState('')
+    const [editAccountTargetDate, setEditAccountTargetDate] = useState('')
+    const [editAccountMonths, setEditAccountMonths] = useState('')
+
+    const handleStartEditAccount = (acc: Account) => {
+        setEditingAccountId(acc.id)
+        setEditAccountName(acc.name)
+        setEditAccountAmount(acc.amount.toString())
+        setEditAccountTargetAmount(acc.target_amount ? acc.target_amount.toString() : '')
+        setEditAccountTargetDate(acc.target_date ? new Date(acc.target_date).toISOString().split('T')[0] : '')
+        setEditAccountMonths(acc.months ? acc.months.toString() : '')
+    }
+
+    const handleSaveEditAccount = async () => {
+        if (!editingAccountId || !editAccountName || !editAccountAmount) return
+
+        const currentAccount = accounts.find(a => a.id === editingAccountId)
+        if (!currentAccount) return
+
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        let updates: any = {
+            name: editAccountName,
+            amount: Number(editAccountAmount)
+        }
+
+        if (currentAccount.type === 'distribution') {
+            updates.months = Number(editAccountMonths)
+        } else {
+            updates.target_amount = editAccountTargetAmount ? Number(editAccountTargetAmount) : null
+            updates.target_date = editAccountTargetDate ? new Date(editAccountTargetDate).toISOString() : null
+        }
+
+        // 1. Update Account
+        const { error } = await supabase.from('accounts').update(updates).eq('id', editingAccountId)
+        if (error) {
+            console.error(error)
+            alert('Fehler beim Speichern')
+            return
+        }
+
+        // 2. Sync Linked Fixed Cost (if Savings)
+        if (currentAccount.type === 'savings') {
+            const target = updates.target_amount
+            const date = updates.target_date
+            const current = updates.amount
+
+            // Calculate new rate
+            let newRate = 0
+            if (target && date) {
+                const targetDate = new Date(date)
+                const now = new Date()
+                if (targetDate > now) {
+                    const diffTime = Math.abs(targetDate.getTime() - now.getTime())
+                    const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
+                    const needed = target - current
+                    if (diffWeeks > 0 && needed > 0) {
+                        newRate = needed / diffWeeks
+                    }
+                }
+            }
+
+            // Update or Delete existing linked cost
+            if (newRate > 0) {
+                // Check if exists
+                const existing = fixedCosts.find(fc => fc.linked_account_id === editingAccountId)
+                const costData = {
+                    title: `Sparziel: ${editAccountName}`,
+                    amount: newRate * 4.33,
+                    valid_to: date,
+                    linked_account_id: editingAccountId,
+                    user_id: user.id
+                }
+
+                if (existing) {
+                    const { error } = await supabase.from('fixed_costs').update(costData).eq('id', existing.id)
+                    if (error) console.error('Error updating linked cost', error)
+                } else {
+                    const { error } = await supabase.from('fixed_costs').insert([{ ...costData, valid_from: new Date().toISOString() }])
+                    if (error) console.error('Error creating linked cost', error)
+                }
+            } else {
+                // If no rate/target anymore, remove linked cost
+                const { error } = await supabase.from('fixed_costs').delete().eq('linked_account_id', editingAccountId)
+                if (error) console.error('Error removing linked cost', error)
+            }
+        }
+
+        onUpdate?.()
+        setEditingAccountId(null)
     }
 
     const handleDeleteAccount = async (id: number) => {
+        if (!confirm('Möchtest du dieses Konto wirklich löschen?')) return
+
         const { error } = await supabase
             .from('accounts')
             .delete()
@@ -186,6 +379,10 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         if (error) {
             console.error('Error deleting account:', error)
         } else {
+            // Also delete linked fixed costs
+            const { error: fcError } = await supabase.from('fixed_costs').delete().eq('linked_account_id', id)
+            if (fcError) console.error('Error deleting linked fixed cost', fcError)
+
             onUpdate?.()
         }
     }
@@ -232,6 +429,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         onUpdate?.()
     }
 
+
     const handleDownloadFullReport = () => {
         const doc = new jsPDF()
         const totalFixed = fixedCosts.reduce((acc, curr) => acc + Number(curr.amount), 0)
@@ -255,7 +453,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             ['Monatsbudget (Einnahmen)', `€${Number(budget).toFixed(2)}`],
             ['Fixkosten Gesamt', `€${totalFixed.toFixed(2)}`],
             ['Verfügbar (Monat)', `€${available.toFixed(2)}`],
-            ['Verfügbar (Woche)', `€${(available / 4).toFixed(2)}`]
+            ['Verfügbar (Woche)', `€${(available / 4.33).toFixed(2)}`]
         ]
 
         autoTable(doc, {
@@ -346,135 +544,74 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         // Format: BACKUP_DATA_START:{...}:BACKUP_DATA_END
         const backupData = {
             monthly_budget: budget,
-            fixedCosts: fixedCosts.map(fc => ({ title: fc.title, amount: fc.amount })), // Exclude IDs to be safe/fresh on restore
-            accounts: accounts.map(acc => ({ name: acc.name, amount: acc.amount, months: acc.months, type: acc.type })),
+            fixedCosts: fixedCosts.map(fc => ({ title: fc.title, amount: fc.amount, valid_from: fc.valid_from, valid_to: fc.valid_to, linked_account_id: fc.linked_account_id })),
+            accounts: accounts.map(acc => ({ name: acc.name, amount: acc.amount, months: acc.months, type: acc.type, target_amount: acc.target_amount, target_date: acc.target_date, start_amount: acc.start_amount })),
             expenses: expenses.map(e => ({ description: e.description, amount: e.amount, category: e.category, expense_date: e.expense_date || e.created_at })),
+            incomeSources: incomeSources.map(inc => ({ title: inc.title, amount: inc.amount, frequency: inc.frequency, valid_from: inc.valid_from, valid_to: inc.valid_to })),
             timestamp: Date.now()
         }
         const backupString = `BACKUP_DATA_START:${JSON.stringify(backupData)}:BACKUP_DATA_END`
 
         doc.addPage()
-        doc.setFontSize(1) // Tiny font
-        doc.setTextColor(255, 255, 255) // White/Invisible
-        // Remove maxWidth to ensure it's a single long string without pdf-forced line breaks
-        doc.text(backupString, 10, 10)
+        doc.setFontSize(8)
+        doc.setTextColor(200, 200, 200)
+        doc.text(backupString, 10, 10, { maxWidth: 190 })
 
-        doc.save('finanzuebersicht_backup.pdf')
+        doc.save(`Finanzen_Report_${new Date().toISOString().split('T')[0]}.pdf`)
     }
 
-    const handleRestoreBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
+    const handleRestoreBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0]
         if (!file) return
 
-        if (!confirm('Achtung: Dies wird ALLE deine aktuellen Daten (Budget, Fixkosten, Konten UND AUSGABEN) löschen und mit dem Backup überschreiben. Fortfahren?')) {
-            e.target.value = '' // reset input
-            return
-        }
+        const reader = new FileReader()
+        reader.onload = async (e) => {
+            const text = e.target?.result as string
 
-        try {
-            const buffer = await file.arrayBuffer()
+            const startTag = 'BACKUP_DATA_START:'
+            const endTag = ':BACKUP_DATA_END'
 
-            // Lazy load pdfjs
-            const pdfjsLib = await import('pdfjs-dist')
-            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
+            const startIndex = text.indexOf(startTag)
+            const endIndex = text.indexOf(endTag)
 
-            const pdf = await pdfjsLib.getDocument(buffer).promise
-            let fullText = ''
-
-            // Extract text from all pages
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i)
-                const textContent = await page.getTextContent()
-                const pageText = textContent.items.map((item: any) => item.str).join('')
-                fullText += pageText
-            }
-
-            // Find JSON data - use [\s\S] to match across newlines if any occurred
-            const match = fullText.match(/BACKUP_DATA_START:([\s\S]*?):BACKUP_DATA_END/)
-
-            if (!match || !match[1]) {
-                console.warn('Backup markers not found in:', fullText.slice(-200)) // Log last chars
-                alert('Keine gültigen Backup-Daten gefunden. \n\nHast du dieses PDF ERST JETZT neu heruntergeladen? Alte PDFs enthalten diese Daten noch nicht.')
+            if (startIndex === -1 || endIndex === -1) {
+                alert('Keine gültigen Backup-Daten gefunden.')
                 return
             }
 
-            const data = JSON.parse(match[1])
-            console.log('Restoring data:', data)
+            try {
+                const jsonStr = text.substring(startIndex + startTag.length, endIndex)
+                const data = JSON.parse(jsonStr)
 
-            // 1. Update Settings (Budget)
-            if (data.monthly_budget !== undefined) {
-                await supabase.from('settings').update({ monthly_budget: data.monthly_budget }).eq('id', settings.id)
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
+
+                if (confirm('Achtung: Dies wird alle aktuellen Daten löschen und durch das Backup ersetzen. Fortfahren?')) {
+                    // 1. Delete all existing
+                    await supabase.from('expenses').delete().neq('id', 0)
+                    await supabase.from('fixed_costs').delete().neq('id', 0)
+                    await supabase.from('accounts').delete().neq('id', 0)
+                    await supabase.from('income_sources').delete().neq('id', 0)
+
+                    // 2. Insert new (Simplified)
+                    if (data.incomeSources?.length) await supabase.from('income_sources').insert(data.incomeSources.map((x: any) => ({ ...x, user_id: user.id })))
+                    if (data.accounts?.length) await supabase.from('accounts').insert(data.accounts.map((x: any) => ({ ...x, user_id: user.id })))
+                    if (data.fixedCosts?.length) await supabase.from('fixed_costs').insert(data.fixedCosts.map((x: any) => ({ ...x, user_id: user.id })))
+                    if (data.expenses?.length) await supabase.from('expenses').insert(data.expenses.map((x: any) => ({ ...x, user_id: user.id })))
+
+                    onUpdate?.()
+                    alert('Backup erfolgreich wiederhergestellt!')
+                }
+
+            } catch (err) {
+                console.error(err)
+                alert('Fehler beim Lesen des Backups')
             }
-
-            // Get Current User ID for all inserts
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error('Nicht eingeloggt')
-
-            // 2. Clear old Fixed Costs
-            const { error: delFcError } = await supabase.from('fixed_costs').delete().neq('id', -1) // Delete all
-            if (delFcError) throw delFcError
-
-            // 3. Insert new Fixed Costs - force user_id
-            if (data.fixedCosts && data.fixedCosts.length > 0) {
-                const costsWithUser = data.fixedCosts.map((fc: any) => ({ ...fc, user_id: user.id }))
-                const { error: insFcError } = await supabase.from('fixed_costs').insert(costsWithUser)
-                if (insFcError) throw insFcError
-            }
-
-            // 4. Clear old Accounts
-            const { error: delAccError } = await supabase.from('accounts').delete().neq('id', -1)
-            if (delAccError) throw delAccError
-
-            // 5. Insert new Accounts - force user_id
-            if (data.accounts && data.accounts.length > 0) {
-                const accsWithUser = data.accounts.map((acc: any) => ({ ...acc, user_id: user.id }))
-                const { error: insAccError } = await supabase.from('accounts').insert(accsWithUser)
-                if (insAccError) throw insAccError
-            }
-
-            // 6. Clear & Restore Expenses
-            const { error: delExpError } = await supabase.from('expenses').delete().neq('id', -1)
-            if (delExpError) throw delExpError
-
-            if (data.expenses && data.expenses.length > 0) {
-                // Insert in chunks to avoid payload too large if many expenses
-                const expsWithUser = data.expenses.map((e: any) => ({ ...e, user_id: user.id }))
-                const { error: insExpError } = await supabase.from('expenses').insert(expsWithUser)
-                if (insExpError) throw insExpError
-            }
-
-            alert('Backup erfolgreich wiederhergestellt!')
-            onUpdate?.() // Refresh parent
-            onBack?.() // Close overlay
-
-        } catch (err) {
-            console.error('Restore error:', err)
-            alert('Fehler beim Wiederherstellen: ' + (err as Error).message)
-        } finally {
-            e.target.value = '' // reset input
         }
+        reader.readAsText(file) // Try reading as text
     }
 
-    const totalFixed = fixedCosts.reduce((acc, curr) => acc + Number(curr.amount), 0)
-    const available = Number(budget) - totalFixed
-
-    // --- CALCULATION LOGIC ---
-    const weeklyGross = Number(budget) / 4.33
-    const weeklyFixed = totalFixed / 4.33
-
-    const currentWeekExpenses = useMemo(() => {
-        const now = new Date()
-        const start = startOfWeek(now, { weekStartsOn: 1 })
-        const end = endOfWeek(now, { weekStartsOn: 1 })
-        return expenses.filter(e => {
-            const d = new Date(e.expense_date || e.created_at)
-            return isWithinInterval(d, { start, end })
-        }).reduce((acc, curr) => acc + Number(curr.amount), 0)
-    }, [expenses])
-
-    const weeklyNet = weeklyGross - weeklyFixed
-    const weeklySavings = weeklyNet - currentWeekExpenses
-    const projectedMonthlySavings = weeklySavings * 4.33
+    // --- RENDER HELPERS ---
 
     // --- IMPORT WIZARD ---
     if (showImportWizard) {
@@ -491,8 +628,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- ACCOUNTS SUB-VIEW ---
     if (showAccounts) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen overflow-y-auto bg-black/20 backdrop-blur-sm animate-in fade-in slide-in-from-right duration-300 flex justify-center">
-                <div className="min-h-full w-5/6 bg-background/80 backdrop-blur-md shadow-2xl flex flex-col border-x border-white/20">
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto animate-in fade-in slide-in-from-right duration-300">
+                <div className="min-h-full flex flex-col max-w-2xl mx-auto">
                     <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
                             <button onClick={() => setShowAccounts(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
@@ -519,7 +656,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                     onClick={() => setNewAccountType('savings')}
                                     className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${newAccountType === 'savings' ? 'bg-white shadow-sm text-black' : 'text-gray-500'}`}
                                 >
-                                    Girokonto
+                                    Sparkonto
                                 </button>
                             </div>
 
@@ -533,7 +670,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                 <div className="flex gap-3">
                                     <input
                                         type="number"
-                                        placeholder="Betrag (€)"
+                                        placeholder="Aktueller Betrag (€)"
                                         value={newAccountAmount}
                                         onChange={(e) => setNewAccountAmount(e.target.value)}
                                         className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none"
@@ -548,6 +685,40 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         />
                                     )}
                                 </div>
+
+                                {newAccountType === 'savings' && (
+                                    <div className="space-y-3 pt-2 border-t border-gray-200">
+                                        <div className="flex gap-3">
+                                            <div className="flex-1">
+                                                <label className="text-xs text-gray-500 ml-2">Zielbetrag (€) (Optional)</label>
+                                                <input
+                                                    type="number"
+                                                    placeholder="Ziel (€)"
+                                                    value={newAccountTargetAmount}
+                                                    onChange={(e) => setNewAccountTargetAmount(e.target.value)}
+                                                    className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none"
+                                                />
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="text-xs text-gray-500 ml-2">Zieldatum (Optional)</label>
+                                                <input
+                                                    type="date"
+                                                    value={newAccountTargetDate}
+                                                    onChange={(e) => setNewAccountTargetDate(e.target.value)}
+                                                    className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {calculatedWeeklyRate !== null && calculatedWeeklyRate > 0 && (
+                                            <div className="p-3 bg-green-50 text-green-700 rounded-xl text-sm font-bold border border-green-100 flex justify-between items-center">
+                                                <span>Wöchentliche Sparrate:</span>
+                                                <span>€{calculatedWeeklyRate.toFixed(2)}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 <button
                                     onClick={handleAddAccount}
                                     disabled={!newAccountName || !newAccountAmount || (newAccountType === 'distribution' && !newAccountMonths)}
@@ -565,39 +736,116 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                 <p className="text-gray-400 text-center py-8">Noch keine Konten angelegt.</p>
                             ) : (
                                 <div className="space-y-3">
-                                    {accounts.map(acc => (
-                                        <div
-                                            key={acc.id}
-                                            className={`p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group cursor-pointer hover:bg-gray-50 bg-white`}
-                                            onClick={() => {
-                                                if (acc.type === 'savings') {
-                                                    handleTransferFromSavings(acc)
-                                                }
-                                            }}
-                                        >
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <p className="font-bold text-gray-800">{acc.name}</p>
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${acc.type === 'savings' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                        {acc.type === 'savings' ? 'Giro' : 'Aufteilung'}
-                                                    </span>
+                                    {accounts.map(acc => {
+                                        const isEditing = editingAccountId === acc.id
+
+                                        if (isEditing) {
+                                            return (
+                                                <div key={acc.id} className="p-4 bg-white rounded-xl border-2 border-blue-500 shadow-lg space-y-3">
+                                                    <div className="space-y-3">
+                                                        <input
+                                                            value={editAccountName}
+                                                            onChange={e => setEditAccountName(e.target.value)}
+                                                            className="w-full px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                            placeholder="Name"
+                                                        />
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="number"
+                                                                value={editAccountAmount}
+                                                                onChange={e => setEditAccountAmount(e.target.value)}
+                                                                className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                                placeholder="Betrag"
+                                                            />
+                                                            {acc.type === 'distribution' && (
+                                                                <input
+                                                                    type="number"
+                                                                    value={editAccountMonths}
+                                                                    onChange={e => setEditAccountMonths(e.target.value)}
+                                                                    className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                                    placeholder="Monate"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                        {acc.type === 'savings' && (
+                                                            <div className="flex gap-2">
+                                                                <input
+                                                                    type="number"
+                                                                    value={editAccountTargetAmount}
+                                                                    onChange={e => setEditAccountTargetAmount(e.target.value)}
+                                                                    className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                                    placeholder="Ziel (€)"
+                                                                />
+                                                                <input
+                                                                    type="date"
+                                                                    value={editAccountTargetDate}
+                                                                    onChange={e => setEditAccountTargetDate(e.target.value)}
+                                                                    className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        <div className="flex justify-end gap-2 pt-2">
+                                                            <button onClick={() => setEditingAccountId(null)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Abbrechen</button>
+                                                            <button onClick={handleSaveEditAccount} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-sm">Speichern</button>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex gap-2 text-xs text-gray-500 font-medium">
-                                                    <span className="bg-gray-100 px-2 py-0.5 rounded">€{acc.amount.toFixed(2)}</span>
-                                                    {acc.type === 'distribution' && <span className="bg-gray-100 px-2 py-0.5 rounded">{acc.months} Monate übrig</span>}
+                                            )
+                                        }
+
+                                        return (
+                                            <div
+                                                key={acc.id}
+                                                className={`p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group cursor-pointer hover:bg-gray-50 bg-white`}
+                                                onClick={() => {
+                                                    if (acc.type === 'savings') {
+                                                        handleTransferFromSavings(acc)
+                                                    }
+                                                }}
+                                            >
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-bold text-gray-800">{acc.name}</p>
+                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${acc.type === 'savings' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                            {acc.type === 'savings' ? 'Sparkonto' : 'Aufteilung'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex gap-2 text-xs text-gray-500 font-medium mt-1">
+                                                        <span className="bg-gray-100 px-2 py-0.5 rounded">€{acc.amount.toFixed(2)}</span>
+                                                        {acc.type === 'distribution' && <span className="bg-gray-100 px-2 py-0.5 rounded">{acc.months} Monate übrig</span>}
+                                                        {acc.type === 'savings' && acc.target_amount && (
+                                                            <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-100">
+                                                                Ziel: €{acc.target_amount} bis {acc.target_date ? new Date(acc.target_date).toLocaleDateString() : '?'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {/* Progress Bar for Savings */}
+                                                    {acc.type === 'savings' && acc.target_amount && (
+                                                        <div className="mt-2 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-green-500 rounded-full"
+                                                                style={{ width: `${Math.min(100, (acc.amount / Number(acc.target_amount)) * 100)}%` }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={() => handleStartEditAccount(acc)}
+                                                        className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    >
+                                                        <FileText className="w-5 h-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteAccount(acc.id)}
+                                                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    handleDeleteAccount(acc.id)
-                                                }}
-                                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -605,7 +853,132 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         {/* Info Box */}
                         <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
                             <p className="text-xs text-blue-700 leading-relaxed">
-                                💡 Das Guthaben dieser Konten wird automatisch über die angegebene Anzahl an Monaten auf dein monatliches Budget aufgeteilt.
+                                <b>Aufteilung:</b> Guthaben wird monatlich ausgezahlt.<br />
+                                <b>Sparkonto:</b> Setze ein Sparziel. Eine automatische Fixkoste wird erstellt, um das Ziel zu erreichen.
+                            </p>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // --- FIXED COSTS SUB-VIEW ---
+    if (showFixedCosts) {
+        return (
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto animate-in fade-in slide-in-from-right duration-300">
+                <div className="min-h-full flex flex-col max-w-2xl mx-auto">
+                    <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setShowFixedCosts(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+                                <ArrowLeft className="w-8 h-8" />
+                            </button>
+                            <h1 className="text-2xl font-bold text-gray-800">Fixkosten Verwalten</h1>
+                        </div>
+                    </div>
+
+                    <div className="p-8 space-y-8 flex-1 pb-20">
+                        {/* Add New Fixed Cost */}
+                        <div className="bg-red-50/50 p-6 rounded-2xl border border-red-100/50 space-y-4">
+                            <h3 className="font-bold text-gray-800">Neue Fixkosten hinzufügen</h3>
+                            <div className="space-y-3">
+                                <div className="flex gap-2">
+                                    <input
+                                        placeholder="Titel"
+                                        value={newCostTitle}
+                                        onChange={(e) => setNewCostTitle(e.target.value)}
+                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none"
+                                    />
+                                    <input
+                                        type="number"
+                                        placeholder="€ (Monatlich)"
+                                        value={newCostAmount}
+                                        onChange={(e) => setNewCostAmount(e.target.value)}
+                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none"
+                                    />
+                                </div>
+                                {/* Date Range */}
+                                <div className="flex gap-2">
+                                    <div className="flex-1">
+                                        <label className="text-xs text-gray-500 ml-2">Gültig ab</label>
+                                        <input
+                                            type="date"
+                                            value={newCostValidFrom}
+                                            onChange={(e) => setNewCostValidFrom(e.target.value)}
+                                            className="w-full h-12 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-sm"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="text-xs text-gray-500 ml-2">Gültig bis (Optional)</label>
+                                        <input
+                                            type="date"
+                                            value={newCostValidTo}
+                                            onChange={(e) => setNewCostValidTo(e.target.value)}
+                                            className="w-full h-12 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-sm"
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleAddCost}
+                                    disabled={!newCostTitle || !newCostAmount}
+                                    className="w-full h-12 px-6 bg-red-600 text-white hover:opacity-90 rounded-xl transition-colors shadow-md flex items-center justify-center font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Hinzufügen
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Fixed Costs List */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-gray-800">Deine Fixkosten</h3>
+                                <span className="text-xs font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full">
+                                    Summe: €{totalFixed.toFixed(2)}
+                                </span>
+                            </div>
+
+                            {activeFixedCosts.length === 0 ? (
+                                <p className="text-gray-400 text-center py-8">Noch keine aktiven Fixkosten.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {activeFixedCosts.map(cost => {
+                                        const isSavings = !!cost.linked_account_id
+                                        return (
+                                            <div key={cost.id} className={`flex items-center justify-between p-4 bg-white rounded-xl border shadow-sm group ${isSavings ? 'border-green-200 bg-green-50/30' : 'border-gray-100'}`}>
+                                                <div className="min-w-0 flex-1 mr-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-bold text-gray-800 truncate text-lg">{cost.title}</p>
+                                                        {isSavings && (
+                                                            <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">
+                                                                SPAREN
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-sm text-red-600 font-bold">-€{cost.amount.toFixed(2)}</p>
+                                                    <div className="text-[10px] text-gray-400 mt-1">
+                                                        {cost.valid_from && `Ab: ${new Date(cost.valid_from).toLocaleDateString()} `}
+                                                        {cost.valid_to && `- Bis: ${new Date(cost.valid_to).toLocaleDateString()}`}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteCost(cost.id)}
+                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Info Box */}
+                        <div className="p-4 bg-red-50 border border-red-100 rounded-xl">
+                            <p className="text-xs text-red-700 leading-relaxed">
+                                Diese Kosten werden automatisch von deinem monatlichen Budget abgezogen.
                             </p>
                         </div>
 
@@ -618,8 +991,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- INCOME SUB-VIEW ---
     if (showIncome) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen overflow-y-auto bg-black/20 backdrop-blur-sm animate-in fade-in slide-in-from-right duration-300 flex justify-center">
-                <div className="min-h-full w-5/6 bg-background/80 backdrop-blur-md shadow-2xl flex flex-col border-x border-white/20">
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto animate-in fade-in slide-in-from-right duration-300">
+                <div className="min-h-full flex flex-col max-w-2xl mx-auto">
                     <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
                             <button onClick={() => setShowIncome(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
@@ -648,16 +1021,6 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         onChange={(e) => setNewIncomeAmount(e.target.value)}
                                         className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none"
                                     />
-                                    <select
-                                        value={newIncomeFrequency}
-                                        onChange={(e: any) => setNewIncomeFrequency(e.target.value)}
-                                        className="h-14 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm font-medium text-gray-600"
-                                    >
-                                        <option value="monthly">Monatlich</option>
-                                        <option value="yearly">Jährlich</option>
-                                        <option value="weekly">Wöchentlich</option>
-                                        <option value="daily">Täglich</option>
-                                    </select>
                                     <select
                                         value={newIncomeFrequency}
                                         onChange={(e: any) => setNewIncomeFrequency(e.target.value)}
@@ -843,7 +1206,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         {/* Info Box */}
                         <div className="p-4 bg-green-50 border border-green-100 rounded-xl">
                             <p className="text-xs text-green-700 leading-relaxed">
-                                💡 Diese Einnahmen bilden dein monatliches Grundbudget.
+                                Diese Einnahmen bilden dein monatliches Grundbudget.
                             </p>
                         </div>
 
@@ -853,10 +1216,11 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         )
     }
 
+
     // --- MAIN SETTINGS VIEW ---
     return (
-        <div className={`fixed inset-0 z-50 h-dvh w-screen bg-black/20 backdrop-blur-sm animate-in fade-in slide-in-from-right duration-300 flex justify-center theme-${theme} pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
-            <div className={`h-full w-full md:w-5/6 md:max-w-2xl bg-background/90 dark:bg-gray-950/90 backdrop-blur-md shadow-2xl flex flex-col md:border-x border-primary/10 dark:border-white/5 overflow-y-auto transition-colors duration-300`}>
+        <div className={`fixed inset-0 z-50 h-dvh w-screen bg-background animate-in fade-in slide-in-from-right duration-300 flex justify-center theme-${theme} pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto`} >
+            <div className={`min-h-full w-full md:w-5/6 md:max-w-2xl flex flex-col md:border-x border-primary/10 dark:border-white/5 transition-colors duration-300`}>
                 {/* Header */}
                 <div className="p-4 md:p-8 flex items-center justify-between border-b border-primary/10 shrink-0 bg-transparent sticky top-0 z-20 backdrop-blur-xl">
                     <div className="flex items-center gap-3 md:gap-4">
@@ -892,255 +1256,128 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                     </div>
                 </div>
 
-                {/* TAB SWITCHER */}
-                <div className="px-4 md:px-10 mt-4">
-                    <div className="flex bg-gray-200/50 dark:bg-gray-800/50 p-1 rounded-xl">
+
+                <div className="p-4 md:p-10 space-y-6 md:space-y-8 flex-1 pb-32">
+
+                    {/* Monthly Budget Section */}
+                    {/* Income Sources Section */}
+                    <div className="bg-card dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 shadow-md rounded-2xl p-4 md:p-8 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg md:text-2xl font-bold text-foreground dark:text-gray-100">Monatliche Einnahmen</h3>
+                            <span className="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                                Summe: €{Number(budget).toFixed(2)}
+                            </span>
+                        </div>
+
                         <button
-                            onClick={() => setSettingsTab('settings')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all ${settingsTab === 'settings' ? 'bg-white dark:bg-gray-700 shadow-sm text-black dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                            onClick={() => setShowIncome(true)}
+                            className="w-full h-16 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors flex items-center justify-between px-6 font-bold group"
                         >
-                            <LayoutDashboard className="w-4 h-4" />
-                            Einstellungen
+                            <span className="flex items-center gap-3">
+                                <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                                <span className="text-base md:text-lg">Einnahmen verwalten</span>
+                            </span>
+                            <div className="flex flex-col items-end">
+                                <span className="text-sm font-bold">€{Number(budget).toFixed(2)}</span>
+                                <span className="text-[10px] opacity-70">{incomeSources.length} Quellen</span>
+                            </div>
                         </button>
+
+                        {/* Konten Button */}
                         <button
-                            onClick={() => setSettingsTab('calculation')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all ${settingsTab === 'calculation' ? 'bg-white dark:bg-gray-700 shadow-sm text-black dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                            onClick={() => setShowAccounts(true)}
+                            className="w-full h-16 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-between px-6 font-bold group mt-4"
                         >
-                            <Calculator className="w-4 h-4" />
-                            Rechenweg
+                            <span className="flex items-center gap-3">
+                                <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                                <span className="text-base md:text-lg">Konten verwalten</span>
+                            </span>
+                            <span className="text-xs bg-primary/20 text-primary px-3 py-1 rounded-full">
+                                {accounts.length} Aktiv
+                            </span>
                         </button>
                     </div>
+
+                    {/* Fixed Costs Section */}
+                    <div className="bg-card dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 shadow-md rounded-2xl p-4 md:p-8 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg md:text-2xl font-bold text-foreground dark:text-gray-100">Fixkosten</h3>
+                            <span className="text-xs font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full">
+                                Summe: €{totalFixed.toFixed(2)}
+                            </span>
+                        </div>
+
+                        <button
+                            onClick={() => setShowFixedCosts(true)}
+                            className="w-full h-16 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center justify-between px-6 font-bold group"
+                        >
+                            <span className="flex items-center gap-3">
+                                <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                                <span className="text-base md:text-lg">Fixkosten verwalten</span>
+                            </span>
+                            <div className="flex flex-col items-end">
+                                <span className="text-sm font-bold">€{totalFixed.toFixed(2)}</span>
+                                <span className="text-[10px] opacity-70">{fixedCosts.length} Posten</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    {/* Design Section */}
+                    <div className="bg-card shadow-md rounded-2xl p-4 md:p-8 space-y-4">
+                        <h3 className="text-lg md:text-2xl font-bold text-foreground">Design</h3>
+                        <div className="w-full">
+                            <select
+                                value={theme}
+                                onChange={(e) => setTheme(e.target.value)}
+                                className="w-full h-16 text-center border-none shadow-sm rounded-xl bg-muted/30 outline-none focus:ring-2 focus:ring-primary/50 appearance-none font-bold text-foreground text-lg cursor-pointer"
+                            >
+                                <option value="white">Papier Weiß </option>
+                                <option value="pink">Rosa </option>
+                                <option value="blue">Blau </option>
+                                <option value="green">Grün </option>
+                                <option value="yellow">Gelb </option>
+                            </select>
+                        </div>
+
+                        {/* Dark Mode Toggle */}
+                        <button
+                            onClick={toggleDarkMode}
+                            className={`w-full h-16 rounded-xl flex items-center justify-between px-6 font-bold transition-all shadow-sm border-2 ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'}`}
+                        >
+                            <span className="flex items-center gap-3">
+                                {isDarkMode ? <Moon className="w-6 h-6 text-blue-400" /> : <Sun className="w-6 h-6 text-orange-400" />}
+                                <span className="text-lg">Dark Mode</span>
+                            </span>
+                            <div className={`w-12 h-7 rounded-full relative transition-colors ${isDarkMode ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${isDarkMode ? 'left-6' : 'left-1'}`}></div>
+                            </div>
+                        </button>
+                    </div>
+
+                    {/* Summary */}
+                    <div className="p-6 bg-primary/5 border border-primary/10 rounded-2xl shadow-sm">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm text-muted-foreground font-medium">Verfügbar nach Fixkosten</span>
+                            <span className="text-xl font-bold text-primary">€{available.toFixed(2)}</span>
+                        </div>
+                        <div className="h-px bg-primary/10 w-full my-2"></div>
+                        <div className="flex justify-between items-center mt-2">
+                            <span className="text-sm text-primary/80 font-bold uppercase tracking-wide">Wöchentliches Budget</span>
+                            <span className="text-2xl font-extrabold text-primary">€{(available / 4.33).toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    {/* Logout Button */}
+                    <button
+                        onClick={onLogout}
+                        className="w-full border-2 border-red-500 text-red-500 font-bold py-3 rounded-xl hover:bg-red-50 transition flex items-center justify-center gap-2 mb-8"
+                    >
+                        <LogOut className="w-6 h-6" />
+                        Abmelden
+                    </button>
                 </div>
-
-                {settingsTab === 'calculation' ? (
-                    <div className="p-4 md:p-10 pb-32 space-y-8 animate-in fade-in zoom-in-95 duration-300">
-                        {/* 1. Monthly Income */}
-                        <div className="flex flex-col items-center">
-                            <div className="bg-blue-100 text-blue-800 p-4 rounded-xl font-bold mb-2 shadow-sm text-center w-full max-w-xs">
-                                <div className="text-xs uppercase tracking-wide opacity-70 mb-1">Monatsbudget</div>
-                                <div className="text-2xl">€{Number(budget).toFixed(2)}</div>
-                            </div>
-                            <div className="flex flex-col items-center text-gray-400 my-1">
-                                <ArrowDown className="w-6 h-6" />
-                                <span className="text-xs font-mono font-bold bg-white px-2 py-0.5 rounded border border-gray-100 mb-1">÷ 4.33</span>
-                                <ArrowDown className="w-6 h-6" />
-                            </div>
-                        </div>
-
-                        {/* 2. Weekly Gross */}
-                        <div className="flex flex-col items-center">
-                            <div className="bg-white border-2 border-blue-100 text-gray-800 p-4 rounded-xl font-bold mb-4 shadow-sm text-center w-full max-w-xs">
-                                <div className="text-xs uppercase tracking-wide opacity-50 mb-1">Wochenbudget (Brutto)</div>
-                                <div className="text-xl">€{weeklyGross.toFixed(2)}</div>
-                            </div>
-
-                            {/* Branching */}
-                            <div className="w-full max-w-md flex justify-between relative">
-                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center border border-white z-10 text-xs font-bold text-gray-500">-</div>
-                                <div className="w-1/2 border-t-2 border-r-2 border-gray-200 h-8 rounded-tr-xl absolute left-0 top-4 -translate-y-full transform -scale-x-100"></div>
-                                <div className="w-1/2 border-t-2 border-l-2 border-gray-200 h-8 rounded-tl-xl absolute right-0 top-4 -translate-y-full"></div>
-                            </div>
-
-                            <div className="flex gap-4 w-full">
-                                {/* Left Branch: Fixed Costs */}
-                                <div className="flex-1 flex flex-col items-center space-y-2">
-                                    <div className="bg-red-50 border border-red-100 p-3 rounded-xl w-full text-center">
-                                        <div className="text-[10px] uppercase text-red-400 font-bold">Fixkosten (Wöchtl.)</div>
-                                        <div className="text-red-600 font-bold">€{weeklyFixed.toFixed(2)}</div>
-                                        <div className="text-[10px] text-gray-400 mt-1">(Monatlich €{totalFixed.toFixed(2)} ÷ 4.33)</div>
-                                    </div>
-                                </div>
-
-                                {/* Right Branch: Variable Costs */}
-                                <div className="flex-1 flex flex-col items-center space-y-2">
-                                    <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl w-full text-center">
-                                        <div className="text-[10px] uppercase text-orange-400 font-bold">Ausgaben (Aktuell)</div>
-                                        <div className="text-orange-600 font-bold">€{currentWeekExpenses.toFixed(2)}</div>
-                                        <div className="text-[10px] text-gray-400 mt-1">Laufende Woche</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 3. Result / Savings */}
-                        <div className="flex flex-col items-center pt-4">
-                            <div className="flex flex-col items-center text-gray-400 my-1">
-                                <ArrowDown className="w-6 h-6" />
-                                <span className="text-xs font-bold text-gray-500">=</span>
-                                <ArrowDown className="w-6 h-6" />
-                            </div>
-
-                            <div className={`p-4 rounded-xl font-bold mb-2 shadow-sm text-center w-full max-w-xs ${weeklySavings >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                <div className="text-xs uppercase tracking-wide opacity-70 mb-1">Verbleibend / Erspart (Woche)</div>
-                                <div className="text-2xl">€{weeklySavings.toFixed(2)}</div>
-                            </div>
-
-                            <div className="flex flex-col items-center text-gray-400 my-1">
-                                <ArrowDown className="w-6 h-6" />
-                                <span className="text-xs font-mono font-bold bg-white px-2 py-0.5 rounded border border-gray-100 mb-1">× 4.33</span>
-                                <ArrowDown className="w-6 h-6" />
-                            </div>
-
-                            <div className={`border-2 border-dashed p-4 rounded-xl font-bold mb-2 text-center w-full max-w-xs ${weeklySavings >= 0 ? 'border-green-200 text-green-600' : 'border-red-200 text-red-600'}`}>
-                                <div className="text-xs uppercase tracking-wide opacity-70 mb-1">Hochrechnung (Monat)</div>
-                                <div className="text-xl">€{projectedMonthlySavings.toFixed(2)}</div>
-                            </div>
-                        </div>
-
-                    </div>
-                ) : (
-                    <div className="p-4 md:p-10 space-y-6 md:space-y-8 flex-1 pb-32">
-
-                        {/* Monthly Budget Section */}
-                        {/* Income Sources Section */}
-                        <div className="bg-card dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 shadow-md rounded-2xl p-4 md:p-8 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-lg md:text-2xl font-bold text-foreground dark:text-gray-100">Monatliche Einnahmen</h3>
-                                <span className="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full">
-                                    Summe: €{Number(budget).toFixed(2)}
-                                </span>
-                            </div>
-
-                            <button
-                                onClick={() => setShowIncome(true)}
-                                className="w-full h-16 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors flex items-center justify-between px-6 font-bold group"
-                            >
-                                <span className="flex items-center gap-3">
-                                    <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
-                                    <span className="text-base md:text-lg">Einnahmen verwalten</span>
-                                </span>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-sm font-bold">€{Number(budget).toFixed(2)}</span>
-                                    <span className="text-[10px] opacity-70">{incomeSources.length} Quellen</span>
-                                </div>
-                            </button>
-
-                            {/* Konten Button */}
-                            <button
-                                onClick={() => setShowAccounts(true)}
-                                className="w-full h-16 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-between px-6 font-bold group mt-4"
-                            >
-                                <span className="flex items-center gap-3">
-                                    <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
-                                    <span className="text-base md:text-lg">Konten verwalten</span>
-                                </span>
-                                <span className="text-xs bg-primary/20 text-primary px-3 py-1 rounded-full">
-                                    {accounts.length} Aktiv
-                                </span>
-                            </button>
-                        </div>
-
-                        {/* Fixed Costs Section */}
-                        <div className="bg-card dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 shadow-md rounded-2xl p-4 md:p-8 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-lg md:text-2xl font-bold text-foreground dark:text-gray-100">Fixkosten</h3>
-                                <span className="text-xs font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full">
-                                    Summe: €{totalFixed.toFixed(2)}
-                                </span>
-                            </div>
-
-                            {/* List */}
-                            <div className="space-y-3">
-                                {fixedCosts.map(cost => (
-                                    <div key={cost.id} className="flex items-center justify-between p-4 bg-background/50 dark:bg-gray-800/30 rounded-xl border border-primary/5 dark:border-white/5 group">
-                                        <div className="min-w-0 flex-1 mr-4">
-                                            <p className="font-bold text-foreground truncate text-base md:text-lg">{cost.title}</p>
-                                            <p className="text-xs text-muted-foreground font-medium">-€{cost.amount.toFixed(2)}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => handleDeleteCost(cost.id)}
-                                            className="p-3 text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                        >
-                                            <Trash2 className="w-6 h-6" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Add New */}
-                            <div className="bg-primary/5 p-4 rounded-xl border border-primary/5 flex flex-col gap-3">
-                                <span className="text-xs font-bold text-muted-foreground uppercase">Neue Fixkosten hinzufügen</span>
-                                <div className="flex gap-2">
-                                    <input
-                                        placeholder="Titel"
-                                        value={newCostTitle}
-                                        onChange={(e) => setNewCostTitle(e.target.value)}
-                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-muted/40 rounded-lg outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground/70"
-                                    />
-                                    <input
-                                        type="number"
-                                        placeholder="€"
-                                        value={newCostAmount}
-                                        onChange={(e) => setNewCostAmount(e.target.value)}
-                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-muted/40 rounded-lg outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground/70"
-                                    />
-                                    <button
-                                        onClick={handleAddCost}
-                                        className="h-14 w-14 bg-primary text-primary-foreground hover:opacity-90 rounded-lg transition-colors shadow-sm flex items-center justify-center"
-                                        title="Add"
-                                    >
-                                        <Plus className="w-8 h-8" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Design Section */}
-                        <div className="bg-card shadow-md rounded-2xl p-4 md:p-8 space-y-4">
-                            <h3 className="text-lg md:text-2xl font-bold text-foreground">Design</h3>
-                            <div className="w-full">
-                                <select
-                                    value={theme}
-                                    onChange={(e) => setTheme(e.target.value)}
-                                    className="w-full h-16 text-center border-none shadow-sm rounded-xl bg-muted/30 outline-none focus:ring-2 focus:ring-primary/50 appearance-none font-bold text-foreground text-lg cursor-pointer"
-                                >
-                                    <option value="white">Papier Weiß 📄</option>
-                                    <option value="pink">Rosa 🌸</option>
-                                    <option value="blue">Blau 🌊</option>
-                                    <option value="green">Grün 🌿</option>
-                                    <option value="yellow">Gelb ☀️</option>
-                                </select>
-                            </div>
-
-                            {/* Dark Mode Toggle */}
-                            <button
-                                onClick={toggleDarkMode}
-                                className={`w-full h-16 rounded-xl flex items-center justify-between px-6 font-bold transition-all shadow-sm border-2 ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'}`}
-                            >
-                                <span className="flex items-center gap-3">
-                                    {isDarkMode ? <Moon className="w-6 h-6 text-blue-400" /> : <Sun className="w-6 h-6 text-orange-400" />}
-                                    <span className="text-lg">Dark Mode</span>
-                                </span>
-                                <div className={`w-12 h-7 rounded-full relative transition-colors ${isDarkMode ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                                    <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${isDarkMode ? 'left-6' : 'left-1'}`}></div>
-                                </div>
-                            </button>
-                        </div>
-
-                        {/* Summary */}
-                        <div className="p-6 bg-primary/5 border border-primary/10 rounded-2xl shadow-sm">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm text-muted-foreground font-medium">Verfügbar nach Fixkosten</span>
-                                <span className="text-xl font-bold text-primary">€{available.toFixed(2)}</span>
-                            </div>
-                            <div className="h-px bg-primary/10 w-full my-2"></div>
-                            <div className="flex justify-between items-center mt-2">
-                                <span className="text-sm text-primary/80 font-bold uppercase tracking-wide">Wöchentliches Budget</span>
-                                <span className="text-2xl font-extrabold text-primary">€{(available / 4.33).toFixed(2)}</span>
-                            </div>
-                        </div>
-
-                        {/* Logout Button */}
-                        <button
-                            onClick={onLogout}
-                            className="w-full border-2 border-red-500 text-red-500 font-bold py-3 rounded-xl hover:bg-red-50 transition flex items-center justify-center gap-2 mb-8"
-                        >
-                            <LogOut className="w-6 h-6" />
-                            Abmelden
-                        </button>
-                    </div>
-                )}
             </div>
-        </div>
+        </div >
+
     )
 }
