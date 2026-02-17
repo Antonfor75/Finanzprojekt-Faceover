@@ -15,6 +15,7 @@ export default function AdminPage() {
     const [users, setUsers] = useState<any[]>([])
     const [isAdmin, setIsAdmin] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [dbSize, setDbSize] = useState<number>(0)
 
     // Form State
     const [newUserEmail, setNewUserEmail] = useState('')
@@ -67,6 +68,17 @@ export default function AdminPage() {
             clearTimeout(initTimeout)
         }
     }, [router])
+
+    useEffect(() => {
+        if (isAdmin) {
+            fetchDbSize()
+        }
+    }, [isAdmin])
+
+    const fetchDbSize = async () => {
+        const { data, error } = await supabase.rpc('get_db_size')
+        if (!error && data) setDbSize(data)
+    }
 
     const fetchUsers = async () => {
         try {
@@ -182,6 +194,41 @@ export default function AdminPage() {
                             <LogOut className="w-4 h-4" />
                             Logout
                         </button>
+                    </div>
+                </div>
+
+                {/* DB Usage Card */}
+                <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100 mb-8 relative overflow-hidden">
+                    <div className="flex justify-between items-end mb-2 relative z-10">
+                        <div>
+                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                <span className="text-2xl">💾</span> Speicherplatz
+                            </h2>
+                            <p className="text-sm text-gray-500">Supabase Limit: 500 MB</p>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-2xl font-bold">
+                                {Math.round((dbSize / 1024 / 1024) * 100) / 100} MB
+                            </div>
+                            <div className={`text-sm font-bold ${(dbSize / 1024 / 1024) > 450 ? 'text-red-500' : 'text-green-500'}`}>
+                                {Math.round((dbSize / (500 * 1024 * 1024)) * 100)}% Verbraucht
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Progress Bar Container */}
+                    <div className="h-4 w-full bg-gray-100 rounded-full overflow-hidden relative z-10">
+                        <div
+                            className={`h-full transition-all duration-1000 ${(dbSize / (500 * 1024 * 1024)) > 0.9 ? 'bg-red-500' :
+                                (dbSize / (500 * 1024 * 1024)) > 0.7 ? 'bg-orange-500' : 'bg-green-500'
+                                }`}
+                            style={{ width: `${Math.min(100, Math.round((dbSize / (500 * 1024 * 1024)) * 100))}%` }}
+                        ></div>
+                    </div>
+
+                    {/* Background Pattern */}
+                    <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                        <Calculator className="w-32 h-32" />
                     </div>
                 </div>
 

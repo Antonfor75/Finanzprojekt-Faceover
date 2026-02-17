@@ -46,6 +46,7 @@ export const accountsTable = pgTable('accounts', {
     months: integer('months').notNull(),
     type: text('type'), // 'distribution' | 'savings'
     processed_month: text('processed_month'),
+    valid_from: timestamp('valid_from', { withTimezone: true }),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 

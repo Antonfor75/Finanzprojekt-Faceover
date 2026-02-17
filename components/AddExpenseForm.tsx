@@ -195,7 +195,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     className="w-full font-bold text-center bg-black text-white rounded-xl py-3 flex items-center justify-center hover:bg-gray-800 transition-all active:scale-95 shadow-md active:shadow-none disabled:opacity-50"
                     style={{ fontSize: '2.5vh' }}
                 >
-                    {loading ? <Loader2 className="animate-spin w-8 h-8" /> : 'Eintragen'}
+                    {loading ? <Loader2 className="animate-spin w-10 h-10" /> : 'Eintragen'}
                 </button>
             </div>
         </form>

@@ -113,6 +113,12 @@ export default function MobileDashboard({
                     account.amount > 0 &&
                     account.months > 0) {
 
+                    // Check valid_from
+                    if (account.valid_from) {
+                        const validFromMonth = new Date(account.valid_from).toISOString().slice(0, 7)
+                        if (currentMonth < validFromMonth) continue
+                    }
+
                     const amountToDistribute = account.amount / account.months
 
                     await supabase.from('accounts').update({
@@ -170,7 +176,8 @@ export default function MobileDashboard({
             expensesByMonth[key] = (expensesByMonth[key] || 0) + Number(e.amount)
         })
 
-        const totalFixed = initialFixedCosts.reduce((acc, fc) => acc + Number(fc.amount), 0)
+        // REMOVED totalFixed calculation here as it is static and incorrect for historical calculations
+        // const totalFixed = initialFixedCosts.reduce((acc, fc) => acc + Number(fc.amount), 0)
 
         while (tempDate <= loopEnd) {
             const mKey = getMonthKey(tempDate)
@@ -188,11 +195,20 @@ export default function MobileDashboard({
 
             // Heuristic: Only subtract fixed costs if there was AT LEAST one expense in this month
             // OR if it is the current month or recent past (to avoid punishing gaps in history)
-            // Actually, if we have Income defined for this month, we should probably subtract Fixed Costs.
-            // Let's assume: If (Income > 0 OR VariableExpenses > 0) -> User was 'active', so subtract Fixed Costs.
             const hasActivity = monthIncome > 0 || (expensesByMonth[mKey] || 0) > 0
 
-            const monthFixed = hasActivity ? totalFixed : 0
+            // FIXED: Calculate fixed costs relevant for THIS month
+            const monthFixed = hasActivity ? initialFixedCosts.reduce((acc, fc) => {
+                const validFrom = fc.valid_from ? new Date(fc.valid_from) : null
+                const validTo = fc.valid_to ? new Date(fc.valid_to) : null
+
+                // Check if valid in this month
+                if (validFrom && d < new Date(validFrom.getFullYear(), validFrom.getMonth(), 1)) return acc
+                if (validTo && d > validTo) return acc
+
+                return acc + Number(fc.amount)
+            }, 0) : 0
+
             const monthVariable = expensesByMonth[mKey] || 0
 
             totalNet += (monthIncome - monthVariable - monthFixed)
@@ -254,7 +270,16 @@ export default function MobileDashboard({
     // Budget Calculations
     // Budget Calculations
     const CONST_WEEKS_PER_MONTH = 4.33
-    const totalFixed = initialFixedCosts.reduce((acc, curr) => acc + Number(curr.amount), 0)
+    // FIXED: Filter expired fixed costs
+    const activeFixedCostsForBudget = initialFixedCosts.filter(fc => {
+        const now = new Date()
+        const from = fc.valid_from ? new Date(fc.valid_from) : null
+        const to = fc.valid_to ? new Date(fc.valid_to) : null
+        if (from && now < from) return false
+        if (to && now > to) return false
+        return true
+    })
+    const totalFixed = activeFixedCostsForBudget.reduce((acc, curr) => acc + Number(curr.amount), 0)
     const weeklyFixedCosts = totalFixed / CONST_WEEKS_PER_MONTH
 
     // --- DYNAMIC WEEKLY INCOME CALCULATION ---
@@ -550,7 +575,13 @@ export default function MobileDashboard({
 
             {/* === ENTRY VIEW === */}
             {view === 'entry' && (
-                <div className="w-full h-full flex justify-center overflow-hidden">
+                <div className="w-full h-full flex justify-center overflow-hidden relative">
+                    {/* Header Icon */}
+                    <img
+                        src="/head-icon.png"
+                        alt="Header Icon"
+                        className="absolute top-4 right-4 w-24 h-24 object-contain z-50 opacity-90"
+                    />
                     <div className="grid grid-cols-12 grid-rows-[repeat(14,minmax(0,1fr))] w-[80%] h-full scale-[1.25] origin-top">
 
                         {/* BEREICH 1: Verfügbares Budget (Top Center) */}
@@ -572,7 +603,7 @@ export default function MobileDashboard({
                                 <div className="flex items-center justify-between z-10 relative">
                                     <div className="flex items-center gap-3">
                                         <div className="p-3 bg-pink-100 dark:bg-pink-900/30 rounded-xl text-pink-600 dark:text-pink-400">
-                                            <PiggyBank className="w-8 h-8" />
+                                            <PiggyBank className="w-10 h-10" />
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Girokonto</p>
@@ -620,7 +651,7 @@ export default function MobileDashboard({
                             onClick={() => setView('entry')}
                             className="flex items-center gap-2 text-gray-600 hover:text-black transition-transform active:scale-95"
                         >
-                            <ArrowLeft className="w-10 h-10" />
+                            <ArrowLeft className="w-12 h-12" />
                             <span className="font-bold text-xl hidden sm:inline">Zurück</span>
                         </button>
                     </div>
@@ -666,6 +697,7 @@ export default function MobileDashboard({
                                 fixedCosts={initialFixedCosts}
                                 accounts={initialAccounts}
                                 incomeSources={initialIncomeSources}
+                                currentGiroBalance={currentGiroBalance}
                             />
                         ) : historyMode === 'calendar' ? (
                             <CalendarHistory
@@ -677,7 +709,7 @@ export default function MobileDashboard({
                             <div className="space-y-4 pt-2">
                                 {viewLevel !== 'weeks' && (
                                     <button onClick={handleBackHistory} className="mb-4 flex items-center gap-2 text-pink-600 font-bold text-lg">
-                                        <ArrowLeft className="w-6 h-6" /> Zurück
+                                        <ArrowLeft className="w-7 h-7" /> Zurück
                                     </button>
                                 )}
 
@@ -721,7 +753,7 @@ export default function MobileDashboard({
                                                     }}
                                                     className="p-1.5 text-gray-400 hover:text-blue-500 bg-gray-50 rounded-lg"
                                                 >
-                                                    <Pencil className="w-5 h-5" />
+                                                    <Pencil className="w-6 h-6" />
                                                 </button>
                                                 <button
                                                     onClick={async (e) => {
@@ -732,7 +764,7 @@ export default function MobileDashboard({
                                                     }}
                                                     className="p-1.5 text-gray-400 hover:text-red-500 bg-gray-50 rounded-lg"
                                                 >
-                                                    <Trash2 className="w-5 h-5" />
+                                                    <Trash2 className="w-6 h-6" />
                                                 </button>
                                             </div>
                                         </div>

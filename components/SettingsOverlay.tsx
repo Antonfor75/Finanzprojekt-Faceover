@@ -1,10 +1,11 @@
 ﻿'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, Plus, Trash2, Save, LogOut, Wallet, Download, Upload, ArrowDown, Moon, Sun, FileText } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Save, LogOut, Wallet, Download, Upload, ArrowDown, Moon, Sun, FileText, HelpCircle } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import ImportWizard from '@/components/ImportWizard'
+import HelpModal from '@/components/HelpModal'
 // Set worker source for pdfjs
 import { supabase } from '@/utils/supabase'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
@@ -27,6 +28,7 @@ type SettingsOverlayProps = {
 export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts = [], incomeSources = [], theme, setTheme, onLogout, onUpdate, expenses, isDarkMode, toggleDarkMode }: SettingsOverlayProps) {
     // const [budget, setBudget] = useState<string | number>(settings?.monthly_budget || 0) // REMOVED: Calculated dynamically now
     const [showImportWizard, setShowImportWizard] = useState(false)
+    const [showHelp, setShowHelp] = useState(false)
     const [showFixedCosts, setShowFixedCosts] = useState(false)
 
     // Income Sources State
@@ -54,28 +56,34 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [newAccountTargetDate, setNewAccountTargetDate] = useState('') // Target Date
     const [newAccountMonths, setNewAccountMonths] = useState('') // For distribution
     const [newAccountType, setNewAccountType] = useState<'distribution' | 'savings'>('distribution')
+    const [newAccountValidFrom, setNewAccountValidFrom] = useState(new Date().toISOString().split('T')[0]) // Start Date for distribution
 
     // Derived Weekly Rate for Savings (Display Only during creation)
     const calculatedWeeklyRate = useMemo(() => {
         if (newAccountType !== 'savings' || !newAccountTargetAmount || !newAccountTargetDate || !newAccountAmount) return null
 
         const target = Number(newAccountTargetAmount)
-        const current = Number(newAccountAmount)
         const targetDate = new Date(newAccountTargetDate)
         const now = new Date()
 
         if (targetDate <= now) return 0
 
-        const diffTime = Math.abs(targetDate.getTime() - now.getTime())
-        const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
+        // FIXED: STRICTLY STATIC CALCULATION
+        // Formula: (Target - StartAmount) / TotalMonths
+        // We assume StartAmount = 0 for new accounts unless specified (user didn't ask for start amount input).
+        // If user wants 12000 in 24 months, it MUST be 500.
 
-        if (diffWeeks <= 0) return 0
+        const startDate = newAccountValidFrom ? new Date(newAccountValidFrom) : new Date()
 
-        const needed = target - current
-        if (needed <= 0) return 0
+        // Calculate weeks between Start and Target
+        const diffTime = Math.abs(targetDate.getTime() - startDate.getTime())
+        const totalWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
 
-        return needed / diffWeeks
-    }, [newAccountType, newAccountTargetAmount, newAccountTargetDate, newAccountAmount])
+        if (totalWeeks <= 0) return 0
+
+        // Calculation: Target / Weeks
+        return target / totalWeeks
+    }, [newAccountType, newAccountTargetAmount, newAccountTargetDate, newAccountValidFrom])
 
 
     const [newCostTitle, setNewCostTitle] = useState('')
@@ -94,18 +102,36 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             if (from && now < from) return false
             if (to && now > to) return false
             return true
-        }).reduce((sum, src) => sum + Number(src.amount), 0)
+        }).reduce((sum, src) => {
+            // FIXED: Normalize income to monthly
+            let monthlyAmount = Number(src.amount)
+            if (src.frequency === 'yearly') monthlyAmount /= 12
+            if (src.frequency === 'weekly') monthlyAmount *= 4.33
+            if (src.frequency === 'daily') monthlyAmount *= 30.4
+            return sum + monthlyAmount
+        }, 0)
     }, [incomeSources])
 
     // Filtered Fixed Costs (Active)
+
     const activeFixedCosts = useMemo(() => {
         const now = new Date()
+        now.setHours(0, 0, 0, 0) // Normalize today to start of day
+
         return fixedCosts.filter(fc => {
             const from = fc.valid_from ? new Date(fc.valid_from) : null
             const to = fc.valid_to ? new Date(fc.valid_to) : null
 
+            // Check if valid_to is in the past (strictly before today)
+            // If valid_to is 2024-12-31, and now is 2026-02-17, it should return false.
+            if (to) {
+                const toDate = new Date(to)
+                toDate.setHours(23, 59, 59, 999) // End of that day
+                if (toDate < now) return false
+            }
+
             if (from && now < from) return false
-            if (to && now > to) return false
+
             return true
         })
     }, [fixedCosts])
@@ -203,6 +229,39 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         // setNewCostAccountId(null)
     }
 
+    const [editingCostId, setEditingCostId] = useState<number | null>(null)
+    const [editCostTitle, setEditCostTitle] = useState('')
+    const [editCostAmount, setEditCostAmount] = useState('')
+    const [editCostValidFrom, setEditCostValidFrom] = useState('')
+    const [editCostValidTo, setEditCostValidTo] = useState('')
+
+    const handleStartEditCost = (cost: FixedCost) => {
+        setEditingCostId(cost.id)
+        setEditCostTitle(cost.title)
+        setEditCostAmount(cost.amount.toString())
+        setEditCostValidFrom(cost.valid_from ? new Date(cost.valid_from).toISOString().split('T')[0] : '')
+        setEditCostValidTo(cost.valid_to ? new Date(cost.valid_to).toISOString().split('T')[0] : '')
+    }
+
+    const handleSaveEditCost = async () => {
+        if (!editingCostId || !editCostTitle || !editCostAmount) return
+
+        const { error } = await supabase.from('fixed_costs').update({
+            title: editCostTitle,
+            amount: Number(editCostAmount),
+            valid_from: editCostValidFrom ? new Date(editCostValidFrom).toISOString() : new Date().toISOString(),
+            valid_to: editCostValidTo ? new Date(editCostValidTo).toISOString() : null,
+        }).eq('id', editingCostId)
+
+        if (error) {
+            console.error(error)
+            alert('Fehler beim Speichern')
+        } else {
+            onUpdate?.()
+            setEditingCostId(null)
+        }
+    }
+
     const handleDeleteCost = async (id: number) => {
         // Check if it's a linked cost (from Savings)
         const cost = fixedCosts.find(c => c.id === id)
@@ -228,6 +287,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             name: newAccountName,
             amount: Number(newAccountAmount),
             type: newAccountType,
+            valid_from: newAccountValidFrom ? new Date(newAccountValidFrom).toISOString() : null,
             user_id: user.id
         }
 
@@ -250,12 +310,11 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             return
         }
 
-        // 2. If Savings & Rate Calculated -> Create Fixed Cost
         if (newAccountType === 'savings' && calculatedWeeklyRate && calculatedWeeklyRate > 0) {
             const { error: fcError } = await supabase.from('fixed_costs').insert([{
                 title: `Sparziel: ${newAccountName}`,
                 amount: calculatedWeeklyRate * 4.33,
-                valid_from: new Date().toISOString(),
+                valid_from: newAccountValidFrom ? new Date(newAccountValidFrom).toISOString() : new Date().toISOString(),
                 valid_to: newAccountTargetDate ? new Date(newAccountTargetDate).toISOString() : null,
                 linked_account_id: newAccount.id,
                 user_id: user.id
@@ -270,6 +329,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         setNewAccountTargetAmount('')
         setNewAccountTargetDate('')
         setNewAccountStartAmount('')
+        setNewAccountValidFrom(new Date().toISOString().split('T')[0])
     }
 
     const [editingAccountId, setEditingAccountId] = useState<number | null>(null)
@@ -278,6 +338,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [editAccountTargetAmount, setEditAccountTargetAmount] = useState('')
     const [editAccountTargetDate, setEditAccountTargetDate] = useState('')
     const [editAccountMonths, setEditAccountMonths] = useState('')
+    const [editAccountValidFrom, setEditAccountValidFrom] = useState('')
 
     const handleStartEditAccount = (acc: Account) => {
         setEditingAccountId(acc.id)
@@ -286,6 +347,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         setEditAccountTargetAmount(acc.target_amount ? acc.target_amount.toString() : '')
         setEditAccountTargetDate(acc.target_date ? new Date(acc.target_date).toISOString().split('T')[0] : '')
         setEditAccountMonths(acc.months ? acc.months.toString() : '')
+        setEditAccountValidFrom(acc.valid_from ? new Date(acc.valid_from).toISOString().split('T')[0] : '')
     }
 
     const handleSaveEditAccount = async () => {
@@ -299,7 +361,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
         let updates: any = {
             name: editAccountName,
-            amount: Number(editAccountAmount)
+            amount: Number(editAccountAmount),
+            valid_from: editAccountValidFrom ? new Date(editAccountValidFrom).toISOString() : null
         }
 
         if (currentAccount.type === 'distribution') {
@@ -329,11 +392,25 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                 const targetDate = new Date(date)
                 const now = new Date()
                 if (targetDate > now) {
-                    const diffTime = Math.abs(targetDate.getTime() - now.getTime())
-                    const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
-                    const needed = target - current
-                    if (diffWeeks > 0 && needed > 0) {
-                        newRate = needed / diffWeeks
+                    // FIXED: Use Total Duration (valid_from to target_date)
+                    const startDate = updates.valid_from ? new Date(updates.valid_from) : (currentAccount.valid_from ? new Date(currentAccount.valid_from) : new Date())
+                    const totalDiffTime = Math.abs(targetDate.getTime() - startDate.getTime())
+                    const totalWeeks = Math.ceil(totalDiffTime / (1000 * 60 * 60 * 24 * 7))
+
+                    // Logic: (Target - StartAmount) / TotalWeeks
+                    // Since we don't strictly track StartAmount in historical data, we use:
+                    // (Target) / TotalWeeks -> This assumes 0 start. 
+                    // OR if we assume the current Amount was the start amount? No, that changes.
+                    // We will stick to the User Request: (Zielbetrag - Startbetrag) / Gesamtlaufzeit. 
+                    // As we lack Startbetrag, and "current" might be low (bad saver), using Target/TotalWeeks is the safest "Static Plan".
+                    // If user wants to account for existing funds, they should lower the Target Amount.
+
+                    if (totalWeeks > 0) {
+                        // FIXED: STRICT FORMULA request by user
+                        // (Target - Start) / TotalWeeks
+                        // We do NOT use current account amount because that includes savings made.
+                        // We assume start amount is 0 if not tracked.
+                        newRate = target / totalWeeks
                     }
                 }
             }
@@ -354,7 +431,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                     const { error } = await supabase.from('fixed_costs').update(costData).eq('id', existing.id)
                     if (error) console.error('Error updating linked cost', error)
                 } else {
-                    const { error } = await supabase.from('fixed_costs').insert([{ ...costData, valid_from: new Date().toISOString() }])
+                    const { error } = await supabase.from('fixed_costs').insert([{ ...costData, valid_from: updates.valid_from || new Date().toISOString() }])
                     if (error) console.error('Error creating linked cost', error)
                 }
             } else {
@@ -432,7 +509,20 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
     const handleDownloadFullReport = () => {
         const doc = new jsPDF()
-        const totalFixed = fixedCosts.reduce((acc, curr) => acc + Number(curr.amount), 0)
+        // FIXED: Filter out expired costs for PDF
+        const activeFixedCostsForPdf = fixedCosts.filter(fc => {
+            const now = new Date()
+            now.setHours(0, 0, 0, 0)
+            const to = fc.valid_to ? new Date(fc.valid_to) : null
+            if (to) {
+                const toDate = new Date(to)
+                toDate.setHours(23, 59, 59, 999)
+                if (toDate < now) return false
+            }
+            return true
+        })
+
+        const totalFixed = activeFixedCostsForPdf.reduce((acc, curr) => acc + Number(curr.amount), 0)
         const available = Number(budget) - totalFixed
 
         // Header
@@ -465,8 +555,29 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             columnStyles: { 0: { fontStyle: 'bold', cellWidth: 80 }, 1: { cellWidth: 50 } },
         })
 
-        // Account Overview Section
+        // Income Sources Section
         let currentY = (doc as any).lastAutoTable.finalY + 15
+        doc.setFontSize(14)
+        doc.text('Einnahmequellen', 14, currentY)
+
+        const incomeData = incomeSources.map(src => [
+            src.title,
+            `€${Number(src.amount).toFixed(2)}`,
+            src.frequency || 'monthly',
+            src.valid_from ? new Date(src.valid_from).toLocaleDateString('de-DE') : '-',
+            src.valid_to ? new Date(src.valid_to).toLocaleDateString('de-DE') : '-'
+        ])
+
+        autoTable(doc, {
+            startY: currentY + 5,
+            head: [['Quelle', 'Betrag', 'Intervall', 'Von', 'Bis']],
+            body: incomeData.length ? incomeData : [['Keine Einnahmequellen', '-', '-', '-', '-']],
+            theme: 'grid',
+            headStyles: { fillColor: [22, 163, 74] }, // Green
+        })
+
+        // Account Overview Section
+        currentY = (doc as any).lastAutoTable.finalY + 15
         doc.setFontSize(14)
         doc.text('Konten Übersicht', 14, currentY)
 
@@ -474,13 +585,14 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             acc.name,
             acc.type === 'savings' ? 'Sparkonto' : 'Aufteilung',
             `€${acc.amount.toFixed(2)}`,
-            acc.type === 'distribution' ? acc.months.toString() : '-'
+            acc.type === 'distribution' ? acc.months.toString() : '-',
+            acc.valid_from ? new Date(acc.valid_from).toLocaleDateString('de-DE') : '-'
         ])
 
         autoTable(doc, {
             startY: currentY + 5,
-            head: [['Name', 'Typ', 'Betrag', 'Monate']],
-            body: accountsData.length ? accountsData : [['Keine Konten vorhanden', '-', '-', '-']],
+            head: [['Name', 'Typ', 'Betrag', 'Monate', 'Startdatum']],
+            body: accountsData.length ? accountsData : [['Keine Konten vorhanden', '-', '-', '-', '-']],
             theme: 'grid',
             headStyles: { fillColor: [37, 99, 235] }, // Blue
         })
@@ -497,7 +609,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         doc.setFontSize(14)
         doc.text('Fixkosten Details', 14, currentY)
 
-        const fixedCostsData = fixedCosts.map(cost => [
+        const fixedCostsData = activeFixedCostsForPdf.map(cost => [
             cost.title,
             `€${cost.amount.toFixed(2)}`
         ])
@@ -540,15 +652,15 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         })
 
         // --- EMBED BACKUP DATA ---
-        // We add a new page (or invisible text) containing the JSON data
-        // Format: BACKUP_DATA_START:{...}:BACKUP_DATA_END
+        // Export complete objects including legacy fields and relationships
         const backupData = {
-            monthly_budget: budget,
-            fixedCosts: fixedCosts.map(fc => ({ title: fc.title, amount: fc.amount, valid_from: fc.valid_from, valid_to: fc.valid_to, linked_account_id: fc.linked_account_id })),
-            accounts: accounts.map(acc => ({ name: acc.name, amount: acc.amount, months: acc.months, type: acc.type, target_amount: acc.target_amount, target_date: acc.target_date, start_amount: acc.start_amount })),
-            expenses: expenses.map(e => ({ description: e.description, amount: e.amount, category: e.category, expense_date: e.expense_date || e.created_at })),
-            incomeSources: incomeSources.map(inc => ({ title: inc.title, amount: inc.amount, frequency: inc.frequency, valid_from: inc.valid_from, valid_to: inc.valid_to })),
-            timestamp: Date.now()
+            settings: settings,
+            accounts: accounts,
+            fixedCosts: fixedCosts,
+            expenses: expenses,
+            incomeSources: incomeSources,
+            timestamp: Date.now(),
+            version: '1.1'
         }
         const backupString = `BACKUP_DATA_START:${JSON.stringify(backupData)}:BACKUP_DATA_END`
 
@@ -593,11 +705,77 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                     await supabase.from('accounts').delete().neq('id', 0)
                     await supabase.from('income_sources').delete().neq('id', 0)
 
-                    // 2. Insert new (Simplified)
-                    if (data.incomeSources?.length) await supabase.from('income_sources').insert(data.incomeSources.map((x: any) => ({ ...x, user_id: user.id })))
-                    if (data.accounts?.length) await supabase.from('accounts').insert(data.accounts.map((x: any) => ({ ...x, user_id: user.id })))
-                    if (data.fixedCosts?.length) await supabase.from('fixed_costs').insert(data.fixedCosts.map((x: any) => ({ ...x, user_id: user.id })))
-                    if (data.expenses?.length) await supabase.from('expenses').insert(data.expenses.map((x: any) => ({ ...x, user_id: user.id })))
+                    // 2. Restore Settings
+                    // We only update setting fields, keeping ID/User static if possible, or fully update row
+                    if (data.settings) {
+                        const { id, user_id, ...settingsData } = data.settings
+                        const { error } = await supabase.from('settings').update(settingsData).eq('user_id', user.id)
+                        if (error) console.error('Error restoring settings:', error)
+                    } else if (data.monthly_budget) {
+                        // Legacy backup support
+                        await supabase.from('settings').update({ monthly_budget: data.monthly_budget }).eq('user_id', user.id)
+                    }
+
+                    // 3. Restore Income Sources
+                    if (data.incomeSources?.length) {
+                        const incomeToInsert = data.incomeSources.map((inv: any) => {
+                            const { id, user_id, created_at, ...rest } = inv
+                            return { ...rest, user_id: user.id }
+                        })
+                        await supabase.from('income_sources').insert(incomeToInsert)
+                    }
+
+                    // 4. Restore Accounts (and map IDs)
+                    const accountIdMap = new Map<number, number>()
+                    if (data.accounts?.length) {
+                        // We must insert sequentially to get IDs or loop
+                        for (const acc of data.accounts) {
+                            const oldId = acc.id
+                            const { id, user_id, created_at, ...accData } = acc
+                            const { data: newAcc, error } = await supabase.from('accounts').insert({ ...accData, user_id: user.id }).select().single()
+                            if (newAcc && !error) {
+                                if (oldId) accountIdMap.set(oldId, newAcc.id)
+                            } else {
+                                console.error('Error restoring account:', error)
+                            }
+                        }
+                    }
+
+                    // 5. Restore Fixed Costs (with updated linked_account_id)
+                    if (data.fixedCosts?.length) {
+                        const costsToInsert = data.fixedCosts.map((fc: any) => {
+                            const { id, user_id, created_at, ...fcData } = fc
+                            if (fcData.linked_account_id && accountIdMap.has(fcData.linked_account_id)) {
+                                fcData.linked_account_id = accountIdMap.get(fcData.linked_account_id)
+                            } else if (fcData.linked_account_id) {
+                                fcData.linked_account_id = null // Unlink if account not found
+                            }
+                            // Legacy structure map?
+                            if (!fcData.valid_from) fcData.valid_from = new Date().toISOString()
+                            return { ...fcData, user_id: user.id }
+                        })
+                        await supabase.from('fixed_costs').insert(costsToInsert)
+                    }
+
+                    // 6. Restore Expenses (with updated account_id)
+                    if (data.expenses?.length) {
+                        const expensesToInsert = data.expenses.map((exp: any) => {
+                            const { id, user_id, created_at, ...expData } = exp
+                            if (expData.account_id && accountIdMap.has(expData.account_id)) {
+                                expData.account_id = accountIdMap.get(expData.account_id)
+                            } else {
+                                expData.account_id = null
+                            }
+                            // Ensure date exists
+                            if (!expData.expense_date && expData.created_at) expData.expense_date = expData.created_at
+                            if (!expData.expense_date) expData.expense_date = new Date().toISOString()
+
+                            return { ...expData, user_id: user.id }
+                        })
+                        // Bulk insert
+                        const { error } = await supabase.from('expenses').insert(expensesToInsert)
+                        if (error) console.error('Error restoring expenses:', error)
+                    }
 
                     onUpdate?.()
                     alert('Backup erfolgreich wiederhergestellt!')
@@ -628,6 +806,10 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                 </div>
             </div>
         )
+    }
+
+    if (showHelp) {
+        return <HelpModal onClose={() => setShowHelp(false)} />
     }
 
     // --- ACCOUNTS SUB-VIEW ---
@@ -689,6 +871,16 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                             className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none"
                                         />
                                     )}
+                                    <div className="flex-1">
+                                        <input
+                                            type="date"
+                                            placeholder="Startdatum"
+                                            value={newAccountValidFrom}
+                                            onChange={(e) => setNewAccountValidFrom(e.target.value)}
+                                            className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-sm text-gray-500"
+                                            title="Startdatum (Optional)"
+                                        />
+                                    </div>
                                 </div>
 
                                 {newAccountType === 'savings' && (
@@ -763,13 +955,22 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                                 placeholder="Betrag"
                                                             />
                                                             {acc.type === 'distribution' && (
-                                                                <input
-                                                                    type="number"
-                                                                    value={editAccountMonths}
-                                                                    onChange={e => setEditAccountMonths(e.target.value)}
-                                                                    className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
-                                                                    placeholder="Monate"
-                                                                />
+                                                                <>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={editAccountMonths}
+                                                                        onChange={e => setEditAccountMonths(e.target.value)}
+                                                                        className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                                        placeholder="Monate"
+                                                                    />
+                                                                    <input
+                                                                        type="date"
+                                                                        value={editAccountValidFrom}
+                                                                        onChange={e => setEditAccountValidFrom(e.target.value)}
+                                                                        className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                                        title="Startdatum"
+                                                                    />
+                                                                </>
                                                             )}
                                                         </div>
                                                         {acc.type === 'savings' && (
@@ -817,7 +1018,16 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                     </div>
                                                     <div className="flex gap-2 text-xs text-gray-500 font-medium mt-1">
                                                         <span className="bg-gray-100 px-2 py-0.5 rounded">€{acc.amount.toFixed(2)}</span>
-                                                        {acc.type === 'distribution' && <span className="bg-gray-100 px-2 py-0.5 rounded">{acc.months} Monate übrig</span>}
+                                                        {acc.type === 'distribution' && (
+                                                            <>
+                                                                <span className="bg-gray-100 px-2 py-0.5 rounded">{acc.months} Monate übrig</span>
+                                                                {acc.valid_from && (
+                                                                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
+                                                                        Start: {new Date(acc.valid_from).toLocaleDateString()}
+                                                                    </span>
+                                                                )}
+                                                            </>
+                                                        )}
                                                         {acc.type === 'savings' && acc.target_amount && (
                                                             <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-100">
                                                                 Ziel: €{acc.target_amount} bis {acc.target_date ? new Date(acc.target_date).toLocaleDateString() : '?'}
@@ -944,35 +1154,112 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                 </span>
                             </div>
 
-                            {activeFixedCosts.length === 0 ? (
-                                <p className="text-gray-400 text-center py-8">Noch keine aktiven Fixkosten.</p>
+                            {fixedCosts.length === 0 ? (
+                                <p className="text-gray-400 text-center py-8">Noch keine Fixkosten.</p>
                             ) : (
                                 <div className="space-y-3">
-                                    {activeFixedCosts.map(cost => {
+                                    {fixedCosts.sort((a, b) => {
+                                        const now = new Date()
+                                        const aTo = a.valid_to ? new Date(a.valid_to) : null
+                                        const bTo = b.valid_to ? new Date(b.valid_to) : null
+                                        const aExpired = aTo && aTo < now
+                                        const bExpired = bTo && bTo < now
+
+                                        // 1. Active first, Expired last
+                                        if (aExpired && !bExpired) return 1
+                                        if (!aExpired && bExpired) return -1
+
+                                        // 2. Sort by amount desc
+                                        return b.amount - a.amount
+                                    }).map(cost => {
+                                        const now = new Date()
+                                        const to = cost.valid_to ? new Date(cost.valid_to) : null
+                                        const isExpired = to && to < now
                                         const isSavings = !!cost.linked_account_id
+                                        const isEditing = editingCostId === cost.id
+
+                                        if (isEditing) {
+                                            return (
+                                                <div key={cost.id} className="p-4 bg-white rounded-xl border-2 border-red-500 shadow-lg space-y-3">
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            value={editCostTitle}
+                                                            onChange={e => setEditCostTitle(e.target.value)}
+                                                            className="flex-[2] px-3 py-2 bg-gray-50 rounded-lg text-sm border focus:ring-2 focus:ring-red-500/50 outline-none"
+                                                            placeholder="Titel"
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            value={editCostAmount}
+                                                            onChange={e => setEditCostAmount(e.target.value)}
+                                                            className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-sm border focus:ring-2 focus:ring-red-500/50 outline-none"
+                                                            placeholder="Betrag"
+                                                        />
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <div className="flex-1">
+                                                            <label className="text-[10px] text-gray-500 ml-1">Von</label>
+                                                            <input
+                                                                type="date"
+                                                                value={editCostValidFrom}
+                                                                onChange={e => setEditCostValidFrom(e.target.value)}
+                                                                className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs border focus:ring-2 focus:ring-red-500/50 outline-none"
+                                                            />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <label className="text-[10px] text-gray-500 ml-1">Bis</label>
+                                                            <input
+                                                                type="date"
+                                                                value={editCostValidTo}
+                                                                onChange={e => setEditCostValidTo(e.target.value)}
+                                                                className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs border focus:ring-2 focus:ring-red-500/50 outline-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-end gap-2 pt-2">
+                                                        <button onClick={() => setEditingCostId(null)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Abbrechen</button>
+                                                        <button onClick={handleSaveEditCost} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-sm">Speichern</button>
+                                                    </div>
+                                                </div>
+                                            )
+                                        }
+
                                         return (
-                                            <div key={cost.id} className={`flex items-center justify-between p-4 bg-white rounded-xl border shadow-sm group ${isSavings ? 'border-green-200 bg-green-50/30' : 'border-gray-100'}`}>
+                                            <div key={cost.id} className={`flex items-center justify-between p-4 bg-white rounded-xl border shadow-sm group ${isExpired ? 'bg-gray-50 border-gray-200 opacity-60' : isSavings ? 'border-green-200 bg-green-50/30' : 'border-gray-100'}`}>
                                                 <div className="min-w-0 flex-1 mr-4">
                                                     <div className="flex items-center gap-2">
-                                                        <p className="font-bold text-gray-800 truncate text-lg">{cost.title}</p>
+                                                        <p className={`font-bold truncate text-lg ${isExpired ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{cost.title}</p>
                                                         {isSavings && (
                                                             <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">
                                                                 SPAREN
                                                             </span>
                                                         )}
+                                                        {isExpired && (
+                                                            <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">
+                                                                ABGELAUFEN
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    <p className="text-sm text-red-600 font-bold">-€{cost.amount.toFixed(2)}</p>
+                                                    <p className={`text-sm font-bold ${isExpired ? 'text-gray-400' : 'text-red-600'}`}>-€{cost.amount.toFixed(2)}</p>
                                                     <div className="text-[10px] text-gray-400 mt-1">
                                                         {cost.valid_from && `Ab: ${new Date(cost.valid_from).toLocaleDateString()} `}
                                                         {cost.valid_to && `- Bis: ${new Date(cost.valid_to).toLocaleDateString()}`}
                                                     </div>
                                                 </div>
-                                                <button
-                                                    onClick={() => handleDeleteCost(cost.id)}
-                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                >
-                                                    <Trash2 className="w-5 h-5" />
-                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => handleStartEditCost(cost)}
+                                                        className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    >
+                                                        <FileText className="w-5 h-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteCost(cost.id)}
+                                                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         )
                                     })}
@@ -1235,6 +1522,13 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         <h1 className="text-xl md:text-3xl font-bold text-foreground dark:text-white">Einstellungen</h1>
                     </div>
                     <div className="flex gap-1 md:gap-2">
+                        <button
+                            onClick={() => setShowHelp(true)}
+                            className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
+                            title="Hilfe & Logik"
+                        >
+                            <HelpCircle className="w-8 h-8" />
+                        </button>
                         <button
                             onClick={() => setShowImportWizard(true)}
                             className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"

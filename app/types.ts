@@ -27,6 +27,7 @@ export type Account = {
     target_date?: string
     months: number
     processed_month?: string
+    valid_from?: string | null
     type: 'distribution' | 'savings'
     user_id?: string
 }
