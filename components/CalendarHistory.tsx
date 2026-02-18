@@ -37,19 +37,19 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
         <div className="flex flex-col h-full">
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
-                <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-full">
+                <button onClick={prevMonth} className="p-2 hover:bg-muted rounded-full text-foreground">
                     <ChevronLeft className="w-8 h-8" />
                 </button>
-                <h2 className="text-2xl font-bold">
+                <h2 className="text-2xl font-bold text-foreground">
                     {format(currentMonth, 'MMMM yyyy', { locale: de })}
                 </h2>
-                <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-full">
+                <button onClick={nextMonth} className="p-2 hover:bg-muted rounded-full text-foreground">
                     <ChevronRight className="w-8 h-8" />
                 </button>
             </div>
 
             {/* Weekday Headers */}
-            <div className="grid grid-cols-7 mb-2 text-center text-gray-500 font-bold">
+            <div className="grid grid-cols-7 mb-2 text-center text-muted-foreground font-bold">
                 {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(day => (
                     <div key={day}>{day}</div>
                 ))}
@@ -73,8 +73,8 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
                             onClick={() => onDayClick(day)}
                             className={`
                                 relative p-2 border rounded-lg flex flex-col items-center justify-start h-24 hover:scale-105 transition-transform cursor-pointer
-                                ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white'}
-                                ${isSameDay(day, new Date()) ? 'border-blue-500 border-4' : 'border-gray-200'}
+                                ${!isCurrentMonth ? 'bg-muted/30 text-muted-foreground/40' : 'bg-card text-foreground'}
+                                ${isSameDay(day, new Date()) ? 'border-primary border-4' : 'border-border'}
                             `}
                             style={hasExpenses ? boxStyle : {}}
                         >
@@ -97,7 +97,7 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
                 })}
             </div>
 
-            <div className="mt-4 text-center text-sm text-gray-500">
+            <div className="mt-4 text-center text-sm text-muted-foreground">
                 Tagesbudget: €{dailyBudget.toFixed(2)}
             </div>
         </div>

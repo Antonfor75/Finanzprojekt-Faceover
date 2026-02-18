@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { loadTheme } from '@/utils/theme'
 import { processWeeklySavings } from '@/app/actions/savings'
-import { Wallet, TrendingDown, Calendar, ChevronRight, ArrowLeft, Settings, AlertCircle, Trash2, Plus, List, Pencil, X, Home, PiggyBank } from 'lucide-react'
-import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, differenceInCalendarWeeks, min, startOfMonth, endOfMonth } from 'date-fns'
+import { Wallet, ChevronRight, ArrowLeft, Settings, Trash2, List, Pencil, X, Home, PiggyBank, Download } from 'lucide-react'
+import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
-import { applyTheme } from '@/utils/theme'
+
 
 import AddExpenseForm from './AddExpenseForm'
 import SettingsOverlay from './SettingsOverlay'
@@ -48,44 +49,7 @@ export default function MobileDashboard({
     const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null)
     const [selectedDay, setSelectedDay] = useState<Date | null>(null)
     const [historyMode, setHistoryMode] = useState<'calendar' | 'list' | 'analysis'>('calendar')
-
-    const [theme, setTheme] = useState('white')
-    const [darkMode, setDarkMode] = useState(false)
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
-
-    // --- EFFECT: LOAD THEME ---
-    useEffect(() => {
-        const savedTheme = localStorage.getItem('theme')
-        if (savedTheme) {
-            setTheme(savedTheme)
-        }
-    }, [])
-
-    // --- EFFECT: SAVE THEME & SYNC BODY BG ---
-    useEffect(() => {
-        localStorage.setItem('theme', theme)
-        applyTheme(theme)
-    }, [theme])
-
-    // --- EFFECT: DARK MODE ---
-    useEffect(() => {
-        const savedDark = localStorage.getItem('darkMode')
-        if (savedDark === 'true') {
-            setDarkMode(true)
-            document.documentElement.classList.add('dark')
-        }
-    }, [])
-
-    const toggleDarkMode = () => {
-        const newMode = !darkMode
-        setDarkMode(newMode)
-        localStorage.setItem('darkMode', String(newMode))
-        if (newMode) {
-            document.documentElement.classList.add('dark')
-        } else {
-            document.documentElement.classList.remove('dark')
-        }
-    }
 
     // --- EFFECT: PROCESS SAVINGS & DISTRIBUTION ON MOUNT ---
     useEffect(() => {
@@ -93,6 +57,9 @@ export default function MobileDashboard({
             console.log('--- Init Dashboard ---')
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return
+
+            // 0. Load Theme
+            loadTheme()
 
             // 1. Process Weekly Savings (The "Sunday Logic")
             await processWeeklySavings(user.id)
@@ -471,15 +438,7 @@ export default function MobileDashboard({
         doc.save('Finanzbericht.pdf')
     }
 
-    const getThemeBg = () => {
-        switch (theme) {
-            case 'pink': return 'bg-pink-100'
-            case 'blue': return 'bg-blue-100'
-            case 'green': return 'bg-green-100'
-            case 'yellow': return 'bg-yellow-100'
-            default: return 'bg-[#f8f5e6]'
-        }
-    }
+
 
     if (isSettingsOpen) {
         return (
@@ -489,13 +448,9 @@ export default function MobileDashboard({
                 fixedCosts={initialFixedCosts}
                 accounts={initialAccounts}
                 incomeSources={initialIncomeSources}
-                theme={theme}
-                setTheme={setTheme}
                 onLogout={handleLogout}
                 onUpdate={onUpdate}
                 expenses={expenses}
-                isDarkMode={darkMode}
-                toggleDarkMode={toggleDarkMode}
             />
         )
     }
@@ -540,10 +495,9 @@ export default function MobileDashboard({
                             className="w-full text-[35px] text-center border-none shadow-md rounded-2xl py-3 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400 appearance-none"
                         >
                             <option value="Essen">Essen 🍔</option>
-                            <option value="Miete">Miete 🏠</option>
-                            <option value="Transport">Transport 🚌</option>
+                            <option value="Schminki Schminki">Schminki Schminki 💄</option>
+                            <option value="Shoppi">Shoppi 🛍️</option>
                             <option value="Freizeit">Freizeit 🎉</option>
-                            <option value="Versicherung">Versicherung 🛡️</option>
                             <option value="Sparen">Sparen 💰</option>
                             <option value="Sonstiges">Sonstiges 📦</option>
                         </select>
@@ -571,71 +525,60 @@ export default function MobileDashboard({
     }
 
     return (
-        <div className={`fixed inset-0 h-dvh w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${getThemeBg()} ${darkMode ? 'dark z-0' : ''}`}>
+        <div className="fixed inset-0 h-dvh w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-background text-foreground">
 
             {/* === ENTRY VIEW === */}
             {view === 'entry' && (
-                <div className="w-full h-full flex justify-center overflow-hidden relative">
+                <div className="w-full h-full overflow-y-auto overflow-x-hidden relative scroll-smooth">
                     {/* Header Icon */}
-                    <img
-                        src="/head-icon.png"
-                        alt="Header Icon"
-                        className="absolute top-4 right-4 w-24 h-24 object-contain z-50 opacity-90"
-                    />
-                    <div className="grid grid-cols-12 grid-rows-[repeat(14,minmax(0,1fr))] w-[80%] h-full scale-[1.25] origin-top">
+
+
+                    <div className="w-full max-w-xl mx-auto px-4 flex flex-col gap-6 pt-8 pb-32 min-h-full">
 
                         {/* BEREICH 1: Verfügbares Budget (Top Center) */}
-                        <div className="row-start-1 row-span-2 col-start-2 col-span-10 flex flex-col justify-end items-center pb-2">
-                            <h2 className="font-bold uppercase tracking-widest text-center text-xs text-muted-foreground dark:text-gray-400 mb-1">
+                        <div className="flex flex-col items-center justify-center pt-4">
+                            <h2 className="font-bold uppercase tracking-widest text-center text-xs text-muted-foreground/60 mb-2">
                                 Verfügbar (Woche)
                             </h2>
-                            <div className={`font-bold tracking-tight leading-none text-center text-5xl ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                €{Math.floor(currentBalance)}<span className="text-2xl text-muted-foreground/60 dark:text-gray-500">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
+                            <div className={`font-bold tracking-tight leading-none text-center text-5xl sm:text-6xl ${isPositive ? 'text-emerald-600' : 'text-primary'}`}>
+                                €{Math.floor(currentBalance)}<span className="text-2xl sm:text-3xl text-muted-foreground/40">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
                             </div>
                         </div>
 
-                        {/* BEREICH 2: Girokonto (formerly Sparkonto) */}
-                        <div className="row-start-3 row-span-3 col-start-2 col-span-10 flex flex-col justify-center gap-2">
+                        {/* BEREICH 2: Girokonto */}
+                        <div className="w-full">
                             <div
                                 onClick={() => setShowGirokonto(true)}
-                                className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-white/20 dark:border-white/5 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer active:scale-95"
+                                className="bg-card/60 backdrop-blur-md border border-border/40 rounded-3xl p-5 shadow-sm relative overflow-hidden group hover:scale-[1.01] transition-transform cursor-pointer active:scale-95"
                             >
                                 <div className="flex items-center justify-between z-10 relative">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-3 bg-pink-100 dark:bg-pink-900/30 rounded-xl text-pink-600 dark:text-pink-400">
-                                            <PiggyBank className="w-10 h-10" />
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-muted rounded-2xl text-primary">
+                                            <PiggyBank className="w-8 h-8" />
                                         </div>
                                         <div>
-                                            <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Girokonto</p>
-                                            <p className={`text-2xl font-bold ${currentGiroBalance < 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-100'}`}>
+                                            <p className="text-xs font-bold uppercase text-muted-foreground/60 tracking-wider mb-0.5">Girokonto</p>
+                                            <p className={`text-2xl font-bold ${currentGiroBalance < 0 ? 'text-red-500' : 'text-foreground'}`}>
                                                 €{currentGiroBalance.toFixed(2)}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="h-full flex flex-col justify-center items-end">
-                                        {currentGiroBalance > 0 && (
-                                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
-                                                +Liquide
-                                            </span>
-                                        )}
+                                        <ChevronRight className="text-muted-foreground/40 w-6 h-6" />
                                     </div>
                                 </div>
-                                {/* Decorative Background for visuals */}
-                                <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-pink-500/10 rounded-full blur-2xl group-hover:bg-pink-500/20 transition-all"></div>
+                                {/* Decorative Background - Only visible in Pink Mode via CSS variable opacity? Or keep generic? */}
+                                <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all"></div>
                             </div>
-
-                            {/* Optional small helper text or indicator */}
-                            <p className="text-[10px] text-center text-muted-foreground/50 italic">
+                            <p className="text-[10px] text-center text-muted-foreground/50 italic mt-2">
                                 Automatisch berechnet (Einnahmen - Ausgaben)
                             </p>
                         </div>
 
                         {/* BEREICH 3: Eingabe-Panel */}
-                        <div className="row-start-6 row-span-4 col-start-2 col-span-10 flex flex-col justify-evenly bg-white/90 dark:bg-gray-900/60 dark:backdrop-blur-md dark:border dark:border-white/10 backdrop-blur-md border border-white/40 rounded-2xl p-2 shadow-xl z-10 overflow-hidden">
+                        <div className="bg-card/80 backdrop-blur-md border border-border/40 rounded-3xl p-1 shadow-xl z-10 overflow-hidden">
                             <AddExpenseForm accounts={initialAccounts} onRefresh={onUpdate} />
                         </div>
-
-                        {/* BEREICH 4 & 5: Buttons removed in favor of Bottom Nav */}
 
                     </div>
                 </div>
@@ -643,50 +586,51 @@ export default function MobileDashboard({
 
             {/* === HISTORY VIEW === */}
             {view === 'history' && (
-                <div className="grid grid-cols-12 grid-rows-[repeat(14,minmax(0,1fr))] w-full h-full">
+                <div className="w-full h-full flex flex-col pt-[env(safe-area-inset-top)] px-4 pb-0 max-w-xl mx-auto">
+                    {/* Header & Tabs */}
+                    <div className="flex flex-col gap-1 mb-1 shrink-0 mt-1">
+                        {/* Tabs - Spread out and moved up */}
+                        <div className="flex justify-between items-center bg-muted/50 rounded-2xl p-1">
+                            <button
+                                onClick={() => setHistoryMode('calendar')}
+                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${historyMode === 'calendar' ? 'bg-card shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Kalender
+                            </button>
+                            <button
+                                onClick={() => setHistoryMode('list')}
+                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${historyMode === 'list' ? 'bg-card shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Liste
+                            </button>
+                            <button
+                                onClick={() => setHistoryMode('analysis')}
+                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${historyMode === 'analysis' ? 'bg-card shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                Analyse
+                            </button>
+                        </div>
 
-                    {/* BEREICH 1: Zurück-Button */}
-                    <div className="row-start-1 row-span-1 col-start-1 col-span-3 flex items-center px-2">
-                        <button
-                            onClick={() => setView('entry')}
-                            className="flex items-center gap-2 text-gray-600 hover:text-black transition-transform active:scale-95"
-                        >
-                            <ArrowLeft className="w-12 h-12" />
-                            <span className="font-bold text-xl hidden sm:inline">Zurück</span>
-                        </button>
+                        {/* Back Button (Only if going deep) */}
+                        <div className={`flex items-center justify-start ${viewLevel === 'weeks' ? 'hidden' : 'block'}`}>
+                            <button
+                                onClick={() => viewLevel !== 'weeks' && handleBackHistory()}
+                                className="flex items-center gap-2 text-primary hover:opacity-70"
+                            >
+                                <ArrowLeft className="w-6 h-6" />
+                                <span className="text-sm font-bold">Zurück</span>
+                            </button>
+                        </div>
                     </div>
 
-                    {/* BEREICH 2: Reiter */}
-                    <div className="row-start-2 row-span-1 col-start-4 col-span-6 flex justify-around items-center bg-white/30 backdrop-blur-xl border border-white/40 rounded-2xl shadow-sm p-1 z-10">
-                        <button
-                            onClick={() => setHistoryMode('calendar')}
-                            className={`flex-1 text-center py-3 rounded-xl font-bold transition-all duration-300 text-sm ${historyMode === 'calendar' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
-                        >
-                            Kalender
-                        </button>
-                        <button
-                            onClick={() => setHistoryMode('list')}
-                            className={`flex-1 text-center py-3 rounded-xl font-bold transition-all duration-300 text-sm ${historyMode === 'list' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
-                        >
-                            Liste
-                        </button>
-                        <button
-                            onClick={() => setHistoryMode('analysis')}
-                            className={`flex-1 text-center py-3 rounded-xl font-bold transition-all duration-300 text-sm ${historyMode === 'analysis' ? 'bg-black/90 text-white shadow-md' : 'text-gray-600 hover:bg-white/40'}`}
-                        >
-                            Analyse
-                        </button>
-                    </div>
-
-                    {/* BEREICH 3: Inhalt */}
-                    <div className="row-start-3 row-span-12 col-start-1 col-span-12 bg-white rounded-t-3xl p-4 pb-28 overflow-y-auto shadow-[0_-5px_20px_rgba(0,0,0,0.1)] relative border-t border-gray-100">
+                    {/* Content Area */}
+                    <div className="flex-1 p-4 pb-32 overflow-y-auto relative border-border/5">
                         {historyMode === 'list' && (
                             <button
                                 onClick={generatePDF}
-                                className="absolute right-6 top-6 text-gray-400 hover:text-black text-xs underline flex items-center gap-1 z-10"
+                                className="absolute right-4 top-4 text-primary/70 hover:text-primary text-xs flex items-center gap-1 z-10 bg-muted px-2 py-1 rounded-lg"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
-                                PDF
+                                <Download className="w-3 h-3" /> PDF
                             </button>
                         )}
 
@@ -706,66 +650,46 @@ export default function MobileDashboard({
                                 onDayClick={handleCalendarDayClick}
                             />
                         ) : (
-                            <div className="space-y-4 pt-2">
-                                {viewLevel !== 'weeks' && (
-                                    <button onClick={handleBackHistory} className="mb-4 flex items-center gap-2 text-pink-600 font-bold text-lg">
-                                        <ArrowLeft className="w-7 h-7" /> Zurück
-                                    </button>
-                                )}
-
+                            <div className="space-y-2">
                                 {viewLevel === 'weeks' && (
                                     getWeeklyGroups().map((group, idx) => (
-                                        <div key={idx} onClick={() => handleWeekClick(group.start)} className="flex justify-between items-center bg-transparent border-b-2 border-gray-100 py-3 cursor-pointer hover:bg-gray-50">
+                                        <div key={idx} onClick={() => handleWeekClick(group.start)} className="flex justify-between items-center p-4 bg-card/50 rounded-2xl cursor-pointer hover:bg-card transition-colors border border-border/20">
                                             <div>
-                                                <p className="text-xl font-bold text-gray-800">KW {format(group.start, 'w', { locale: de })}</p>
-                                                <p className="text-sm text-gray-400">{format(group.start, 'dd.MM.')} - {format(endOfWeek(group.start, { weekStartsOn: 1 }), 'dd.MM.yyyy')}</p>
+                                                <p className="text-lg font-bold text-foreground">KW {format(group.start, 'w', { locale: de })}</p>
+                                                <p className="text-xs text-muted-foreground">{format(group.start, 'dd.MM.')} - {format(endOfWeek(group.start, { weekStartsOn: 1 }), 'dd.MM.yyyy')}</p>
                                             </div>
-                                            <div className="text-xl font-bold text-gray-800">€{group.total.toFixed(2)}</div>
+                                            <div className="text-lg font-bold text-foreground">€{group.total.toFixed(2)}</div>
                                         </div>
                                     ))
                                 )}
                                 {viewLevel === 'days' && (
                                     getDailyGroups().map((group, idx) => (
-                                        <div key={idx} onClick={() => handleDayClick(group.date)} className="flex justify-between items-center bg-transparent border-b-2 border-gray-100 py-3 cursor-pointer hover:bg-gray-50">
+                                        <div key={idx} onClick={() => handleDayClick(group.date)} className="flex justify-between items-center p-4 bg-card/50 rounded-2xl cursor-pointer hover:bg-card transition-colors border border-border/20">
                                             <div className="flex items-center gap-3">
-                                                <div className="text-xl font-bold text-gray-400">{format(group.date, 'dd.MM')}</div>
-                                                <div className="text-lg font-bold text-gray-800">{format(group.date, 'EEEE', { locale: de })}</div>
+                                                <div className="text-lg font-bold text-primary/70">{format(group.date, 'dd.MM')}</div>
+                                                <div className="text-base font-bold text-foreground">{format(group.date, 'EEEE', { locale: de })}</div>
                                             </div>
-                                            <div className="text-xl font-bold text-gray-800">€{group.total.toFixed(2)}</div>
+                                            <div className="text-lg font-bold text-foreground">€{group.total.toFixed(2)}</div>
                                         </div>
                                     ))
                                 )}
                                 {viewLevel === 'transactions' && (
                                     getTransactions().map(expense => (
-                                        <div key={expense.id} className="flex justify-between items-center bg-transparent border-b-2 border-gray-100 py-3">
-                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                <div className="min-w-0">
-                                                    <p className="text-lg font-bold text-gray-800 truncate">{expense.description}</p>
-                                                    {expense.category && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{expense.category}</span>}
-                                                </div>
+                                        <div key={expense.id} className="flex justify-between items-center p-3 bg-card/40 border-b border-border">
+                                            <div className="min-w-0 flex-1 mr-4">
+                                                <p className="font-bold text-foreground truncate">{expense.description}</p>
+                                                {expense.category && <span className="text-[10px] bg-muted text-primary px-2 py-0.5 rounded-full">{expense.category}</span>}
                                             </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                <span className="text-lg font-bold text-red-500">-€{expense.amount.toFixed(2)}</span>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        setEditingExpense(expense)
-                                                    }}
-                                                    className="p-1.5 text-gray-400 hover:text-blue-500 bg-gray-50 rounded-lg"
-                                                >
-                                                    <Pencil className="w-6 h-6" />
-                                                </button>
-                                                <button
-                                                    onClick={async (e) => {
-                                                        e.stopPropagation()
-                                                        if (confirm('Löschen?')) {
-                                                            await deleteExpenseLocal(expense.id)
-                                                        }
-                                                    }}
-                                                    className="p-1.5 text-gray-400 hover:text-red-500 bg-gray-50 rounded-lg"
-                                                >
-                                                    <Trash2 className="w-6 h-6" />
-                                                </button>
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-bold text-primary">-€{expense.amount.toFixed(2)}</span>
+                                                <div className="flex gap-1">
+                                                    <button onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="p-2 text-muted-foreground hover:text-blue-500 bg-card rounded-lg shadow-sm">
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={async (e) => { e.stopPropagation(); if (confirm('Löschen?')) await deleteExpenseLocal(expense.id) }} className="p-2 text-muted-foreground hover:text-red-500 bg-card rounded-lg shadow-sm">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))
@@ -773,35 +697,47 @@ export default function MobileDashboard({
                             </div>
                         )}
                     </div>
-
                 </div>
             )}
 
-            {/* === BOTTOM NAVIGATION BAR === */}
-            <div className="fixed bottom-0 left-0 w-full bg-white/60 backdrop-blur-xl border-t border-white/40 pb-[env(safe-area-inset-bottom)] z-40 transition-all duration-300 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-                <div className="flex justify-around items-center h-20 px-6">
-                    <button
-                        data-testid="nav-home"
-                        onClick={() => setView('entry')}
-                        className={`p-3 rounded-2xl transition-all duration-300 ${view === 'entry' ? 'bg-black text-white shadow-lg scale-110' : 'text-gray-400 hover:bg-black/5'}`}
-                    >
-                        <Home className="w-8 h-8" />
-                    </button>
+            {/* === BOTTOM NAVIGATION BAR (Split & Reordered) === */}
+            <div className="fixed bottom-4 md:bottom-6 left-0 w-full flex justify-center z-40 pointer-events-none pb-[env(safe-area-inset-bottom)] px-6 md:px-8">
+                <div className="w-full max-w-lg flex justify-between items-center">
 
+                    {/* LEFT: History */}
                     <button
                         data-testid="nav-history"
                         onClick={() => setView('history')}
-                        className={`p-3 rounded-2xl transition-all duration-300 ${view === 'history' ? 'bg-black text-white shadow-lg scale-110' : 'text-gray-400 hover:bg-black/5'}`}
+                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${view === 'history'
+                            ? 'bg-gray-900 text-white scale-110'
+                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary'
+                            }`}
                     >
-                        <List className="w-8 h-8" />
+                        <List className="w-5 h-5 md:w-6 md:h-6" />
                     </button>
 
+                    {/* CENTER: Home */}
+                    <button
+                        data-testid="nav-home"
+                        onClick={() => setView('entry')}
+                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${view === 'entry'
+                            ? 'bg-gray-900 text-white scale-110'
+                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary'
+                            }`}
+                    >
+                        <Home className="w-5 h-5 md:w-6 md:h-6" />
+                    </button>
+
+                    {/* RIGHT: Settings */}
                     <button
                         data-testid="nav-settings"
                         onClick={() => setIsSettingsOpen(true)}
-                        className={`p-3 rounded-2xl transition-all duration-300 ${isSettingsOpen ? 'bg-black text-white shadow-lg scale-110' : 'text-gray-400 hover:bg-black/5'}`}
+                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${isSettingsOpen
+                            ? 'bg-gray-900 text-white scale-110'
+                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary'
+                            }`}
                     >
-                        <Settings className="w-8 h-8" />
+                        <Settings className="w-5 h-5 md:w-6 md:h-6" />
                     </button>
                 </div>
             </div>

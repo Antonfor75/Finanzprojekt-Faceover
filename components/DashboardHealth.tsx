@@ -31,8 +31,8 @@ export default function DashboardHealth({ budget, totalExpenses, totalAssets, cu
     return (
         <div className="grid grid-cols-2 gap-3 mb-6">
             {/* Savings Rate Card */}
-            <div className="bg-white dark:bg-gray-900/60 dark:backdrop-blur-md dark:border-white/5 p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center relative overflow-hidden transition-colors">
-                <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 z-10">Sparquote</h3>
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 flex flex-col items-center justify-center relative overflow-hidden transition-colors">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 z-10">Sparquote</h3>
                 <div className="w-20 h-20 relative z-10">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -55,29 +55,29 @@ export default function DashboardHealth({ budget, totalExpenses, totalAssets, cu
                     </ResponsiveContainer>
                     {/* Centered Percentage */}
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-sm font-extrabold text-gray-700 dark:text-white">{savingsRate.toFixed(0)}%</span>
+                        <span className="text-sm font-extrabold text-gray-700">{savingsRate.toFixed(0)}%</span>
                     </div>
                 </div>
-                <div className="absolute -bottom-4 -right-4 text-green-50 dark:text-green-900/20 opacity-50 z-0">
+                <div className="absolute -bottom-4 -right-4 text-green-50 z-0">
                     <TrendingUp className="w-24 h-24" />
                 </div>
             </div>
 
             {/* Runway Card */}
-            <div className="bg-white dark:bg-gray-900/60 dark:backdrop-blur-md dark:border-white/5 p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center relative overflow-hidden transition-colors">
-                <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 z-10 w-full text-center">Runway</h3>
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 flex flex-col items-center justify-center relative overflow-hidden transition-colors">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 z-10 w-full text-center">Runway</h3>
 
                 <div className="flex flex-col items-center z-10">
-                    <span className="text-3xl font-black text-blue-600 dark:text-blue-400">{runwayMonths}</span>
-                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500">Monate sicher</span>
+                    <span className="text-3xl font-black text-blue-600">{runwayMonths}</span>
+                    <span className="text-xs font-bold text-gray-400">Monate sicher</span>
                 </div>
 
                 {/* Visual Bar */}
-                <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-700/50 rounded-full mt-3 overflow-hidden z-10">
-                    <div className="h-full bg-blue-500 dark:bg-blue-400 w-2/3 rounded-full" />
+                <div className="w-full h-1.5 bg-gray-100 rounded-full mt-3 overflow-hidden z-10">
+                    <div className="h-full bg-blue-500 w-2/3 rounded-full" />
                 </div>
 
-                <div className="absolute -bottom-2 -right-6 text-blue-50 dark:text-blue-900/20 opacity-50 z-0">
+                <div className="absolute -bottom-2 -right-6 text-blue-50 z-0">
                     <ShieldCheck className="w-24 h-24" />
                 </div>
             </div>

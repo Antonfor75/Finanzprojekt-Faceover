@@ -137,7 +137,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     defaultValue={new Date().toISOString().split('T')[0]}
                     required
                     onClick={(e) => e.currentTarget.showPicker()}
-                    className="w-full text-center border-none bg-transparent outline-none cursor-pointer font-bold text-gray-700 dark:text-gray-200"
+                    className="w-full text-center border-none bg-transparent outline-none cursor-pointer font-bold text-rose-900"
                     style={{ fontSize: '2.5vh' }}
                 />
             </div>
@@ -145,16 +145,15 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
             <div className="w-full px-4">
                 <select
                     name="category"
-                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-gray-50 dark:bg-gray-800/50 outline-none focus:ring-2 focus:ring-blue-400 appearance-none font-bold text-gray-900 dark:text-white"
+                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-rose-50/50 outline-none focus:ring-2 focus:ring-rose-400 appearance-none font-bold text-gray-900"
                     style={{ fontSize: '2vh' }}
                     defaultValue="Essen"
                 >
                     <optgroup label="Kategorien">
                         <option value="Essen">Essen 🍔</option>
-                        <option value="Miete">Miete 🏠</option>
-                        <option value="Transport">Transport 🚌</option>
+                        <option value="Schminki Schminki">Schminki Schminki 💄</option>
+                        <option value="Shoppi">Shoppi 🛍️</option>
                         <option value="Freizeit">Freizeit 🎉</option>
-                        <option value="Versicherung">Versicherung 🛡️</option>
                         <option value="Sparen">Sparen 💰</option>
                         <option value="Sonstiges">Sonstiges 📦</option>
                     </optgroup>
@@ -183,7 +182,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     placeholder="€"
                     required
                     autoFocus
-                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-gray-50 dark:bg-gray-800/50 outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400 dark:placeholder-gray-600 font-bold text-gray-900 dark:text-white"
+                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-rose-50/50 outline-none focus:ring-2 focus:ring-rose-400 placeholder-rose-300 font-bold text-gray-900"
                     style={{ fontSize: '3vh' }}
                 />
             </div>

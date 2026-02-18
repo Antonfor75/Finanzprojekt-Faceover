@@ -24,10 +24,12 @@ type Props = {
 const COLORS = ['#FF8042', '#0088FE', '#00C49F', '#FFBB28', '#8884d8', '#ffc658', '#82ca9d']
 const CATEGORY_COLORS: Record<string, string> = {
     'Essen': '#F59E0B',      // Amber
-    'Miete': '#3B82F6',      // Blue
-    'Transport': '#8B5CF6',  // Violet
-    'Freizeit': '#EC4899',   // Pink
-    'Versicherung': '#6B7280', // Gray
+    // 'Miete': '#3B82F6',      // Blue (Removed)
+    // 'Transport': '#8B5CF6',  // Violet (Removed)
+    'Schminki Schminki': '#EC4899', // Pink (reused from Freizeit)
+    'Shoppi': '#8B5CF6',     // Violet (reused from Transport)
+    'Freizeit': '#10B981',   // Emerald (shifted)
+    // 'Versicherung': '#6B7280', // Gray (Removed)
     'Sparen': '#10B981',     // Emerald
     'Sonstiges': '#9CA3AF'   // Light Gray
 }
@@ -699,10 +701,10 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
     }
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-transparent rounded-t-3xl overflow-hidden shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 dark:border-white/5 pb-20 scale-[1.15] origin-top w-[86%] mx-auto overflow-x-hidden">
+        <div className="flex flex-col h-full w-full">
 
             {/* --- HEADER WITH PDF BUTTON --- */}
-            <div className="flex justify-between items-center p-6 pb-2">
+            <div className="flex justify-between items-center pb-6 shrink-0">
                 <h2 className="text-2xl font-bold">Analyse</h2>
                 <button
                     onClick={generateAnalysisPDF}
@@ -714,7 +716,14 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
             </div>
 
             {/* --- SCROLLABLE CONTENT --- */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-8">
+            {/* Removed overflow-y-auto here because the parent container handles scrolling if needed, 
+                BUT wait: The parent container in MobileDashboard (line 670) has overflow-y-auto. 
+                So we don't need another scroll container here? 
+                Actually, MobileDashboard structure is:
+                Row 3 span 12: bg-white rounded-t-3xl p-4 pb-28 overflow-y-auto.
+                So yes, we should just let the content flow. 
+            */}
+            <div className="flex-1 space-y-8">
                 <CashflowTab
                     data12M={cashflowData12M}
                     dataWeekly={cashflowDataWeekly}

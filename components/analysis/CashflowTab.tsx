@@ -80,14 +80,14 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
         <div className="space-y-6">
 
             {/* TIME RANGE SWITCHER */}
-            <div className="flex bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl">
+            <div className="flex bg-rose-50/50 p-1 rounded-xl">
                 {['daily', 'weekly', 'monthly', 'yearly'].map((r) => (
                     <button
                         key={r}
                         onClick={() => setRange(r as any)}
                         className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${range === r
-                            ? 'bg-white dark:bg-gray-700 shadow-sm text-black dark:text-white'
-                            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                            ? 'bg-white shadow-sm text-rose-600'
+                            : 'text-gray-500 hover:text-gray-700'
                             }`}
                     >
                         {r === 'daily' && 'Täglich'}
@@ -99,15 +99,15 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
             </div>
 
             {/* DYNAMIC TREND CHART (SPLIT LAYOUT) */}
-            <div className="bg-white dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 p-4 rounded-2xl shadow-sm border border-gray-100 relative">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                        <div className="p-2 bg-blue-50 dark:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-400">
+                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
                             <TrendingUp className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-gray-800 dark:text-gray-200">Verlauf</h3>
-                            <p className="text-xs text-gray-400 dark:text-gray-500">{title}</p>
+                            <h3 className="font-bold text-gray-800">Verlauf</h3>
+                            <p className="text-xs text-gray-400">{title}</p>
                         </div>
                     </div>
 
@@ -115,13 +115,13 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
                     <div className="flex gap-1">
                         <button
                             onClick={() => scroll('left')}
-                            className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all"
+                            className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-rose-100 active:scale-95 transition-all"
                         >
                             <ChevronLeft className="w-5 h-5" />
                         </button>
                         <button
                             onClick={() => scroll('right')}
-                            className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all"
+                            className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-rose-100 active:scale-95 transition-all"
                         >
                             <ChevronRight className="w-5 h-5" />
                         </button>
@@ -130,7 +130,7 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
 
                 <div className="flex h-[250px] w-full">
                     {/* FIXED Y-AXIS LEFT */}
-                    <div className="w-[60px] h-full shrink-0 border-r border-gray-100 dark:border-white/5 bg-white dark:bg-transparent z-10">
+                    <div className="w-[60px] h-full shrink-0 border-r border-rose-100 bg-white z-10">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={[{ val: 0 }, { val: maxValue }]} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                                 <YAxis

@@ -9,79 +9,49 @@ export type ThemeColors = {
     border: string
 }
 
-// Simple brightness calculation to decide between black/white text
-const getContrastColor = (hex: string): string => {
-    const r = parseInt(hex.substring(1, 3), 16)
-    const g = parseInt(hex.substring(3, 5), 16)
-    const b = parseInt(hex.substring(5, 7), 16)
-    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000
-    return (yiq >= 128) ? '#000000' : '#ffffff'
-}
-
+// Helper to get variables based on active theme
+// Note: This returns the definition, but in CSS variables are handled by the browser.
+// This is mainly for JS-side usages if needing explicit hex codes.
 export const getThemeVariables = (themeName: string): ThemeColors => {
-    switch (themeName) {
-        case 'pink':
-            return {
-                background: '#f9a8d4', // pink-300 (Darker bg)
-                foreground: '#831843', // pink-900
-                primary: '#db2777',    // pink-600
-                primaryForeground: '#ffffff',
-                muted: '#fbcfe8',      // pink-200
-                mutedForeground: '#be185d', // pink-700
-                border: '#f9a8d4'      // pink-300
-            }
-        case 'blue':
-            return {
-                background: '#93c5fd', // blue-300
-                foreground: '#1e3a8a', // blue-900
-                primary: '#2563eb',    // blue-600
-                primaryForeground: '#ffffff',
-                muted: '#bfdbfe',      // blue-200
-                mutedForeground: '#1d4ed8', // blue-700
-                border: '#93c5fd'      // blue-300
-            }
-        case 'green':
-            return {
-                background: '#86efac', // green-300
-                foreground: '#14532d', // green-900
-                primary: '#16a34a',    // green-600
-                primaryForeground: '#ffffff',
-                muted: '#bbf7d0',      // green-200
-                mutedForeground: '#15803d', // green-700
-                border: '#86efac'      // green-300
-            }
-        case 'yellow':
-            return {
-                background: '#fde047', // yellow-300
-                foreground: '#713f12', // yellow-900
-                primary: '#eab308',    // yellow-500
-                primaryForeground: '#000000',
-                muted: '#fef08a',      // yellow-200
-                mutedForeground: '#a16207', // yellow-700
-                border: '#fde047'      // yellow-300
-            }
-        default: // white / paper
-            return {
-                background: '#f8f5e6',
-                foreground: '#333333',
-                primary: '#1f2937',    // gray-800
-                primaryForeground: '#ffffff',
-                muted: '#e5e7eb',      // gray-200
-                mutedForeground: '#6b7280', // gray-500
-                border: '#d1d5db'      // gray-300
-            }
+    if (themeName === 'pink') {
+        return {
+            background: '#fff1f2', // rose-50
+            foreground: '#1f2937', // gray-800
+            primary: '#f43f5e',    // rose-500
+            primaryForeground: '#ffffff',
+            muted: '#ffe4e6',      // rose-100
+            mutedForeground: '#9f1239', // rose-800
+            border: '#fecdd3'      // rose-200
+        }
+    }
+    // Default: Paper
+    return {
+        background: '#f8f5e6', // paper
+        foreground: '#1f2937', // gray-800
+        primary: '#3b82f6',    // blue-500
+        primaryForeground: '#ffffff',
+        muted: '#f1f5f9',      // slate-100
+        mutedForeground: '#475569', // slate-600
+        border: '#e2e8f0'      // slate-200
     }
 }
 
 export const applyTheme = (themeName: string) => {
-    const colors = getThemeVariables(themeName)
+    // We now use data-theme attribute on root
     const root = document.documentElement
 
-    root.style.setProperty('--bg-background', colors.background)
-    root.style.setProperty('--text-foreground', colors.foreground)
-    root.style.setProperty('--color-primary', colors.primary)
-    root.style.setProperty('--text-primary-foreground', colors.primaryForeground)
-    root.style.setProperty('--bg-muted', colors.muted)
-    root.style.setProperty('--text-muted-foreground', colors.mutedForeground)
-    root.style.setProperty('--color-border', colors.border)
+    // Save to local storage
+    localStorage.setItem('theme', themeName)
+
+    if (themeName === 'pink') {
+        root.setAttribute('data-theme', 'pink')
+    } else {
+        root.removeAttribute('data-theme') // Default is Paper (no attribute)
+    }
+}
+
+export const loadTheme = () => {
+    if (typeof window === 'undefined') return
+    const saved = localStorage.getItem('theme') || 'paper'
+    applyTheme(saved)
 }

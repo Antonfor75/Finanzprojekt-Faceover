@@ -17,14 +17,14 @@ export default function WealthTab({ data, currentAssets = 0 }: Props) {
         <div className="space-y-6">
 
             {/* NET WORTH CHART */}
-            <div className="bg-white dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 p-4 rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100">
                 <div className="flex items-center gap-2 mb-4">
-                    <div className="p-2 bg-purple-50 dark:bg-purple-500/20 rounded-lg text-purple-600 dark:text-purple-400">
+                    <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
                         <Gem className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-800 dark:text-gray-200">Nettovermögen</h3>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">Entwicklung über Zeit</p>
+                        <h3 className="font-bold text-gray-800">Nettovermögen</h3>
+                        <p className="text-xs text-gray-400">Entwicklung über Zeit</p>
                     </div>
                 </div>
 
@@ -55,17 +55,17 @@ export default function WealthTab({ data, currentAssets = 0 }: Props) {
                     </ResponsiveContainer>
                 </div>
 
-                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-                    <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-2">Key Stats</h4>
+                <div className="mt-4 p-4 bg-rose-50/50 rounded-xl">
+                    <h4 className="font-bold text-gray-700 mb-2">Key Stats</h4>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Aktuelles Vermögen</p>
-                            <p className="text-xl font-bold text-purple-600 dark:text-purple-400">€{currentAssets.toLocaleString()}</p>
+                            <p className="text-xs text-gray-500">Aktuelles Vermögen</p>
+                            <p className="text-xl font-bold text-purple-600">€{currentAssets.toLocaleString()}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Veränderung (YTD)</p>
+                            <p className="text-xs text-gray-500">Veränderung (YTD)</p>
                             {/* Simple Logic: compare last data point with first of this year or just show total growth */}
-                            <p className="text-xl font-bold text-green-500 dark:text-green-400">
+                            <p className="text-xl font-bold text-green-500">
                                 {data.length > 1 ? `€${(data[0].assets - data[data.length - 1].assets).toLocaleString()}` : '-'}
                             </p>
                         </div>

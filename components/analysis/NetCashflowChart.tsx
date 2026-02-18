@@ -13,20 +13,20 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         const isPositive = net >= 0
 
         return (
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700">
-                <p className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">{label}</p>
+            <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
+                <p className="text-sm font-bold text-gray-500 mb-2">{label}</p>
                 <div className="space-y-1">
                     <div className="flex justify-between gap-4 text-sm">
-                        <span className="text-gray-600 dark:text-gray-300">Einnahmen:</span>
+                        <span className="text-gray-600">Einnahmen:</span>
                         <span className="font-bold text-green-600">+€{Number(data.income).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between gap-4 text-sm">
-                        <span className="text-gray-600 dark:text-gray-300">Ausgaben:</span>
+                        <span className="text-gray-600">Ausgaben:</span>
                         <span className="font-bold text-red-600">-€{Number(data.expenses).toFixed(2)}</span>
                     </div>
-                    <div className="h-px bg-gray-200 dark:bg-gray-700 my-2" />
+                    <div className="h-px bg-gray-200 my-2" />
                     <div className="flex justify-between gap-4 text-sm font-bold">
-                        <span className="text-gray-800 dark:text-gray-100">Ergebnis:</span>
+                        <span className="text-gray-800">Ergebnis:</span>
                         <span className={isPositive ? 'text-green-600' : 'text-red-600'}>
                             {isPositive ? '+' : ''}€{net.toFixed(2)}
                         </span>
@@ -81,15 +81,15 @@ export default function NetCashflowChart({ data }: Props) {
     }, [data])
 
     return (
-        <div className="bg-white dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 p-4 rounded-2xl shadow-sm border border-gray-100 relative">
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
                     <div className={`p-2 rounded-lg ${isTotalPositive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                         {isTotalPositive ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-800 dark:text-gray-200">Netto Cashflow</h3>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">Einnahmen - Ausgaben</p>
+                        <h3 className="font-bold text-gray-800">Netto Cashflow</h3>
+                        <p className="text-xs text-gray-400">Einnahmen - Ausgaben</p>
                     </div>
                 </div>
 
@@ -103,13 +103,13 @@ export default function NetCashflowChart({ data }: Props) {
                     <div className="flex gap-1">
                         <button
                             onClick={() => scroll('left')}
-                            className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all"
+                            className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-rose-100 active:scale-95 transition-all"
                         >
                             <ChevronLeft className="w-5 h-5" />
                         </button>
                         <button
                             onClick={() => scroll('right')}
-                            className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all"
+                            className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-rose-100 active:scale-95 transition-all"
                         >
                             <ChevronRight className="w-5 h-5" />
                         </button>
@@ -119,7 +119,7 @@ export default function NetCashflowChart({ data }: Props) {
 
             <div className="flex h-[300px] w-full">
                 {/* FIXED Y-AXIS LEFT */}
-                <div className="w-[60px] h-full shrink-0 border-r border-gray-100 dark:border-white/5 bg-white dark:bg-transparent z-10">
+                <div className="w-[60px] h-full shrink-0 border-r border-rose-100 bg-white z-10">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={[{ val: domain[0] }, { val: domain[1] }]} margin={{ top: 20, right: 0, left: 0, bottom: 5 }}>
                             <YAxis

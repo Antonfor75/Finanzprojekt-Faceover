@@ -222,71 +222,73 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
     const isPositive = (currentBalance || 0) >= 0
 
     return (
-        <div className="fixed inset-0 bg-white dark:bg-gray-900 z-50 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300">
-            {/* HEAD */}
-            <div className="p-6 pb-2 shrink-0">
-                <button
-                    onClick={onBack}
-                    className="flex items-center gap-2 text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white mb-6 transition-colors"
-                >
-                    <ArrowLeft className="w-6 h-6" />
-                    <span className="text-lg font-medium">Zurück</span>
-                </button>
+        <div className="fixed inset-0 bg-rose-50 z-50 overflow-y-auto animate-in slide-in-from-right duration-300">
+            <div className="flex flex-col min-h-full pb-8">
+                {/* HEAD */}
+                <div className="p-6 pb-2 shrink-0">
+                    <button
+                        onClick={onBack}
+                        className="flex items-center gap-2 text-gray-500 hover:text-rose-600 mb-6 transition-colors"
+                    >
+                        <ArrowLeft className="w-6 h-6" />
+                        <span className="text-lg font-medium">Zurück</span>
+                    </button>
 
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-bold uppercase text-gray-400 tracking-wider">Girokonto Übersicht</p>
-                        <h1 className={`text-4xl font-bold ${isPositive ? 'text-gray-900 dark:text-white' : 'text-red-600'}`}>
-                            €{currentBalance.toFixed(2)}
-                        </h1>
-                    </div>
-                    <div className={`p-4 rounded-2xl ${isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        <TrendingUp className="w-8 h-8" />
-                    </div>
-                </div>
-            </div>
-
-            {/* CONTROLS REMOVED */}
-
-            {/* CHART */}
-            <div className="flex-1 p-6 min-h-0 flex flex-col">
-                <div className="bg-gray-50 dark:bg-gray-800/30 rounded-3xl p-4 border border-gray-100 dark:border-white/5 h-full flex flex-col relative">
-                    <div className="flex justify-between items-center mb-4 px-2">
-                        <h3 className="font-bold text-gray-500 text-sm uppercase">Verlauf</h3>
-                        <div className="flex gap-1">
-                            <button onClick={() => scroll('left')} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><ChevronLeft className="w-5 h-5" /></button>
-                            <button onClick={() => scroll('right')} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><ChevronRight className="w-5 h-5" /></button>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-bold uppercase text-gray-400 tracking-wider">Girokonto Übersicht</p>
+                            <h1 className={`text-4xl font-bold ${isPositive ? 'text-gray-900' : 'text-red-600'}`}>
+                                €{currentBalance.toFixed(2)}
+                            </h1>
+                        </div>
+                        <div className={`p-4 rounded-2xl ${isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            <TrendingUp className="w-8 h-8" />
                         </div>
                     </div>
+                </div>
 
-                    <div ref={scrollContainerRef} className="flex-1 w-full overflow-x-auto overflow-y-hidden" style={{ scrollBehavior: 'smooth' }}>
-                        <div style={{ width: `${chartWidth}px`, height: '100%', minWidth: '100%' }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorBal" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} dy={10} minTickGap={50} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                        labelStyle={{ color: '#6b7280', marginBottom: '0.25rem' }}
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="balance"
-                                        stroke="#3b82f6"
-                                        strokeWidth={3}
-                                        fill="url(#colorBal)"
-                                        name="Kontostand"
-                                        animationDuration={500}
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                {/* CONTROLS REMOVED */}
+
+                {/* CHART */}
+                <div className="p-6 flex flex-col">
+                    <div className="bg-white/50 rounded-3xl p-4 border border-rose-100/20 h-[60vh] min-h-[500px] flex flex-col relative">
+                        <div className="flex justify-between items-center mb-4 px-2">
+                            <h3 className="font-bold text-gray-500 text-sm uppercase">Verlauf</h3>
+                            <div className="flex gap-1">
+                                <button onClick={() => scroll('left')} className="p-2 rounded-full hover:bg-rose-100 transition-colors"><ChevronLeft className="w-5 h-5" /></button>
+                                <button onClick={() => scroll('right')} className="p-2 rounded-full hover:bg-rose-100 transition-colors"><ChevronRight className="w-5 h-5" /></button>
+                            </div>
+                        </div>
+
+                        <div ref={scrollContainerRef} className="flex-1 w-full overflow-x-auto overflow-y-hidden" style={{ scrollBehavior: 'smooth' }}>
+                            <div style={{ width: `${chartWidth}px`, height: '100%', minWidth: '100%' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={chartData} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorBal" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} dy={10} minTickGap={50} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                            labelStyle={{ color: '#6b7280', marginBottom: '0.25rem' }}
+                                        />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="balance"
+                                            stroke="#3b82f6"
+                                            strokeWidth={3}
+                                            fill="url(#colorBal)"
+                                            name="Kontostand"
+                                            animationDuration={500}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
                     </div>
                 </div>

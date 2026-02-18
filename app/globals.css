@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@variant dark (&:where(.dark, .dark *));
+
 
 @theme {
   /* Dynamic Semantic Colors */
@@ -27,14 +27,37 @@
 @layer base {
 
   :root {
-    /* DEFAULT VALUES (White Theme) */
-    --bg-background: #f8f5e6;
-    --text-foreground: #333333;
-    --color-primary: #1f2937;
+    /* DEFAULT THEME: PAPER (Classic/Neutral) */
+    --bg-background: #f8f5e6; /* specific paper color */
+    --text-foreground: #1f2937; /* gray-800 */
+    
+    --color-primary: #3b82f6; /* blue-500 - Classic Blue */
     --text-primary-foreground: #ffffff;
-    --bg-muted: #e5e7eb;
-    --text-muted-foreground: #6b7280;
-    --color-border: #d1d5db;
+    
+    --bg-muted: #f1f5f9; /* slate-100 */
+    --text-muted-foreground: #475569; /* slate-600 */
+    
+    --color-border: #e2e8f0; /* slate-200 */
+    
+    --bg-card: #ffffff;
+    --text-card-foreground: #1f2937;
+  }
+
+  /* PINK THEME OVERRIDE */
+  :root[data-theme='pink'] {
+    --bg-background: #fff1f2; /* rose-50 */
+    --text-foreground: #1f2937; /* gray-800 */
+    
+    --color-primary: #f43f5e; /* rose-500 */
+    --text-primary-foreground: #ffffff;
+    
+    --bg-muted: #ffe4e6; /* rose-100 */
+    --text-muted-foreground: #9f1239; /* rose-800 */
+    
+    --color-border: #fecdd3; /* rose-200 */
+    
+    --bg-card: #ffffff;
+    --text-card-foreground: #1f2937;
   }
 
   body {
@@ -46,6 +69,7 @@
     /* Apply Semantic Variables */
     background-color: var(--bg-background);
     color: var(--text-foreground);
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 

@@ -1,7 +1,9 @@
 ﻿'use client'
 
+
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, Plus, Trash2, Save, LogOut, Wallet, Download, Upload, ArrowDown, Moon, Sun, FileText, HelpCircle } from 'lucide-react'
+import { applyTheme, loadTheme } from '@/utils/theme'
+import { ArrowLeft, Trash2, LogOut, Wallet, Download, Upload, FileText, HelpCircle, ArrowDown } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import ImportWizard from '@/components/ImportWizard'
@@ -16,16 +18,12 @@ type SettingsOverlayProps = {
     fixedCosts: FixedCost[]
     accounts?: Account[]
     incomeSources: IncomeSource[]
-    theme: string
-    setTheme: (theme: string) => void
     onLogout: () => void
     onUpdate?: () => void
     expenses: Expense[]
-    isDarkMode: boolean
-    toggleDarkMode: () => void
 }
 
-export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts = [], incomeSources = [], theme, setTheme, onLogout, onUpdate, expenses, isDarkMode, toggleDarkMode }: SettingsOverlayProps) {
+export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts = [], incomeSources = [], onLogout, onUpdate, expenses }: SettingsOverlayProps) {
     // const [budget, setBudget] = useState<string | number>(settings?.monthly_budget || 0) // REMOVED: Calculated dynamically now
     const [showImportWizard, setShowImportWizard] = useState(false)
     const [showHelp, setShowHelp] = useState(false)
@@ -57,6 +55,20 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [newAccountMonths, setNewAccountMonths] = useState('') // For distribution
     const [newAccountType, setNewAccountType] = useState<'distribution' | 'savings'>('distribution')
     const [newAccountValidFrom, setNewAccountValidFrom] = useState(new Date().toISOString().split('T')[0]) // Start Date for distribution
+
+    const [currentTheme, setCurrentTheme] = useState('paper')
+
+    useEffect(() => {
+        // Load initial theme
+        const saved = localStorage.getItem('theme') || 'paper'
+        setCurrentTheme(saved)
+        loadTheme()
+    }, [])
+
+    const handleThemeChange = (theme: string) => {
+        setCurrentTheme(theme)
+        applyTheme(theme)
+    }
 
     // Derived Weekly Rate for Savings (Display Only during creation)
     const calculatedWeeklyRate = useMemo(() => {
@@ -796,7 +808,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     if (showImportWizard) {
         return (
             <div className="fixed inset-0 z-[60] h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-bottom duration-300 flex justify-center">
-                <div className="w-[86%] scale-[1.15] origin-top h-full">
+                <div className="w-full h-full md:max-w-2xl">
                     <ImportWizard
                         onClose={() => setShowImportWizard(false)}
                         onImportSuccess={() => {
@@ -816,32 +828,32 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     if (showAccounts) {
         return (
             <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right duration-300 flex justify-center">
-                <div className="w-[86%] scale-[1.15] origin-top min-h-full flex flex-col max-w-2xl mx-auto">
-                    <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
+                <div className="w-full h-full md:max-w-2xl flex flex-col mx-auto">
+                    <div className="p-8 flex items-center justify-between border-b border-border/20 shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setShowAccounts(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+                            <button onClick={() => setShowAccounts(false)} className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors">
                                 <ArrowLeft className="w-8 h-8" />
                             </button>
-                            <h1 className="text-2xl font-bold text-gray-800">Konten Verwalten</h1>
+                            <h1 className="text-2xl font-bold text-foreground">Konten Verwalten</h1>
                         </div>
                     </div>
 
                     <div className="p-8 space-y-8 flex-1 pb-20">
                         {/* Add New Account */}
-                        <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4">
-                            <h3 className="font-bold text-gray-800">Neues Konto anlegen</h3>
+                        <div className="bg-muted/50 p-6 rounded-2xl border border-border/50 space-y-4">
+                            <h3 className="font-bold text-foreground">Neues Konto anlegen</h3>
 
                             {/* Type Selection */}
-                            <div className="flex bg-gray-200 rounded-xl p-1">
+                            <div className="flex bg-muted rounded-xl p-1">
                                 <button
                                     onClick={() => setNewAccountType('distribution')}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${newAccountType === 'distribution' ? 'bg-white shadow-sm text-black' : 'text-gray-500'}`}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${newAccountType === 'distribution' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
                                 >
                                     Aufteilung
                                 </button>
                                 <button
                                     onClick={() => setNewAccountType('savings')}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${newAccountType === 'savings' ? 'bg-white shadow-sm text-black' : 'text-gray-500'}`}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${newAccountType === 'savings' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
                                 >
                                     Sparkonto
                                 </button>
@@ -852,7 +864,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                     placeholder="Name des Kontos"
                                     value={newAccountName}
                                     onChange={(e) => setNewAccountName(e.target.value)}
-                                    className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none"
+                                    className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-foreground"
                                 />
                                 <div className="flex gap-3">
                                     <input
@@ -860,7 +872,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         placeholder="Aktueller Betrag (€)"
                                         value={newAccountAmount}
                                         onChange={(e) => setNewAccountAmount(e.target.value)}
-                                        className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none"
+                                        className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-foreground"
                                     />
                                     {newAccountType === 'distribution' && (
                                         <input
@@ -868,7 +880,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                             placeholder="Monate"
                                             value={newAccountMonths}
                                             onChange={(e) => setNewAccountMonths(e.target.value)}
-                                            className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none"
+                                            className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-foreground"
                                         />
                                     )}
                                     <div className="flex-1">
@@ -877,32 +889,32 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                             placeholder="Startdatum"
                                             value={newAccountValidFrom}
                                             onChange={(e) => setNewAccountValidFrom(e.target.value)}
-                                            className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-sm text-gray-500"
+                                            className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-sm text-muted-foreground"
                                             title="Startdatum (Optional)"
                                         />
                                     </div>
                                 </div>
 
                                 {newAccountType === 'savings' && (
-                                    <div className="space-y-3 pt-2 border-t border-gray-200">
+                                    <div className="space-y-3 pt-2 border-t border-border/50">
                                         <div className="flex gap-3">
                                             <div className="flex-1">
-                                                <label className="text-xs text-gray-500 ml-2">Zielbetrag (€) (Optional)</label>
+                                                <label className="text-xs text-muted-foreground ml-2">Zielbetrag (€) (Optional)</label>
                                                 <input
                                                     type="number"
                                                     placeholder="Ziel (€)"
                                                     value={newAccountTargetAmount}
                                                     onChange={(e) => setNewAccountTargetAmount(e.target.value)}
-                                                    className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none"
+                                                    className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-foreground"
                                                 />
                                             </div>
                                             <div className="flex-1">
-                                                <label className="text-xs text-gray-500 ml-2">Zieldatum (Optional)</label>
+                                                <label className="text-xs text-muted-foreground ml-2">Zieldatum (Optional)</label>
                                                 <input
                                                     type="date"
                                                     value={newAccountTargetDate}
                                                     onChange={(e) => setNewAccountTargetDate(e.target.value)}
-                                                    className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none"
+                                                    className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-foreground"
                                                 />
                                             </div>
                                         </div>
@@ -928,9 +940,9 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                         {/* Accounts List */}
                         <div className="space-y-4">
-                            <h3 className="font-bold text-gray-800">Deine Konten</h3>
+                            <h3 className="font-bold text-foreground">Deine Konten</h3>
                             {accounts.length === 0 ? (
-                                <p className="text-gray-400 text-center py-8">Noch keine Konten angelegt.</p>
+                                <p className="text-muted-foreground text-center py-8">Noch keine Konten angelegt.</p>
                             ) : (
                                 <div className="space-y-3">
                                     {accounts.map(acc => {
@@ -938,12 +950,12 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                         if (isEditing) {
                                             return (
-                                                <div key={acc.id} className="p-4 bg-white rounded-xl border-2 border-blue-500 shadow-lg space-y-3">
+                                                <div key={acc.id} className="p-4 bg-card rounded-xl border-2 border-blue-500 shadow-lg space-y-3">
                                                     <div className="space-y-3">
                                                         <input
                                                             value={editAccountName}
                                                             onChange={e => setEditAccountName(e.target.value)}
-                                                            className="w-full px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                            className="w-full px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
                                                             placeholder="Name"
                                                         />
                                                         <div className="flex gap-2">
@@ -951,7 +963,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                                 type="number"
                                                                 value={editAccountAmount}
                                                                 onChange={e => setEditAccountAmount(e.target.value)}
-                                                                className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                                className="flex-1 px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
                                                                 placeholder="Betrag"
                                                             />
                                                             {acc.type === 'distribution' && (
@@ -960,14 +972,14 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                                         type="number"
                                                                         value={editAccountMonths}
                                                                         onChange={e => setEditAccountMonths(e.target.value)}
-                                                                        className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                                        className="flex-1 px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
                                                                         placeholder="Monate"
                                                                     />
                                                                     <input
                                                                         type="date"
                                                                         value={editAccountValidFrom}
                                                                         onChange={e => setEditAccountValidFrom(e.target.value)}
-                                                                        className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                                        className="flex-1 px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
                                                                         title="Startdatum"
                                                                     />
                                                                 </>
@@ -979,19 +991,19 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                                     type="number"
                                                                     value={editAccountTargetAmount}
                                                                     onChange={e => setEditAccountTargetAmount(e.target.value)}
-                                                                    className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                                    className="flex-1 px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
                                                                     placeholder="Ziel (€)"
                                                                 />
                                                                 <input
                                                                     type="date"
                                                                     value={editAccountTargetDate}
                                                                     onChange={e => setEditAccountTargetDate(e.target.value)}
-                                                                    className="flex-1 px-4 py-2 bg-gray-50 rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                                    className="flex-1 px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
                                                                 />
                                                             </div>
                                                         )}
                                                         <div className="flex justify-end gap-2 pt-2">
-                                                            <button onClick={() => setEditingAccountId(null)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Abbrechen</button>
+                                                            <button onClick={() => setEditingAccountId(null)} className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg">Abbrechen</button>
                                                             <button onClick={handleSaveEditAccount} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-sm">Speichern</button>
                                                         </div>
                                                     </div>
@@ -1002,7 +1014,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         return (
                                             <div
                                                 key={acc.id}
-                                                className={`p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center group cursor-pointer hover:bg-gray-50 bg-white`}
+                                                className={`p-4 rounded-xl shadow-sm border border-border/50 flex justify-between items-center group cursor-pointer hover:bg-muted/50 bg-card`}
                                                 onClick={() => {
                                                     if (acc.type === 'savings') {
                                                         handleTransferFromSavings(acc)
@@ -1011,16 +1023,16 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                             >
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2">
-                                                        <p className="font-bold text-gray-800">{acc.name}</p>
+                                                        <p className="font-bold text-foreground">{acc.name}</p>
                                                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${acc.type === 'savings' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                                                             {acc.type === 'savings' ? 'Sparkonto' : 'Aufteilung'}
                                                         </span>
                                                     </div>
-                                                    <div className="flex gap-2 text-xs text-gray-500 font-medium mt-1">
-                                                        <span className="bg-gray-100 px-2 py-0.5 rounded">€{acc.amount.toFixed(2)}</span>
+                                                    <div className="flex gap-2 text-xs text-muted-foreground font-medium mt-1">
+                                                        <span className="bg-muted px-2 py-0.5 rounded">€{acc.amount.toFixed(2)}</span>
                                                         {acc.type === 'distribution' && (
                                                             <>
-                                                                <span className="bg-gray-100 px-2 py-0.5 rounded">{acc.months} Monate übrig</span>
+                                                                <span className="bg-muted px-2 py-0.5 rounded">{acc.months} Monate übrig</span>
                                                                 {acc.valid_from && (
                                                                     <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
                                                                         Start: {new Date(acc.valid_from).toLocaleDateString()}
@@ -1036,7 +1048,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                     </div>
                                                     {/* Progress Bar for Savings */}
                                                     {acc.type === 'savings' && acc.target_amount && (
-                                                        <div className="mt-2 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                                        <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                                                             <div
                                                                 className="h-full bg-green-500 rounded-full"
                                                                 style={{ width: `${Math.min(100, (acc.amount / Number(acc.target_amount)) * 100)}%` }}
@@ -1047,13 +1059,13 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 <div className="flex items-center gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
                                                     <button
                                                         onClick={() => handleStartEditAccount(acc)}
-                                                        className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        className="p-2 text-muted-foreground/50 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
                                                     >
                                                         <FileText className="w-5 h-5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteAccount(acc.id)}
-                                                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                        className="p-2 text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                                     >
                                                         <Trash2 className="w-5 h-5" />
                                                     </button>
@@ -1083,54 +1095,54 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     if (showFixedCosts) {
         return (
             <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right duration-300 flex justify-center">
-                <div className="w-[86%] scale-[1.15] origin-top min-h-full flex flex-col max-w-2xl mx-auto">
-                    <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
+                <div className="w-full h-full md:max-w-2xl flex flex-col mx-auto">
+                    <div className="p-8 flex items-center justify-between border-b border-border/20 shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setShowFixedCosts(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+                            <button onClick={() => setShowFixedCosts(false)} className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors">
                                 <ArrowLeft className="w-8 h-8" />
                             </button>
-                            <h1 className="text-2xl font-bold text-gray-800">Fixkosten Verwalten</h1>
+                            <h1 className="text-2xl font-bold text-foreground">Fixkosten Verwalten</h1>
                         </div>
                     </div>
 
                     <div className="p-8 space-y-8 flex-1 pb-20">
                         {/* Add New Fixed Cost */}
                         <div className="bg-red-50/50 p-6 rounded-2xl border border-red-100/50 space-y-4">
-                            <h3 className="font-bold text-gray-800">Neue Fixkosten hinzufügen</h3>
+                            <h3 className="font-bold text-foreground">Neue Fixkosten hinzufügen</h3>
                             <div className="space-y-3">
                                 <div className="flex gap-2">
                                     <input
                                         placeholder="Titel"
                                         value={newCostTitle}
                                         onChange={(e) => setNewCostTitle(e.target.value)}
-                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none"
+                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
                                     />
                                     <input
                                         type="number"
                                         placeholder="€ (Monatlich)"
                                         value={newCostAmount}
                                         onChange={(e) => setNewCostAmount(e.target.value)}
-                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none"
+                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
                                     />
                                 </div>
                                 {/* Date Range */}
                                 <div className="flex gap-2">
                                     <div className="flex-1">
-                                        <label className="text-xs text-gray-500 ml-2">Gültig ab</label>
+                                        <label className="text-xs text-muted-foreground ml-2">Gültig ab</label>
                                         <input
                                             type="date"
                                             value={newCostValidFrom}
                                             onChange={(e) => setNewCostValidFrom(e.target.value)}
-                                            className="w-full h-12 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-sm"
+                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-sm text-foreground"
                                         />
                                     </div>
                                     <div className="flex-1">
-                                        <label className="text-xs text-gray-500 ml-2">Gültig bis (Optional)</label>
+                                        <label className="text-xs text-muted-foreground ml-2">Gültig bis (Optional)</label>
                                         <input
                                             type="date"
                                             value={newCostValidTo}
                                             onChange={(e) => setNewCostValidTo(e.target.value)}
-                                            className="w-full h-12 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-sm"
+                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-sm text-foreground"
                                         />
                                     </div>
                                 </div>
@@ -1148,14 +1160,14 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         {/* Fixed Costs List */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-gray-800">Deine Fixkosten</h3>
+                                <h3 className="font-bold text-foreground">Deine Fixkosten</h3>
                                 <span className="text-xs font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full">
                                     Summe: €{totalFixed.toFixed(2)}
                                 </span>
                             </div>
 
                             {fixedCosts.length === 0 ? (
-                                <p className="text-gray-400 text-center py-8">Noch keine Fixkosten.</p>
+                                <p className="text-muted-foreground text-center py-8">Noch keine Fixkosten.</p>
                             ) : (
                                 <div className="space-y-3">
                                     {fixedCosts.sort((a, b) => {
@@ -1180,44 +1192,44 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                         if (isEditing) {
                                             return (
-                                                <div key={cost.id} className="p-4 bg-white rounded-xl border-2 border-red-500 shadow-lg space-y-3">
+                                                <div key={cost.id} className="p-4 bg-card rounded-xl border-2 border-red-500 shadow-lg space-y-3">
                                                     <div className="flex gap-2">
                                                         <input
                                                             value={editCostTitle}
                                                             onChange={e => setEditCostTitle(e.target.value)}
-                                                            className="flex-[2] px-3 py-2 bg-gray-50 rounded-lg text-sm border focus:ring-2 focus:ring-red-500/50 outline-none"
+                                                            className="flex-[2] px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
                                                             placeholder="Titel"
                                                         />
                                                         <input
                                                             type="number"
                                                             value={editCostAmount}
                                                             onChange={e => setEditCostAmount(e.target.value)}
-                                                            className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-sm border focus:ring-2 focus:ring-red-500/50 outline-none"
+                                                            className="flex-1 px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
                                                             placeholder="Betrag"
                                                         />
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <div className="flex-1">
-                                                            <label className="text-[10px] text-gray-500 ml-1">Von</label>
+                                                            <label className="text-[10px] text-muted-foreground ml-1">Von</label>
                                                             <input
                                                                 type="date"
                                                                 value={editCostValidFrom}
                                                                 onChange={e => setEditCostValidFrom(e.target.value)}
-                                                                className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs border focus:ring-2 focus:ring-red-500/50 outline-none"
+                                                                className="w-full px-3 py-2 bg-muted rounded-lg text-xs border focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
                                                             />
                                                         </div>
                                                         <div className="flex-1">
-                                                            <label className="text-[10px] text-gray-500 ml-1">Bis</label>
+                                                            <label className="text-[10px] text-muted-foreground ml-1">Bis</label>
                                                             <input
                                                                 type="date"
                                                                 value={editCostValidTo}
                                                                 onChange={e => setEditCostValidTo(e.target.value)}
-                                                                className="w-full px-3 py-2 bg-gray-50 rounded-lg text-xs border focus:ring-2 focus:ring-red-500/50 outline-none"
+                                                                className="w-full px-3 py-2 bg-muted rounded-lg text-xs border focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
                                                             />
                                                         </div>
                                                     </div>
                                                     <div className="flex justify-end gap-2 pt-2">
-                                                        <button onClick={() => setEditingCostId(null)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Abbrechen</button>
+                                                        <button onClick={() => setEditingCostId(null)} className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg">Abbrechen</button>
                                                         <button onClick={handleSaveEditCost} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-sm">Speichern</button>
                                                     </div>
                                                 </div>
@@ -1225,23 +1237,23 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         }
 
                                         return (
-                                            <div key={cost.id} className={`flex items-center justify-between p-4 bg-white rounded-xl border shadow-sm group ${isExpired ? 'bg-gray-50 border-gray-200 opacity-60' : isSavings ? 'border-green-200 bg-green-50/30' : 'border-gray-100'}`}>
+                                            <div key={cost.id} className={`flex items-center justify-between p-4 bg-card rounded-xl border shadow-sm group ${isExpired ? 'bg-muted border-border opacity-60' : isSavings ? 'border-green-200 bg-green-50/30' : 'border-border'}`}>
                                                 <div className="min-w-0 flex-1 mr-4">
                                                     <div className="flex items-center gap-2">
-                                                        <p className={`font-bold truncate text-lg ${isExpired ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{cost.title}</p>
+                                                        <p className={`font-bold truncate text-lg ${isExpired ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{cost.title}</p>
                                                         {isSavings && (
                                                             <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">
                                                                 SPAREN
                                                             </span>
                                                         )}
                                                         {isExpired && (
-                                                            <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">
+                                                            <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">
                                                                 ABGELAUFEN
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <p className={`text-sm font-bold ${isExpired ? 'text-gray-400' : 'text-red-600'}`}>-€{cost.amount.toFixed(2)}</p>
-                                                    <div className="text-[10px] text-gray-400 mt-1">
+                                                    <p className={`text-sm font-bold ${isExpired ? 'text-muted-foreground' : 'text-red-600'}`}>-€{cost.amount.toFixed(2)}</p>
+                                                    <div className="text-[10px] text-muted-foreground mt-1">
                                                         {cost.valid_from && `Ab: ${new Date(cost.valid_from).toLocaleDateString()} `}
                                                         {cost.valid_to && `- Bis: ${new Date(cost.valid_to).toLocaleDateString()}`}
                                                     </div>
@@ -1249,13 +1261,13 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 <div className="flex items-center gap-1">
                                                     <button
                                                         onClick={() => handleStartEditCost(cost)}
-                                                        className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        className="p-2 text-muted-foreground/50 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
                                                     >
                                                         <FileText className="w-5 h-5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteCost(cost.id)}
-                                                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                        className="p-2 text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                                     >
                                                         <Trash2 className="w-5 h-5" />
                                                     </button>
@@ -1284,39 +1296,39 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     if (showIncome) {
         return (
             <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right duration-300 flex justify-center">
-                <div className="w-[86%] scale-[1.15] origin-top min-h-full flex flex-col max-w-2xl mx-auto">
-                    <div className="p-8 flex items-center justify-between border-b border-white/20 shrink-0 bg-transparent sticky top-0 z-20">
+                <div className="w-full h-full md:max-w-2xl flex flex-col mx-auto">
+                    <div className="p-8 flex items-center justify-between border-b border-border/20 shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setShowIncome(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+                            <button onClick={() => setShowIncome(false)} className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors">
                                 <ArrowLeft className="w-8 h-8" />
                             </button>
-                            <h1 className="text-2xl font-bold text-gray-800">Einnahmen Verwalten</h1>
+                            <h1 className="text-2xl font-bold text-foreground">Einnahmen Verwalten</h1>
                         </div>
                     </div>
 
                     <div className="p-8 space-y-8 flex-1 pb-20">
                         {/* Add New Income */}
                         <div className="bg-green-50/50 p-6 rounded-2xl border border-green-100/50 space-y-4">
-                            <h3 className="font-bold text-gray-800">Neue Einnahme hinzufügen</h3>
+                            <h3 className="font-bold text-foreground">Neue Einnahme hinzufügen</h3>
                             <div className="space-y-3">
                                 <div className="flex gap-2">
                                     <input
                                         placeholder="Quelle (z.B. Gehalt)"
                                         value={newIncomeTitle}
                                         onChange={(e) => setNewIncomeTitle(e.target.value)}
-                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none"
+                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-foreground"
                                     />
                                     <input
                                         type="number"
                                         placeholder="€"
                                         value={newIncomeAmount}
                                         onChange={(e) => setNewIncomeAmount(e.target.value)}
-                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none"
+                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-foreground"
                                     />
                                     <select
                                         value={newIncomeFrequency}
                                         onChange={(e: any) => setNewIncomeFrequency(e.target.value)}
-                                        className="h-14 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm font-medium text-gray-600"
+                                        className="h-14 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm font-medium text-foreground"
                                     >
                                         <option value="monthly">Monatlich</option>
                                         <option value="yearly">Jährlich</option>
@@ -1326,21 +1338,21 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                 </div>
                                 <div className="flex gap-2">
                                     <div className="flex-1">
-                                        <label className="text-xs text-gray-500 ml-2">Gültig ab</label>
+                                        <label className="text-xs text-muted-foreground ml-2">Gültig ab</label>
                                         <input
                                             type="date"
                                             value={newIncomeValidFrom}
                                             onChange={(e) => setNewIncomeValidFrom(e.target.value)}
-                                            className="w-full h-12 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm"
+                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm text-foreground"
                                         />
                                     </div>
                                     <div className="flex-1">
-                                        <label className="text-xs text-gray-500 ml-2">Gültig bis (Optional)</label>
+                                        <label className="text-xs text-muted-foreground ml-2">Gültig bis (Optional)</label>
                                         <input
                                             type="date"
                                             value={newIncomeValidTo}
                                             onChange={(e) => setNewIncomeValidTo(e.target.value)}
-                                            className="w-full h-12 px-4 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm"
+                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm text-foreground"
                                         />
                                     </div>
                                 </div>
@@ -1357,14 +1369,14 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         {/* Income List */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-gray-800">Deine Einnahmen</h3>
+                                <h3 className="font-bold text-foreground">Deine Einnahmen</h3>
                                 <span className="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full">
                                     Summe: €{Number(budget).toFixed(2)}
                                 </span>
                             </div>
 
                             {incomeSources.length === 0 ? (
-                                <p className="text-gray-400 text-center py-8">Noch keine Einnahmen eingetragen.</p>
+                                <p className="text-muted-foreground text-center py-8">Noch keine Einnahmen eingetragen.</p>
                             ) : (
                                 <div className="space-y-3">
                                     {incomeSources.sort((a, b) => {
@@ -1386,25 +1398,25 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                         if (isEditing) {
                                             return (
-                                                <div key={src.id} className="p-4 bg-white rounded-xl border-2 border-green-500 shadow-lg space-y-3">
+                                                <div key={src.id} className="p-4 bg-card rounded-xl border-2 border-green-500 shadow-lg space-y-3">
                                                     <div className="flex gap-2">
                                                         <input
                                                             value={editIncomeTitle}
                                                             onChange={e => setEditIncomeTitle(e.target.value)}
-                                                            className="flex-[2] px-3 py-2 bg-gray-50 rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none"
+                                                            className="flex-[2] px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none text-foreground"
                                                             placeholder="Titel"
                                                         />
                                                         <input
                                                             type="number"
                                                             value={editIncomeAmount}
                                                             onChange={e => setEditIncomeAmount(e.target.value)}
-                                                            className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none"
+                                                            className="flex-1 px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none text-foreground"
                                                             placeholder="Amount"
                                                         />
                                                         <select
                                                             value={editIncomeFrequency}
                                                             onChange={(e: any) => setEditIncomeFrequency(e.target.value)}
-                                                            className="px-3 py-2 bg-gray-50 rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none"
+                                                            className="px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none text-foreground"
                                                         >
                                                             <option value="monthly">Mtl.</option>
                                                             <option value="yearly">Jährl.</option>
@@ -1417,17 +1429,17 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                             type="date"
                                                             value={editIncomeValidFrom}
                                                             onChange={e => setEditIncomeValidFrom(e.target.value)}
-                                                            className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-xs border"
+                                                            className="flex-1 px-3 py-2 bg-muted rounded-lg text-xs border text-foreground"
                                                         />
                                                         <input
                                                             type="date"
                                                             value={editIncomeValidTo}
                                                             onChange={e => setEditIncomeValidTo(e.target.value)}
-                                                            className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-xs border"
+                                                            className="flex-1 px-3 py-2 bg-muted rounded-lg text-xs border text-foreground"
                                                         />
                                                     </div>
                                                     <div className="flex justify-end gap-2 pt-2">
-                                                        <button onClick={() => setEditingIncomeId(null)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Abbrechen</button>
+                                                        <button onClick={() => setEditingIncomeId(null)} className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg">Abbrechen</button>
                                                         <button onClick={handleSaveEditIncome} className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-sm">Speichern</button>
                                                     </div>
                                                 </div>
@@ -1435,22 +1447,22 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         }
 
                                         return (
-                                            <div key={src.id} className={`flex flex-col p-4 rounded-xl border shadow-sm group transition-all ${isActive ? 'bg-white border-gray-100' : 'bg-gray-50 border-gray-200 opacity-70'}`}>
+                                            <div key={src.id} className={`flex flex-col p-4 rounded-xl border shadow-sm group transition-all ${isActive ? 'bg-card border-border' : 'bg-muted border-border opacity-70'}`}>
                                                 <div className="flex items-center justify-between">
                                                     <div className="min-w-0 flex-1 mr-4">
                                                         <div className="flex items-center gap-2">
-                                                            <p className="font-bold text-gray-800 truncate text-lg">{src.title}</p>
-                                                            {!isActive && <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">Inaktiv</span>}
+                                                            <p className="font-bold text-foreground truncate text-lg">{src.title}</p>
+                                                            {!isActive && <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">Inaktiv</span>}
                                                             {!src.valid_to && <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold border border-blue-100">Unbegrenzt</span>}
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <p className="text-sm text-green-600 font-bold">
                                                                 +€{Number(src.amount).toFixed(2)}
-                                                                <span className="text-[10px] text-gray-400 font-normal ml-1">
+                                                                <span className="text-[10px] text-muted-foreground font-normal ml-1">
                                                                     ({src.frequency === 'daily' ? 'Tgl.' : src.frequency === 'weekly' ? 'Wöch.' : src.frequency === 'yearly' ? 'Jährl.' : 'Mtl.'})
                                                                 </span>
                                                             </p>
-                                                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                                                                 {src.valid_from ? new Date(src.valid_from).toLocaleDateString('de-DE') : 'Start'}
                                                                 {' - '}
                                                                 {src.valid_to ? new Date(src.valid_to).toLocaleDateString('de-DE') : 'Unbegrenzt'}
@@ -1474,14 +1486,14 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                                         <button
                                                             onClick={() => handleStartEditIncome(src)}
-                                                            className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                                                            className="p-2 text-muted-foreground hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
                                                             title="Bearbeiten"
                                                         >
                                                             <FileText className="w-5 h-5" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDeleteIncome(src.id)}
-                                                            className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                                             title="Löschen"
                                                         >
                                                             <Trash2 className="w-5 h-5" />
@@ -1511,33 +1523,34 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
     // --- MAIN SETTINGS VIEW ---
     return (
-        <div className={`fixed inset-0 z-50 h-dvh w-screen bg-background animate-in fade-in slide-in-from-right duration-300 flex justify-center theme-${theme} pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none`} >
-            <div className={`w-[86%] scale-[1.15] origin-top min-h-full md:w-5/6 md:max-w-2xl flex flex-col md:border-x border-primary/10 dark:border-white/5 transition-colors duration-300`}>
+        <div className={`fixed inset-0 z-50 h-dvh w-screen bg-background animate-in fade-in slide-in-from-right duration-300 flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none`} >
+            <div className={`w-full min-h-full md:max-w-2xl flex flex-col md:border-x border-primary/10 transition-colors duration-300`}>
                 {/* Header */}
-                <div className="p-4 md:p-8 flex items-center justify-between border-b border-primary/10 shrink-0 bg-transparent sticky top-0 z-20 backdrop-blur-xl">
-                    <div className="flex items-center gap-3 md:gap-4">
-                        <button onClick={onBack} className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors">
-                            <ArrowLeft className="w-8 h-8" />
+                <div className="p-3 md:p-8 flex items-center justify-between border-b border-primary/10 shrink-0 bg-transparent sticky top-0 z-20 backdrop-blur-xl">
+                    <div className="flex items-center gap-2 md:gap-4">
+                        <button onClick={onBack} className="p-1 md:p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors">
+                            <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
                         </button>
-                        <h1 className="text-xl md:text-3xl font-bold text-foreground dark:text-white">Einstellungen</h1>
+                        {/* Hide title on very small screens to make space for icons */}
+                        <h1 className="text-lg md:text-3xl font-bold text-foreground hidden sm:block">Einstellungen</h1>
                     </div>
                     <div className="flex gap-1 md:gap-2">
                         <button
                             onClick={() => setShowHelp(true)}
-                            className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
+                            className="p-1 md:p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
                             title="Hilfe & Logik"
                         >
-                            <HelpCircle className="w-8 h-8" />
+                            <HelpCircle className="w-6 h-6 md:w-8 md:h-8" />
                         </button>
                         <button
                             onClick={() => setShowImportWizard(true)}
-                            className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
+                            className="p-1 md:p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
                             title="Kontoauszug Importieren"
                         >
-                            <FileText className="w-8 h-8" />
+                            <FileText className="w-6 h-6 md:w-8 md:h-8" />
                         </button>
-                        <label className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors cursor-pointer" title="Backup wiederherstellen">
-                            <Upload className="w-8 h-8" />
+                        <label className="p-1 md:p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors cursor-pointer" title="Backup wiederherstellen">
+                            <Upload className="w-6 h-6 md:w-8 md:h-8" />
                             <input
                                 type="file"
                                 accept=".pdf"
@@ -1547,10 +1560,10 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </label>
                         <button
                             onClick={handleDownloadFullReport}
-                            className="p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
+                            className="p-1 md:p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
                             title="PDF Report & Backup Laden"
                         >
-                            <Download className="w-8 h-8" />
+                            <Download className="w-6 h-6 md:w-8 md:h-8" />
                         </button>
                     </div>
                 </div>
@@ -1560,9 +1573,9 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                     {/* Monthly Budget Section */}
                     {/* Income Sources Section */}
-                    <div className="bg-card dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 shadow-md rounded-2xl p-4 md:p-8 space-y-4">
+                    <div className="bg-card shadow-md rounded-2xl p-4 md:p-8 space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-lg md:text-2xl font-bold text-foreground dark:text-gray-100">Monatliche Einnahmen</h3>
+                            <h3 className="text-lg md:text-2xl font-bold text-foreground">Monatliche Einnahmen</h3>
                             <span className="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full">
                                 Summe: €{Number(budget).toFixed(2)}
                             </span>
@@ -1570,7 +1583,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                         <button
                             onClick={() => setShowIncome(true)}
-                            className="w-full h-16 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors flex items-center justify-between px-6 font-bold group"
+                            className="w-full h-16 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-between px-6 font-bold group"
                         >
                             <span className="flex items-center gap-3">
                                 <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
@@ -1598,9 +1611,9 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                     </div>
 
                     {/* Fixed Costs Section */}
-                    <div className="bg-card dark:bg-gray-900/50 dark:backdrop-blur-md dark:border dark:border-white/5 shadow-md rounded-2xl p-4 md:p-8 space-y-4">
+                    <div className="bg-card shadow-md rounded-2xl p-4 md:p-8 space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-lg md:text-2xl font-bold text-foreground dark:text-gray-100">Fixkosten</h3>
+                            <h3 className="text-lg md:text-2xl font-bold text-foreground">Fixkosten</h3>
                             <span className="text-xs font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full">
                                 Summe: €{totalFixed.toFixed(2)}
                             </span>
@@ -1608,7 +1621,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                         <button
                             onClick={() => setShowFixedCosts(true)}
-                            className="w-full h-16 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center justify-between px-6 font-bold group"
+                            className="w-full h-16 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-between px-6 font-bold group"
                         >
                             <span className="flex items-center gap-3">
                                 <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
@@ -1616,41 +1629,33 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                             </span>
                             <div className="flex flex-col items-end">
                                 <span className="text-sm font-bold">€{totalFixed.toFixed(2)}</span>
-                                <span className="text-[10px] opacity-70">{fixedCosts.length} Posten</span>
+                                <span className="text-sm opacity-70">{fixedCosts.length} Posten</span>
                             </div>
                         </button>
                     </div>
 
+
+
+
                     {/* Design Section */}
                     <div className="bg-card shadow-md rounded-2xl p-4 md:p-8 space-y-4">
                         <h3 className="text-lg md:text-2xl font-bold text-foreground">Design</h3>
-                        <div className="w-full">
-                            <select
-                                value={theme}
-                                onChange={(e) => setTheme(e.target.value)}
-                                className="w-full h-16 text-center border-none shadow-sm rounded-xl bg-muted/30 outline-none focus:ring-2 focus:ring-primary/50 appearance-none font-bold text-foreground text-lg cursor-pointer"
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={() => handleThemeChange('paper')}
+                                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme !== 'pink' ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-card text-muted-foreground hover:bg-muted'}`}
                             >
-                                <option value="white">Papier Weiß </option>
-                                <option value="pink">Rosa </option>
-                                <option value="blue">Blau </option>
-                                <option value="green">Grün </option>
-                                <option value="yellow">Gelb </option>
-                            </select>
+                                <div className="w-8 h-8 rounded-full bg-[#f8f5e6] border border-border shadow-sm"></div>
+                                <span className="font-bold">Standard</span>
+                            </button>
+                            <button
+                                onClick={() => handleThemeChange('pink')}
+                                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme === 'pink' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-border bg-card text-muted-foreground hover:bg-muted'}`}
+                            >
+                                <div className="w-8 h-8 rounded-full bg-[#fff1f2] border border-border shadow-sm"></div>
+                                <span className="font-bold">Pink Premium</span>
+                            </button>
                         </div>
-
-                        {/* Dark Mode Toggle */}
-                        <button
-                            onClick={toggleDarkMode}
-                            className={`w-full h-16 rounded-xl flex items-center justify-between px-6 font-bold transition-all shadow-sm border-2 ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'}`}
-                        >
-                            <span className="flex items-center gap-3">
-                                {isDarkMode ? <Moon className="w-6 h-6 text-blue-400" /> : <Sun className="w-6 h-6 text-orange-400" />}
-                                <span className="text-lg">Dark Mode</span>
-                            </span>
-                            <div className={`w-12 h-7 rounded-full relative transition-colors ${isDarkMode ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${isDarkMode ? 'left-6' : 'left-1'}`}></div>
-                            </div>
-                        </button>
                     </div>
 
                     {/* Summary */}
@@ -1676,7 +1681,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                     </button>
                 </div>
             </div>
-        </div >
+        </div>
 
     )
 }
