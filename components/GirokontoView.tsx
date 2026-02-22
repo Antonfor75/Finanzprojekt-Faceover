@@ -222,16 +222,16 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
     const isPositive = (currentBalance || 0) >= 0
 
     return (
-        <div className="fixed inset-0 bg-background z-50 overflow-y-auto animate-in slide-in-from-right duration-300">
+        <div className="fixed inset-0 bg-background z-50 overflow-y-auto animate-in slide-in-from-right duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
             <div className="flex flex-col min-h-full pb-8">
                 {/* HEAD */}
-                <div className="p-6 pb-2 shrink-0">
+                <div className="p-6 md:pt-12 pb-2 shrink-0">
                     <button
                         onClick={onBack}
-                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
+                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors px-2 py-4 -ml-2"
                     >
-                        <ArrowLeft className="w-6 h-6" />
-                        <span className="text-lg font-medium">Zurück</span>
+                        <ArrowLeft className="w-8 h-8" />
+                        <span className="text-xl font-medium">Zurück</span>
                     </button>
 
                     <div className="flex items-center justify-between">

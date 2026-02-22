@@ -720,24 +720,24 @@ export default function MobileDashboard({
                     <button
                         data-testid="nav-home"
                         onClick={() => setView('entry')}
-                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${view === 'entry'
+                        className={`p-4 md:p-5 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${view === 'entry'
                             ? 'bg-gray-900 text-white scale-110'
                             : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary'
                             }`}
                     >
-                        <Home className="w-5 h-5 md:w-6 md:h-6" />
+                        <Home className="w-6 h-6 md:w-8 md:h-8" />
                     </button>
 
                     {/* RIGHT: Settings */}
                     <button
                         data-testid="nav-settings"
                         onClick={() => setIsSettingsOpen(true)}
-                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${isSettingsOpen
+                        className={`p-4 md:p-5 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${isSettingsOpen
                             ? 'bg-gray-900 text-white scale-110'
                             : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary'
                             }`}
                     >
-                        <Settings className="w-5 h-5 md:w-6 md:h-6" />
+                        <Settings className="w-6 h-6 md:w-8 md:h-8" />
                     </button>
                 </div>
             </div>
