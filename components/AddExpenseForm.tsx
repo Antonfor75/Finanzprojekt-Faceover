@@ -137,7 +137,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     defaultValue={new Date().toISOString().split('T')[0]}
                     required
                     onClick={(e) => e.currentTarget.showPicker()}
-                    className="w-full text-center border-none bg-transparent outline-none cursor-pointer font-bold text-rose-900"
+                    className="w-full text-center border-none bg-transparent outline-none cursor-pointer font-bold text-primary"
                     style={{ fontSize: '2.5vh' }}
                 />
             </div>
@@ -145,7 +145,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
             <div className="w-full px-4">
                 <select
                     name="category"
-                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-rose-50/50 outline-none focus:ring-2 focus:ring-rose-400 appearance-none font-bold text-gray-900"
+                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-primary/10 outline-none focus:ring-2 focus:ring-primary appearance-none font-bold text-foreground"
                     style={{ fontSize: '2vh' }}
                     defaultValue="Essen"
                 >
@@ -182,7 +182,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     placeholder="€"
                     required
                     autoFocus
-                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-rose-50/50 outline-none focus:ring-2 focus:ring-rose-400 placeholder-rose-300 font-bold text-gray-900"
+                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-primary/10 outline-none focus:ring-2 focus:ring-primary placeholder-primary/50 font-bold text-foreground"
                     style={{ fontSize: '3vh' }}
                 />
             </div>

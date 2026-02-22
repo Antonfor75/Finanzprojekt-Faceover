@@ -1107,7 +1107,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                     <div className="p-8 space-y-8 flex-1 pb-20">
                         {/* Add New Fixed Cost */}
-                        <div className="bg-red-50/50 p-6 rounded-2xl border border-red-100/50 space-y-4">
+                        <div className="bg-primary/5 p-6 rounded-2xl border border-primary/20 space-y-4">
                             <h3 className="font-bold text-foreground">Neue Fixkosten hinzufügen</h3>
                             <div className="space-y-3">
                                 <div className="flex gap-2">
@@ -1115,14 +1115,14 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         placeholder="Titel"
                                         value={newCostTitle}
                                         onChange={(e) => setNewCostTitle(e.target.value)}
-                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
+                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
                                     />
                                     <input
                                         type="number"
                                         placeholder="€ (Monatlich)"
                                         value={newCostAmount}
                                         onChange={(e) => setNewCostAmount(e.target.value)}
-                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
+                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
                                     />
                                 </div>
                                 {/* Date Range */}
@@ -1133,7 +1133,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                             type="date"
                                             value={newCostValidFrom}
                                             onChange={(e) => setNewCostValidFrom(e.target.value)}
-                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-sm text-foreground"
+                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/50 outline-none text-sm text-foreground"
                                         />
                                     </div>
                                     <div className="flex-1">
@@ -1142,7 +1142,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                             type="date"
                                             value={newCostValidTo}
                                             onChange={(e) => setNewCostValidTo(e.target.value)}
-                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-red-500/50 outline-none text-sm text-foreground"
+                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/50 outline-none text-sm text-foreground"
                                         />
                                     </div>
                                 </div>
@@ -1150,7 +1150,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                 <button
                                     onClick={handleAddCost}
                                     disabled={!newCostTitle || !newCostAmount}
-                                    className="w-full h-12 px-6 bg-red-600 text-white hover:opacity-90 rounded-xl transition-colors shadow-md flex items-center justify-center font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full h-12 px-6 bg-primary text-primary-foreground hover:opacity-90 rounded-xl transition-colors shadow-md flex items-center justify-center font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Hinzufügen
                                 </button>
@@ -1161,7 +1161,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <h3 className="font-bold text-foreground">Deine Fixkosten</h3>
-                                <span className="text-xs font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full">
+                                <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
                                     Summe: €{totalFixed.toFixed(2)}
                                 </span>
                             </div>
@@ -1192,19 +1192,19 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                         if (isEditing) {
                                             return (
-                                                <div key={cost.id} className="p-4 bg-card rounded-xl border-2 border-red-500 shadow-lg space-y-3">
+                                                <div key={cost.id} className="p-4 bg-card rounded-xl border-2 border-primary shadow-lg space-y-3">
                                                     <div className="flex gap-2">
                                                         <input
                                                             value={editCostTitle}
                                                             onChange={e => setEditCostTitle(e.target.value)}
-                                                            className="flex-[2] px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
+                                                            className="flex-[2] px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
                                                             placeholder="Titel"
                                                         />
                                                         <input
                                                             type="number"
                                                             value={editCostAmount}
                                                             onChange={e => setEditCostAmount(e.target.value)}
-                                                            className="flex-1 px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
+                                                            className="flex-1 px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
                                                             placeholder="Betrag"
                                                         />
                                                     </div>
@@ -1215,7 +1215,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                                 type="date"
                                                                 value={editCostValidFrom}
                                                                 onChange={e => setEditCostValidFrom(e.target.value)}
-                                                                className="w-full px-3 py-2 bg-muted rounded-lg text-xs border focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
+                                                                className="w-full px-3 py-2 bg-muted rounded-lg text-xs border focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
                                                             />
                                                         </div>
                                                         <div className="flex-1">
@@ -1224,13 +1224,13 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                                 type="date"
                                                                 value={editCostValidTo}
                                                                 onChange={e => setEditCostValidTo(e.target.value)}
-                                                                className="w-full px-3 py-2 bg-muted rounded-lg text-xs border focus:ring-2 focus:ring-red-500/50 outline-none text-foreground"
+                                                                className="w-full px-3 py-2 bg-muted rounded-lg text-xs border focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
                                                             />
                                                         </div>
                                                     </div>
                                                     <div className="flex justify-end gap-2 pt-2">
                                                         <button onClick={() => setEditingCostId(null)} className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg">Abbrechen</button>
-                                                        <button onClick={handleSaveEditCost} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-sm">Speichern</button>
+                                                        <button onClick={handleSaveEditCost} className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:opacity-90 font-bold shadow-sm">Speichern</button>
                                                     </div>
                                                 </div>
                                             )
@@ -1252,7 +1252,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <p className={`text-sm font-bold ${isExpired ? 'text-muted-foreground' : 'text-red-600'}`}>-€{cost.amount.toFixed(2)}</p>
+                                                    <p className={`text-sm font-bold ${isExpired ? 'text-muted-foreground' : 'text-primary'}`}>-€{cost.amount.toFixed(2)}</p>
                                                     <div className="text-[10px] text-muted-foreground mt-1">
                                                         {cost.valid_from && `Ab: ${new Date(cost.valid_from).toLocaleDateString()} `}
                                                         {cost.valid_to && `- Bis: ${new Date(cost.valid_to).toLocaleDateString()}`}
@@ -1267,7 +1267,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteCost(cost.id)}
-                                                        className="p-2 text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                        className="p-2 text-muted-foreground/50 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                                                     >
                                                         <Trash2 className="w-5 h-5" />
                                                     </button>
@@ -1280,8 +1280,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </div>
 
                         {/* Info Box */}
-                        <div className="p-4 bg-red-50 border border-red-100 rounded-xl">
-                            <p className="text-xs text-red-700 leading-relaxed">
+                        <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
+                            <p className="text-xs text-primary leading-relaxed">
                                 Diese Kosten werden automatisch von deinem monatlichen Budget abgezogen.
                             </p>
                         </div>

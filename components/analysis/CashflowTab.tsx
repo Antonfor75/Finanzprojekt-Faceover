@@ -80,14 +80,14 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
         <div className="space-y-6">
 
             {/* TIME RANGE SWITCHER */}
-            <div className="flex bg-rose-50/50 p-1 rounded-xl">
+            <div className="flex bg-primary/10 p-1 rounded-xl">
                 {['daily', 'weekly', 'monthly', 'yearly'].map((r) => (
                     <button
                         key={r}
                         onClick={() => setRange(r as any)}
                         className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${range === r
-                            ? 'bg-white shadow-sm text-rose-600'
-                            : 'text-gray-500 hover:text-gray-700'
+                            ? 'bg-card shadow-sm text-primary'
+                            : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
                         {r === 'daily' && 'Täglich'}
@@ -99,7 +99,7 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
             </div>
 
             {/* DYNAMIC TREND CHART (SPLIT LAYOUT) */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative">
+            <div className="bg-card p-4 rounded-2xl shadow-sm border border-border relative">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                         <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
@@ -115,13 +115,13 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
                     <div className="flex gap-1">
                         <button
                             onClick={() => scroll('left')}
-                            className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-rose-100 active:scale-95 transition-all"
+                            className="p-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary/10 active:scale-95 transition-all"
                         >
                             <ChevronLeft className="w-5 h-5" />
                         </button>
                         <button
                             onClick={() => scroll('right')}
-                            className="p-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-rose-100 active:scale-95 transition-all"
+                            className="p-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary/10 active:scale-95 transition-all"
                         >
                             <ChevronRight className="w-5 h-5" />
                         </button>
@@ -130,7 +130,7 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
 
                 <div className="flex h-[250px] w-full">
                     {/* FIXED Y-AXIS LEFT */}
-                    <div className="w-[60px] h-full shrink-0 border-r border-rose-100 bg-white z-10">
+                    <div className="w-[60px] h-full shrink-0 border-r border-border bg-card z-10">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={[{ val: 0 }, { val: maxValue }]} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                                 <YAxis

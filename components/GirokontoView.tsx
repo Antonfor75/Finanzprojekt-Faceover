@@ -222,13 +222,13 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
     const isPositive = (currentBalance || 0) >= 0
 
     return (
-        <div className="fixed inset-0 bg-rose-50 z-50 overflow-y-auto animate-in slide-in-from-right duration-300">
+        <div className="fixed inset-0 bg-background z-50 overflow-y-auto animate-in slide-in-from-right duration-300">
             <div className="flex flex-col min-h-full pb-8">
                 {/* HEAD */}
                 <div className="p-6 pb-2 shrink-0">
                     <button
                         onClick={onBack}
-                        className="flex items-center gap-2 text-gray-500 hover:text-rose-600 mb-6 transition-colors"
+                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
                     >
                         <ArrowLeft className="w-6 h-6" />
                         <span className="text-lg font-medium">Zurück</span>
@@ -250,13 +250,13 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
                 {/* CONTROLS REMOVED */}
 
                 {/* CHART */}
-                <div className="p-6 flex flex-col">
-                    <div className="bg-white/50 rounded-3xl p-4 border border-rose-100/20 h-[60vh] min-h-[500px] flex flex-col relative">
+                <div className="p-6 flex flex-col flex-1">
+                    <div className="bg-card rounded-3xl p-4 border border-border h-[60vh] min-h-[500px] flex flex-col relative shadow-sm">
                         <div className="flex justify-between items-center mb-4 px-2">
-                            <h3 className="font-bold text-gray-500 text-sm uppercase">Verlauf</h3>
+                            <h3 className="font-bold text-muted-foreground text-sm uppercase">Verlauf</h3>
                             <div className="flex gap-1">
-                                <button onClick={() => scroll('left')} className="p-2 rounded-full hover:bg-rose-100 transition-colors"><ChevronLeft className="w-5 h-5" /></button>
-                                <button onClick={() => scroll('right')} className="p-2 rounded-full hover:bg-rose-100 transition-colors"><ChevronRight className="w-5 h-5" /></button>
+                                <button onClick={() => scroll('left')} className="p-2 rounded-full hover:bg-muted transition-colors"><ChevronLeft className="w-5 h-5 text-muted-foreground" /></button>
+                                <button onClick={() => scroll('right')} className="p-2 rounded-full hover:bg-muted transition-colors"><ChevronRight className="w-5 h-5 text-muted-foreground" /></button>
                             </div>
                         </div>
 
