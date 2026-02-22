@@ -16,6 +16,7 @@ import AnalysisView from './AnalysisView'
 import WeeklyBarChart from './WeeklyBarChart'
 import GirokontoView from './GirokontoView'
 // import DashboardHealth from './DashboardHealth' // REMOVED
+import { calculateGirokontoTimeline } from '@/utils/girokonto'
 
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -113,77 +114,8 @@ export default function MobileDashboard({
     // --- CALCULATE GIROKONTO BALANCE (Dynamic Net Cashflow) ---
     const currentGiroBalance = useMemo(() => {
         if (expenses.length === 0 && initialIncomeSources.length === 0) return 0
-
-        // 1. Determine Start Date based on actual data
-        const expenseDates = expenses.map(e => new Date(e.expense_date || e.created_at).getTime())
-        const incomeDates = initialIncomeSources
-            .filter(s => s.valid_from)
-            .map(s => new Date(s.valid_from!).getTime())
-
-        let minDateMs = Math.min(...expenseDates, ...incomeDates)
-        if (minDateMs === Infinity) minDateMs = Date.now()
-
-        const startDate = new Date(minDateMs)
-        startDate.setDate(1)
-        startDate.setHours(0, 0, 0, 0)
-
-        const now = new Date()
-        const loopEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0) // End of current month
-        let tempDate = new Date(startDate)
-        let totalNet = 0
-
-        // Helper
-        const getMonthKey = (date: Date) => format(date, 'yyyy-MM')
-
-        // Pre-calculate expenses by month
-        const expensesByMonth: Record<string, number> = {}
-        expenses.forEach(e => {
-            const d = new Date(e.expense_date || e.created_at)
-            const key = getMonthKey(d)
-            expensesByMonth[key] = (expensesByMonth[key] || 0) + Number(e.amount)
-        })
-
-        // REMOVED totalFixed calculation here as it is static and incorrect for historical calculations
-        // const totalFixed = initialFixedCosts.reduce((acc, fc) => acc + Number(fc.amount), 0)
-
-        while (tempDate <= loopEnd) {
-            const mKey = getMonthKey(tempDate)
-            const d = new Date(tempDate) // 1st of month
-
-            // Top-up Income
-            const monthIncome = initialIncomeSources.filter(src => {
-                const from = src.valid_from ? new Date(src.valid_from) : null
-                const to = src.valid_to ? new Date(src.valid_to) : null
-                // Check if source valid in this month
-                if (from && d < new Date(from.getFullYear(), from.getMonth(), 1)) return false
-                if (to && d > to) return false
-                return true
-            }).reduce((sum, src) => sum + Number(src.amount), 0)
-
-            // Heuristic: Only subtract fixed costs if there was AT LEAST one expense in this month
-            // OR if it is the current month or recent past (to avoid punishing gaps in history)
-            const hasActivity = monthIncome > 0 || (expensesByMonth[mKey] || 0) > 0
-
-            // FIXED: Calculate fixed costs relevant for THIS month
-            const monthFixed = hasActivity ? initialFixedCosts.reduce((acc, fc) => {
-                const validFrom = fc.valid_from ? new Date(fc.valid_from) : null
-                const validTo = fc.valid_to ? new Date(fc.valid_to) : null
-
-                // Check if valid in this month
-                if (validFrom && d < new Date(validFrom.getFullYear(), validFrom.getMonth(), 1)) return acc
-                if (validTo && d > validTo) return acc
-
-                return acc + Number(fc.amount)
-            }, 0) : 0
-
-            const monthVariable = expensesByMonth[mKey] || 0
-
-            totalNet += (monthIncome - monthVariable - monthFixed)
-
-            tempDate.setMonth(tempDate.getMonth() + 1)
-        }
-
-        return totalNet
+        const result = calculateGirokontoTimeline(expenses, initialIncomeSources, initialFixedCosts)
+        return result.finalBalance
     }, [expenses, initialFixedCosts, initialIncomeSources])
 
     const handleLogout = async () => {

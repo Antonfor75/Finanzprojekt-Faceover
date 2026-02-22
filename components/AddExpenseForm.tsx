@@ -127,7 +127,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
         <form
             ref={formRef}
             onSubmit={handleSubmit}
-            className="w-full h-full flex flex-col justify-evenly"
+            className="w-full h-full flex flex-col justify-evenly gap-6 py-6"
         >
             {/* Date Picker */}
             <div className="relative w-full text-center">
@@ -138,15 +138,15 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     required
                     onClick={(e) => e.currentTarget.showPicker()}
                     className="w-full text-center border-none bg-transparent outline-none cursor-pointer font-bold text-primary"
-                    style={{ fontSize: '2.5vh' }}
+                    style={{ fontSize: '3.5vh' }}
                 />
             </div>
 
             <div className="w-full px-4">
                 <select
                     name="category"
-                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-primary/10 outline-none focus:ring-2 focus:ring-primary appearance-none font-bold text-foreground"
-                    style={{ fontSize: '2vh' }}
+                    className="w-full text-center border-none shadow-sm rounded-2xl py-4 bg-primary/10 outline-none focus:ring-2 focus:ring-primary appearance-none font-bold text-foreground"
+                    style={{ fontSize: '2.5vh' }}
                     defaultValue="Essen"
                 >
                     <optgroup label="Kategorien">
@@ -182,8 +182,8 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     placeholder="€"
                     required
                     autoFocus
-                    className="w-full text-center border-none shadow-sm rounded-xl py-2 bg-primary/10 outline-none focus:ring-2 focus:ring-primary placeholder-primary/50 font-bold text-foreground"
-                    style={{ fontSize: '3vh' }}
+                    className="w-full text-center border-none shadow-sm rounded-3xl py-4 bg-primary/10 outline-none focus:ring-2 focus:ring-primary placeholder-primary/50 font-bold text-foreground"
+                    style={{ fontSize: '4.5vh' }}
                 />
             </div>
 
@@ -191,8 +191,8 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full font-bold text-center bg-black text-white rounded-xl py-3 flex items-center justify-center hover:bg-gray-800 transition-all active:scale-95 shadow-md active:shadow-none disabled:opacity-50"
-                    style={{ fontSize: '2.5vh' }}
+                    className="w-full font-bold text-center bg-black text-white rounded-2xl py-4 flex items-center justify-center hover:bg-gray-800 transition-all active:scale-95 shadow-md active:shadow-none disabled:opacity-50"
+                    style={{ fontSize: '3vh' }}
                 >
                     {loading ? <Loader2 className="animate-spin w-10 h-10" /> : 'Eintragen'}
                 </button>

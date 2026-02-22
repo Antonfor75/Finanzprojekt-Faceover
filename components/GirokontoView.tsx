@@ -5,6 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { TrendingUp, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, subDays, addDays, getYear, format, isSameDay, subYears } from 'date-fns'
 import { de } from 'date-fns/locale'
+import { calculateGirokontoTimeline } from '@/utils/girokonto'
 
 type Props = {
     expenses: any[]
@@ -18,153 +19,13 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
     const range = 'monthly' // Forced to Monthly as per user request
     const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-    // --- DATA GENERATION (Similar to AnalysisView but for Balance) ---
+    // --- DATA GENERATION (Using central girokonto.ts) ---
     const { chartData, currentBalance } = useMemo(() => {
-        // 1. Determine Start Date (Earliest transaction)
-        let earliestDate = subYears(new Date(), 1)
-        if (expenses.length > 0) {
-            const dates = expenses.map(e => new Date(e.expense_date || e.created_at).getTime())
-            const minDate = new Date(Math.min(...dates))
-            if (minDate < earliestDate) earliestDate = minDate
-        }
-        if (incomeSources.length > 0) {
-            const dates = incomeSources.filter(src => src.valid_from).map(src => new Date(src.valid_from).getTime())
-            if (dates.length > 0) {
-                const minDate = new Date(Math.min(...dates))
-                if (minDate < earliestDate) earliestDate = minDate
-            }
-        }
-        const now = new Date()
-        if (earliestDate > now) earliestDate = subYears(now, 1)
+        const result = calculateGirokontoTimeline(expenses, incomeSources, initialFixedCosts)
 
-        // Generate data points based on range
-        // We need a running total calculation.
-        // Easiest is to simulate day-by-day from earliestDate and pick points.
+        // Filter the daily timeline specifically as requested (e.g. end of month only)
+        const timeline = result.timeline
 
-        let balance = 0
-        const dataPoints = []
-
-        // Simulation resolution: Daily is best for accuracy, then sample for graph.
-        // Actually, let's just generate the requested points (daily/weekly/etc) 
-        // by calculating the cumulative balance AT that point in time.
-
-        // Helper to get balance at specific date
-        const getBalanceAtDate = (date: Date) => {
-            // This is heavy if called many times. Better to iterate.
-            return 0
-        }
-
-        // Iterative approach:
-        // Create full daily timeline from earliestDate to now.
-        // --- SIMULATION LOGIC: WEEKLY BUDGET MODEL ---
-        // User Logic: "Girokonto is calculated from what remains at end of week... added to it"
-        // Interpretation: 
-        // 1. Every Monday, "Weekly Budget" becomes available (Income - Fixed / 4.33).
-        // 2. Expenses reduce this amount.
-        // 3. The running total is the Girokonto balance.
-
-        const timeline: { date: Date, balance: number }[] = []
-
-        // Group expenses by day
-        const expensesByDay: Record<string, number> = {}
-        expenses.forEach(e => {
-            const key = format(new Date(e.expense_date || e.created_at), 'yyyy-MM-dd')
-            expensesByDay[key] = (expensesByDay[key] || 0) + Number(e.amount)
-        })
-
-        // Pre-calculate Total Monthly Fixed Costs
-        const totalFixedMonthly = initialFixedCosts.reduce((acc: number, fc: any) => acc + Number(fc.amount), 0)
-
-        // Simulation Loop
-        let simDate = new Date(earliestDate)
-        // Ensure we start on a Monday to have a valid budget cycle?
-        // Actually, if we start mid-week, the bucket is 0, so expenses will hit Giro immediately.
-        // This is acceptable for deep history.
-
-        simDate.setHours(0, 0, 0, 0)
-        const endDate = new Date()
-        endDate.setHours(23, 59, 59, 999)
-
-        let runningBalance = 0
-        let currentWeeklyBucket = 0
-
-        while (simDate <= endDate) {
-            const dayKey = format(simDate, 'yyyy-MM-dd')
-            const dayOfWeek = simDate.getDay() // 0=Sun, 1=Mon
-
-            // 1. MONDAY: NEW WEEKLY BUDGET (Refill Bucket)
-            // Note: In this model, the "Weekly Budget" sits in a separate bucket.
-            // It does NOT hit the Girokonto yet.
-            if (dayOfWeek === 1) {
-                const activeMonthlyIncome = incomeSources.reduce((sum: number, src: any) => {
-                    const from = src.valid_from ? new Date(src.valid_from) : null
-                    const to = src.valid_to ? new Date(src.valid_to) : null
-                    if (from && simDate < from) return sum
-                    if (to && simDate > to) return sum
-
-                    switch (src.frequency) {
-                        case 'monthly': return sum + Number(src.amount)
-                        case 'weekly': return sum + (Number(src.amount) * 4.33)
-                        case 'yearly': return sum + (Number(src.amount) / 12)
-                        case 'daily': return sum + (Number(src.amount) * 30.4)
-                        default: return sum + Number(src.amount)
-                    }
-                }, 0)
-
-                // Reset Bucket to new Weekly Allowance
-                const weeklyAllowance = (activeMonthlyIncome - totalFixedMonthly) / 4.33
-                currentWeeklyBucket = weeklyAllowance
-            }
-
-            // 2. DAILY EXPENSES
-            const dayExpenses = expensesByDay[dayKey] || 0
-            if (dayExpenses > 0) {
-                const oldBucket = currentWeeklyBucket
-                currentWeeklyBucket -= dayExpenses
-
-                // Did we overspend the bucket?
-                // If yes, the overflow hits the Girokonto.
-                if (currentWeeklyBucket < 0) {
-                    let deductionFromGiro = 0
-                    if (oldBucket > 0) {
-                        // We just went from positive to negative. 
-                        // Only the amount BELOW zero is taken from Giro.
-                        deductionFromGiro = -currentWeeklyBucket
-                    } else {
-                        // We were already negative (or zero). Full expense comes from Giro.
-                        deductionFromGiro = dayExpenses
-                    }
-                    runningBalance -= deductionFromGiro
-                }
-            }
-
-            // 3. ONE-TIME INCOME (Direct to Giro)
-            const oneTimeIncome = incomeSources.reduce((sum: number, src: any) => {
-                if (src.frequency === 'one_time' || !src.frequency) {
-                    const validFrom = src.valid_from ? new Date(src.valid_from) : null
-                    if (validFrom && isSameDay(validFrom, simDate)) {
-                        return sum + Number(src.amount)
-                    }
-                }
-                return sum
-            }, 0)
-            runningBalance += oneTimeIncome
-
-            // 4. SUNDAY: SAVE SURPLUS
-            // If the week ends and we still have money in the bucket, it goes to Giro.
-            if (dayOfWeek === 0) {
-                if (currentWeeklyBucket > 0) {
-                    runningBalance += currentWeeklyBucket
-                    // Transfer complete. Bucket technically empty (or just ignored until Monday reset)
-                    currentWeeklyBucket = 0
-                }
-            }
-
-            timeline.push({ date: new Date(simDate), balance: runningBalance })
-            simDate = addDays(simDate, 1)
-        }
-
-        // Now sample/aggregate for the view (MONTHLY ONLY)
         const filteredData = timeline.filter(t => isSameDay(t.date, endOfMonth(t.date)))
             .map(t => ({
                 label: format(t.date, 'MMM yy', { locale: de }),
@@ -176,24 +37,38 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
         // Ensure last day is included
         const last = timeline[timeline.length - 1]
         if (last && !isSameDay(last.date, endOfMonth(last.date))) {
-            filteredData.push({
-                label: format(last.date, 'MMM yy', { locale: de }),
-                date: last.date,
-                info: format(last.date, 'MMMM yyyy', { locale: de }),
-                balance: Math.round(last.balance)
-            })
+            const existingLabels = filteredData.map(d => d.label)
+            const lastLabel = format(last.date, 'MMM yy', { locale: de })
+
+            // Only add if we didn't already capture this month (or decide to overwrite it with the latest)
+            if (!existingLabels.includes(lastLabel)) {
+                filteredData.push({
+                    label: lastLabel,
+                    date: last.date,
+                    info: format(last.date, 'MMMM yyyy', { locale: de }),
+                    balance: Math.round(last.balance)
+                })
+            } else {
+                // Update the last element to the very latest value of this month
+                const lastEl = filteredData[filteredData.length - 1]
+                if (lastEl) {
+                    lastEl.balance = Math.round(last.balance)
+                    lastEl.date = last.date
+                }
+            }
         }
 
         // --- ALIGNMENT FIX ---
-        // The simulation starts at 0. The actual current balance (targetBalance) is likely different.
-        // We calculate the difference and shift the whole graph so the END matches the Target.
-        const simulatedEnd = runningBalance
+        // Since MobileDashboard is passing exactly what calculateGirokontoTimeline returns,
+        // targetBalance and simulatedEnd are identical. The offset is zero.
+        // But we keep it to ensure chart matches the large number displayed.
+        const simulatedEnd = result.finalBalance
         const offset = targetBalance - simulatedEnd
 
         // Apply offset to all points
         const alignedData = filteredData.map(d => ({
             ...d,
-            balance: Math.round(d.balance + offset)
+            balance: Math.round(d.balance + offset) // offset is expected to be 0 now
         }))
 
         return { chartData: alignedData, currentBalance: targetBalance }

@@ -61,6 +61,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     useEffect(() => {
         // Load initial theme
         const saved = localStorage.getItem('theme') || 'paper'
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCurrentTheme(saved)
         loadTheme()
     }, [])
@@ -95,7 +96,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
         // Calculation: Target / Weeks
         return target / totalWeeks
-    }, [newAccountType, newAccountTargetAmount, newAccountTargetDate, newAccountValidFrom])
+    }, [newAccountType, newAccountTargetAmount, newAccountTargetDate, newAccountValidFrom, newAccountAmount])
 
 
     const [newCostTitle, setNewCostTitle] = useState('')

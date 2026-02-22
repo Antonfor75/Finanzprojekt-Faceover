@@ -10,17 +10,16 @@
       - img [ref=e18]
       - heading "Login" [level=1] [ref=e21]
       - paragraph [ref=e22]: Willkommen zurück!
-    - generic [ref=e25]: Invalid login credentials
-    - generic [ref=e26]:
-      - generic [ref=e27]:
+    - generic [ref=e23]:
+      - generic [ref=e24]:
         - generic:
           - img
-        - textbox "Email Adresse" [ref=e28]: test@example.com
-      - generic [ref=e29]:
+        - textbox "Email Adresse" [ref=e25]
+      - generic [ref=e26]:
         - generic:
           - img
-        - textbox "Passwort" [ref=e30]: password
-      - button "Anmelden" [ref=e31]:
+        - textbox "Passwort" [ref=e27]
+      - button "Anmelden" [ref=e28]:
         - text: Anmelden
-        - img [ref=e32]
+        - img [ref=e29]
 ```
