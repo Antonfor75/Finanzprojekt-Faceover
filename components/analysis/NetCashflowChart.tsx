@@ -152,11 +152,11 @@ export default function NetCashflowChart({ data }: Props) {
                                 <Bar dataKey="net" radius={[4, 4, 4, 4]}>
                                     {chartData.map((entry, index) => {
                                         const isPositive = entry.net >= 0
-                                        let fill = isPositive ? '#10b981' : '#ef4444' // Emerald-500 or Red-500
+                                        let fill = isPositive ? 'var(--chart-pos)' : 'var(--chart-neg)' // Green or Red
 
                                         // Highlighting Outliers (Loss > 1000)
                                         if (!isPositive && entry.net < -1000) {
-                                            fill = '#991b1b' // Dark Red (Red-800)
+                                            fill = 'var(--chart-neg-heavy)' // Dark Red
                                         }
 
                                         return <Cell key={`cell-${index}`} fill={fill} />
@@ -170,15 +170,15 @@ export default function NetCashflowChart({ data }: Props) {
 
             <div className="mt-4 flex gap-4 justify-center text-xs text-gray-500">
                 <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded-sm bg-green-500"></div>
+                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'var(--chart-pos)' }}></div>
                     <span>Gewinn</span>
                 </div>
                 <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded-sm bg-red-500"></div>
+                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'var(--chart-neg)' }}></div>
                     <span>Verlust</span>
                 </div>
                 <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded-sm bg-red-800"></div>
+                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'var(--chart-neg-heavy)' }}></div>
                     <span>Hoher Verlust ({'>'}1k)</span>
                 </div>
             </div>

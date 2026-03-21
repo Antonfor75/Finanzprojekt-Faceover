@@ -19,8 +19,8 @@ export default function DashboardHealth({ budget, totalExpenses, totalAssets, cu
 
     // Mock Data for Donut
     const data = [
-        { name: 'Gespart', value: savingsRate, color: '#22c55e' }, // Green
-        { name: 'Ausgegeben', value: 100 - savingsRate, color: '#e5e7eb' } // Gray
+        { name: 'Gespart', value: savingsRate, color: 'var(--chart-pos)' }, // Green
+        { name: 'Ausgegeben', value: 100 - savingsRate, color: 'var(--chart-gray)' } // Gray
     ]
 
     // 2. Runway Calculation

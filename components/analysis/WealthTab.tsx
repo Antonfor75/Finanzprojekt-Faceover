@@ -33,8 +33,8 @@ export default function WealthTab({ data, currentAssets = 0 }: Props) {
                         <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorAssets" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                    <stop offset="5%" stopColor="var(--chart-pos)" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="var(--chart-pos)" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
@@ -47,7 +47,7 @@ export default function WealthTab({ data, currentAssets = 0 }: Props) {
                                 type="monotone"
                                 dataKey="assets"
                                 stackId="1"
-                                stroke="#8b5cf6"
+                                stroke="var(--chart-pos)"
                                 fill="url(#colorAssets)"
                                 name="Vermögen"
                             />
@@ -60,7 +60,7 @@ export default function WealthTab({ data, currentAssets = 0 }: Props) {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <p className="text-xs text-gray-500">Aktuelles Vermögen</p>
-                            <p className="text-xl font-bold text-purple-600">€{currentAssets.toLocaleString()}</p>
+                            <p className="text-xl font-bold" style={{ color: 'var(--chart-pos)' }}>€{currentAssets.toLocaleString()}</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">Veränderung (YTD)</p>

@@ -457,7 +457,7 @@ export default function MobileDashboard({
     }
 
     return (
-        <div className="fixed inset-0 h-dvh w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-background text-foreground">
+        <div id="dashboard-container" className="fixed inset-0 h-dvh w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-background text-foreground">
 
             {/* === ENTRY VIEW === */}
             {view === 'entry' && (
@@ -469,11 +469,11 @@ export default function MobileDashboard({
 
                         {/* BEREICH 1: Verfügbares Budget (Top Center) */}
                         <div className="flex flex-col items-center justify-center pt-4">
-                            <h2 className="font-bold uppercase tracking-widest text-center text-xs text-muted-foreground/60 mb-2">
+                            <h2 className="font-bold uppercase tracking-widest text-center text-xs text-muted-foreground/60 mb-2 golden-text">
                                 Verfügbar (Woche)
                             </h2>
-                            <div className={`font-bold tracking-tight leading-none text-center text-5xl sm:text-6xl ${isPositive ? 'text-emerald-600' : 'text-primary'}`}>
-                                €{Math.floor(currentBalance)}<span className="text-2xl sm:text-3xl text-muted-foreground/40">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
+                            <div className={`font-bold tracking-tight leading-none text-center text-5xl sm:text-6xl ${isPositive ? 'text-emerald-600' : 'text-primary'} golden-text`}>
+                                €{Math.floor(currentBalance)}<span className="text-2xl sm:text-3xl text-muted-foreground/40 golden-text">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
                             </div>
                         </div>
 
@@ -508,7 +508,7 @@ export default function MobileDashboard({
                         </div>
 
                         {/* BEREICH 3: Eingabe-Panel */}
-                        <div className="bg-card/80 backdrop-blur-md border border-border/40 rounded-3xl p-1 shadow-xl z-10 overflow-hidden">
+                        <div className="bg-card/80 backdrop-blur-md border border-border/40 rounded-3xl p-1 shadow-xl z-10 overflow-hidden add-expense-card">
                             <AddExpenseForm accounts={initialAccounts} onRefresh={onUpdate} />
                         </div>
 
@@ -641,8 +641,8 @@ export default function MobileDashboard({
                         data-testid="nav-history"
                         onClick={() => setView('history')}
                         className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${view === 'history'
-                            ? 'bg-gray-900 text-white scale-110'
-                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary'
+                            ? 'bg-gray-900 text-white scale-110 pink-nav-active'
+                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary pink-nav-inactive'
                             }`}
                     >
                         <List className="w-5 h-5 md:w-6 md:h-6" />
@@ -653,8 +653,8 @@ export default function MobileDashboard({
                         data-testid="nav-home"
                         onClick={() => setView('entry')}
                         className={`p-4 md:p-5 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${view === 'entry'
-                            ? 'bg-gray-900 text-white scale-110'
-                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary'
+                            ? 'bg-gray-900 text-white scale-110 pink-nav-active'
+                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary pink-nav-inactive'
                             }`}
                     >
                         <Home className="w-6 h-6 md:w-8 md:h-8" />
@@ -665,8 +665,8 @@ export default function MobileDashboard({
                         data-testid="nav-settings"
                         onClick={() => setIsSettingsOpen(true)}
                         className={`p-4 md:p-5 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${isSettingsOpen
-                            ? 'bg-gray-900 text-white scale-110'
-                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary'
+                            ? 'bg-gray-900 text-white scale-110 pink-nav-active'
+                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary pink-nav-inactive'
                             }`}
                     >
                         <Settings className="w-6 h-6 md:w-8 md:h-8" />

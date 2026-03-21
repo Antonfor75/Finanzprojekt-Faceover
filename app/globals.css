@@ -41,23 +41,149 @@
     
     --bg-card: #ffffff;
     --text-card-foreground: #1f2937;
+
+    --chart-pos: #22c55e;
+    --chart-neg: #ef4444;
+    --chart-neg-heavy: #991b1b;
+    --chart-gray: #e5e7eb;
   }
 
   /* PINK THEME OVERRIDE */
   :root[data-theme='pink'] {
-    --bg-background: #fff1f2; /* rose-50 */
-    --text-foreground: #1f2937; /* gray-800 */
+    --bg-background: #faf6f0; /* warm cream */
+    --text-foreground: #4a3c31; /* dark brown serif */
     
-    --color-primary: #f43f5e; /* rose-500 */
+    --color-primary: #dea8aa; /* soft rose */
     --text-primary-foreground: #ffffff;
     
-    --bg-muted: #ffe4e6; /* rose-100 */
-    --text-muted-foreground: #9f1239; /* rose-800 */
+    --bg-muted: #f3e5e5;
+    --text-muted-foreground: #a68484;
     
-    --color-border: #fecdd3; /* rose-200 */
+    --color-border: #ebdcd5;
     
-    --bg-card: #ffffff;
-    --text-card-foreground: #1f2937;
+    --bg-card: #fcf9f5;
+    --text-card-foreground: #4a3c31;
+
+    --chart-pos: #a8caa6; /* sage green */
+    --chart-neg: #dea8aa; /* dusty rose */
+    --chart-neg-heavy: #c68585;
+    --chart-gray: #f3e5e5;
+  }
+
+  /* Global Layout Overrides for Pink Premium */
+  /* Apply floral background to anything that asks for the background color, including body and overlays */
+  :root[data-theme='pink'] body,
+  :root[data-theme='pink'] .bg-background {
+    font-family: var(--font-manrope), sans-serif !important;
+    background-color: #faf6f0 !important;
+    background-image: url('/two_roses_bg.png') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+  }
+
+
+  /* Wavy Header Background */
+  :root[data-theme='pink'] body::after {
+    content: "";
+    position: fixed;
+    top: -50%; left: -20%; right: -20%; height: 80%;
+    background-color: #fce4e8;
+    border-radius: 50%;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  /* Golden text utility */
+  :root[data-theme='pink'] .golden-text {
+    font-family: var(--font-playfair), serif !important;
+    background: linear-gradient(90deg, #c5a059, #e6cd92, #9a7b46);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 10px rgba(197, 160, 89, 0.15);
+  }
+
+  /* App-wide Form Overrides for Pink Premium */
+  :root[data-theme='pink'] input,
+  :root[data-theme='pink'] select {
+    background-color: #faf6f0 !important;
+    box-shadow: inset 2px 2px 6px #e6dfd5, inset -2px -2px 6px #ffffff !important;
+    color: #4a3c31 !important;
+    border: 1.5px solid rgba(212, 175, 55, 0.5) !important; /* Golden border */
+    border-radius: 12px !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  :root[data-theme='pink'] input:focus,
+  :root[data-theme='pink'] select:focus {
+    border-color: rgba(212, 175, 55, 1) !important;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2), inset 2px 2px 6px #e6dfd5, inset -2px -2px 6px #ffffff !important;
+    outline: none !important;
+  }
+
+  :root[data-theme='pink'] select[name="category"],
+  :root[data-theme='pink'] button[type="submit"] {
+    background: linear-gradient(135deg, #dfb771, #f2dbb3, #c5974c) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 15px rgba(197, 160, 89, 0.3) !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  /* Golden Button Gradient Utility */
+  :root[data-theme='pink'] .golden-btn-gradient {
+    background: linear-gradient(135deg, #dfb771, #f2dbb3, #c5974c) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 15px rgba(197, 160, 89, 0.3) !important;
+    border: none !important;
+  }
+  
+  /* Add Expense Specific Darker Pink Card */
+  :root[data-theme='pink'] .add-expense-card {
+    background-color: #eedcd8 !important;
+    border-color: #e5d1cd !important;
+    box-shadow: -6px -6px 14px rgba(255,255,255,0.7), 6px 6px 14px rgba(230, 220, 210, 0.4) !important;
+    border-radius: 1.5rem !important;
+  }
+
+  /* Date Input Fixes */
+  :root[data-theme='pink'] .add-expense-card input[type="date"] {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  
+  :root[data-theme='pink'] input[type="date"]::-webkit-datetime-edit {
+    display: flex;
+    justify-content: center;
+  }
+  
+  :root[data-theme='pink'] input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    display: flex;
+    justify-content: center;
+  }
+
+
+  /* Neumorphic specific cards in Pink Mode */
+  :root[data-theme='pink'] .bg-card,
+  :root[data-theme='pink'] .bg-white,
+  :root[data-theme='pink'] .bg-card\/60 {
+    background-color: #fcf9f5 !important;
+    box-shadow: -6px -6px 14px rgba(255,255,255,0.7), 6px 6px 14px rgba(230, 220, 210, 0.4) !important;
+    border: 1px solid rgba(212, 175, 55, 0.4) !important; /* Golden borders for settings cards / kästchen */
+  }
+
+  :root[data-theme='pink'] .pink-nav-active {
+    background: transparent !important;
+    border: 1px solid #c5a059 !important;
+    color: #c5a059 !important;
+    box-shadow: none !important;
+  }
+  :root[data-theme='pink'] .pink-nav-inactive {
+    background: transparent !important;
+    border: 1px solid rgba(197, 160, 89, 0.4) !important;
+    color: rgba(197, 160, 89, 0.8) !important;
+    box-shadow: none !important;
   }
 
   body {

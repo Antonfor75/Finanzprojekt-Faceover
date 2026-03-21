@@ -15,13 +15,13 @@ export type ThemeColors = {
 export const getThemeVariables = (themeName: string): ThemeColors => {
     if (themeName === 'pink') {
         return {
-            background: '#fff1f2', // rose-50
+            background: '#fdf2f8', // light pink
             foreground: '#1f2937', // gray-800
-            primary: '#f43f5e',    // rose-500
+            primary: '#ee2b8c',    // Stitch Token
             primaryForeground: '#ffffff',
-            muted: '#ffe4e6',      // rose-100
-            mutedForeground: '#9f1239', // rose-800
-            border: '#fecdd3'      // rose-200
+            muted: '#fce7f3',      // muted pink
+            mutedForeground: '#be185d', // dark pink
+            border: '#fbcfe8'      // border pink
         }
     }
     // Default: Paper
