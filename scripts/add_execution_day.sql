@@ -1,0 +1,2 @@
+ALTER TABLE fixed_costs ADD COLUMN IF NOT EXISTS execution_day INTEGER NULL;
+ALTER TABLE income_sources ADD COLUMN IF NOT EXISTS execution_day INTEGER NULL;

@@ -21,6 +21,8 @@ export const fixedCostsTable = pgTable('fixed_costs', {
     linked_account_id: integer('linked_account_id'), // Link to savings account for auto-generated costs
     valid_from: timestamp('valid_from', { withTimezone: true }),
     valid_to: timestamp('valid_to', { withTimezone: true }),
+    execution_day: integer('execution_day'),
+    frequency: text('frequency'),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 
@@ -57,6 +59,7 @@ export const incomeSourcesTable = pgTable('income_sources', {
     amount: numeric('amount').notNull(),
     valid_from: timestamp('valid_from', { withTimezone: true }).defaultNow().notNull(),
     valid_to: timestamp('valid_to', { withTimezone: true }), // Nullable = Open End
+    execution_day: integer('execution_day'),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 

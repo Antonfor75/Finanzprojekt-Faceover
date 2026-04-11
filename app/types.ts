@@ -40,6 +40,8 @@ export type FixedCost = {
     linked_account_id?: number | null // Link to savings account
     valid_from?: string | null
     valid_to?: string | null
+    execution_day?: number | null
+    frequency?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
     user_id?: string
 }
 
@@ -50,6 +52,7 @@ export type IncomeSource = {
     amount: number
     valid_from?: string
     valid_to?: string | null
+    execution_day?: number | null
     frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly'
     user_id?: string
 }
