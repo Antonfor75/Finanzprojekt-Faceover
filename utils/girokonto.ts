@@ -1,6 +1,16 @@
 import { addDays, format, getDaysInMonth, getDaysInYear } from 'date-fns'
 import { Expense, IncomeSource, FixedCost } from '@/app/types'
 
+export interface TimelineEntry {
+    date: Date;
+    balance: number;
+    tagesbudget: number;
+    tagesergebnis: number;
+    income_val: number;
+    fixed_cost_val: number;
+    expense_val: number;
+}
+
 export function calculateGirokontoTimeline(
     expenses: Expense[],
     incomeSources: IncomeSource[],
@@ -39,7 +49,7 @@ export function calculateGirokontoTimeline(
     simDate = addDays(simDate, -1)
 
     let girokontoBalance = initialBalance
-    const timeline: { date: Date, balance: number }[] = []
+    const timeline: TimelineEntry[] = []
 
     const expensesByDay: Record<string, number> = {}
     expenses.forEach(e => {
@@ -51,6 +61,9 @@ export function calculateGirokontoTimeline(
         const daysInCurrentMonth = getDaysInMonth(simDate)
         const daysInCurrentYear = getDaysInYear(simDate)
 
+        let totalDailyFixedCosts = 0
+        let totalDailyIncome = 0
+
         // 1. Accrue Fixed Costs for today (proportional drip)
         fixedCosts.forEach(fc => {
             const from = fc.valid_from ? new Date(fc.valid_from) : null
@@ -58,6 +71,7 @@ export function calculateGirokontoTimeline(
             const to = fc.valid_to ? new Date(fc.valid_to) : null
             if (to) to.setHours(23, 59, 59, 999)
 
+            // Aktivierungs-Check (Heute >= Startdatum)
             const isActive = (!from || simDate >= from) && (!to || simDate <= to)
             if (!isActive) return;
 
@@ -69,13 +83,12 @@ export function calculateGirokontoTimeline(
             } else if (fc.frequency === 'weekly') {
                 dailyCost = Number(fc.amount) / 7
             } else if (fc.frequency === 'quarterly') {
-                // Approximate a quarter as 1/4 of the year's total days
                 dailyCost = Number(fc.amount) / (daysInCurrentYear / 4)
             } else if (fc.frequency === 'yearly') {
                 dailyCost = Number(fc.amount) / daysInCurrentYear
             }
 
-            girokontoBalance -= dailyCost
+            totalDailyFixedCosts += dailyCost
         })
 
         // 2. Accrue Income Sources for today (proportional drip)
@@ -85,6 +98,7 @@ export function calculateGirokontoTimeline(
             const to = src.valid_to ? new Date(src.valid_to) : null
             if (to) to.setHours(23, 59, 59, 999)
             
+            // Aktivierungs-Check
             const isActive = (!from || simDate >= from) && (!to || simDate <= to)
             if (!isActive) return;
 
@@ -99,18 +113,31 @@ export function calculateGirokontoTimeline(
                 dailyIncome = Number(src.amount) / daysInCurrentYear
             }
 
-            girokontoBalance += dailyIncome
+            totalDailyIncome += dailyIncome
         })
 
-        // 3. Process Daily Expenses (full hit on the day they occur)
+        // 3. Tagesbudget = Einnahmen(Tageswerte) - Fixkosten(Tageswerte)
+        const tagesbudget = totalDailyIncome - totalDailyFixedCosts
+
+        // 4. Variable Ausgaben an Tag X
         const dayKey = format(simDate, 'yyyy-MM-dd')
         const dayExpenses = expensesByDay[dayKey] || 0
-        girokontoBalance -= dayExpenses
+
+        // 5. Tagesergebnis = Tagesbudget - variable Ausgaben an Tag X
+        const tagesergebnis = tagesbudget - dayExpenses
+
+        // 6. Girokonto_Neu = Girokonto_Alt + Tagesergebnis
+        girokontoBalance += tagesergebnis
 
         // Record timeline
         timeline.push({
             date: new Date(simDate), // keep as midday for safety or rely on formatter
-            balance: girokontoBalance
+            balance: girokontoBalance,
+            tagesbudget: tagesbudget,
+            tagesergebnis: tagesergebnis,
+            income_val: totalDailyIncome,
+            fixed_cost_val: totalDailyFixedCosts,
+            expense_val: dayExpenses
         })
 
         simDate = addDays(simDate, 1)

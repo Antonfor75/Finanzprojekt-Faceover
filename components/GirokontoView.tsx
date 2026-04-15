@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useLayoutEffect } from 'react'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { TrendingUp, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, subDays, addDays, getYear, format, isSameDay, subYears } from 'date-fns'
 import { de } from 'date-fns/locale'
@@ -20,43 +20,16 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
     const scrollContainerRef = useRef<HTMLDivElement>(null)
 
     // --- DATA GENERATION (Using central girokonto.ts) ---
-    const { chartData, currentBalance } = useMemo(() => {
+    const { chartData, currentBalance, splitOffset } = useMemo(() => {
         const result = calculateGirokontoTimeline(expenses, incomeSources, initialFixedCosts)
 
-        // Filter the daily timeline specifically as requested (e.g. end of month only)
-        const timeline = result.timeline
-
-        const filteredData = timeline.filter(t => isSameDay(t.date, endOfMonth(t.date)))
-            .map(t => ({
-                label: format(t.date, 'MMM yy', { locale: de }),
-                date: t.date,
-                info: format(t.date, 'MMMM yyyy', { locale: de }),
-                balance: Math.round(t.balance)
-            }))
-
-        // Ensure last day is included
-        const last = timeline[timeline.length - 1]
-        if (last && !isSameDay(last.date, endOfMonth(last.date))) {
-            const existingLabels = filteredData.map(d => d.label)
-            const lastLabel = format(last.date, 'MMM yy', { locale: de })
-
-            // Only add if we didn't already capture this month (or decide to overwrite it with the latest)
-            if (!existingLabels.includes(lastLabel)) {
-                filteredData.push({
-                    label: lastLabel,
-                    date: last.date,
-                    info: format(last.date, 'MMMM yyyy', { locale: de }),
-                    balance: Math.round(last.balance)
-                })
-            } else {
-                // Update the last element to the very latest value of this month
-                const lastEl = filteredData[filteredData.length - 1]
-                if (lastEl) {
-                    lastEl.balance = Math.round(last.balance)
-                    lastEl.date = last.date
-                }
-            }
-        }
+        // Show daily data instead of filtering to month-end
+        const filteredData = result.timeline.map((t: any) => ({
+            label: format(t.date, 'dd.MM', { locale: de }),
+            date: t.date,
+            info: format(t.date, 'dd. MMMM yyyy', { locale: de }),
+            balance: Math.round(t.balance)
+        }))
 
         // --- ALIGNMENT FIX ---
         // Since MobileDashboard is passing exactly what calculateGirokontoTimeline returns,
@@ -66,12 +39,25 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
         const offset = targetBalance - simulatedEnd
 
         // Apply offset to all points
-        const alignedData = filteredData.map(d => ({
+        const alignedData = filteredData.map((d: any) => ({
             ...d,
             balance: Math.round(d.balance + offset) // offset is expected to be 0 now
         }))
 
-        return { chartData: alignedData, currentBalance: targetBalance }
+        // Calculate splitOffset for red/green gradient
+        const maxBalance = Math.max(...alignedData.map((d: any) => d.balance), 1)
+        const minBalance = Math.min(...alignedData.map((d: any) => d.balance), 0)
+        
+        let split = 0
+        if (maxBalance <= 0) {
+            split = 0
+        } else if (minBalance >= 0) {
+            split = 1
+        } else {
+            split = maxBalance / (maxBalance - minBalance)
+        }
+
+        return { chartData: alignedData, currentBalance: targetBalance, splitOffset: split }
     }, [expenses, incomeSources, initialFixedCosts, targetBalance]) // Added targetBalance dependency
 
     // Auto-Scroll (same as CashflowTab)
@@ -89,8 +75,8 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
         }
     }
 
-    // Dynamic Width (Fixed for Monthly)
-    const pointWidth = 50
+    // Dynamic Width (Fit ~1 month per screen)
+    const pointWidth = 20
     const chartWidth = Math.max(500, chartData.length * pointWidth)
 
     // Colors
@@ -140,24 +126,31 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={chartData} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
                                         <defs>
-                                            <linearGradient id="colorBal" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            <linearGradient id="splitColor" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset={splitOffset} stopColor="#10b981" stopOpacity={0.8} />
+                                                <stop offset={splitOffset} stopColor="#ef4444" stopOpacity={0.8} />
+                                            </linearGradient>
+                                            <linearGradient id="splitFill" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset={splitOffset} stopColor="#10b981" stopOpacity={0.2} />
+                                                <stop offset={splitOffset} stopColor="#ef4444" stopOpacity={0.2} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} dy={10} minTickGap={50} />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} dy={10} minTickGap={30} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
                                         <Tooltip
                                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                                             labelStyle={{ color: '#6b7280', marginBottom: '0.25rem' }}
+                                            labelFormatter={(label, payload) => payload?.[0]?.payload?.info || label}
+                                            formatter={(value: any) => [`€${Number(value).toFixed(2)}`, 'Girokonto']}
                                         />
+                                        <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="3 3" opacity={0.6} />
                                         <Area
                                             type="monotone"
                                             dataKey="balance"
-                                            stroke="#3b82f6"
+                                            stroke="url(#splitColor)"
                                             strokeWidth={3}
-                                            fill="url(#colorBal)"
+                                            fill="url(#splitFill)"
                                             name="Kontostand"
                                             animationDuration={500}
                                         />
