@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 
 import { useState, useEffect, useMemo } from 'react'
@@ -11,6 +11,14 @@ import HelpModal from '@/components/HelpModal'
 // Set worker source for pdfjs
 import { supabase } from '@/utils/supabase'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { DatePicker } from '@/components/ui/date-picker'
+
 
 type SettingsOverlayProps = {
     onBack: () => void
@@ -828,120 +836,129 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- ACCOUNTS SUB-VIEW ---
     if (showAccounts) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right duration-300 flex justify-center">
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background/80 backdrop-blur-xl animate-in fade-in slide-in-from-right duration-300 flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none">
                 <div className="w-full h-full md:max-w-2xl flex flex-col mx-auto">
-                    <div className="p-8 flex items-center justify-between border-b border-border/20 shrink-0 bg-transparent sticky top-0 z-20">
+                    <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setShowAccounts(false)} className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors">
-                                <ArrowLeft className="w-8 h-8" />
-                            </button>
-                            <h1 className="text-2xl font-bold text-foreground">Konten Verwalten</h1>
+                            <Button variant="ghost" size="icon" onClick={() => setShowAccounts(false)} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50">
+                                <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
+                            </Button>
+                            <h1 className="text-xl md:text-3xl font-light tracking-widest text-foreground">Konten</h1>
                         </div>
                     </div>
 
-                    <div className="p-8 space-y-8 flex-1 pb-20">
+                    <div className="p-4 md:p-8 space-y-8 flex-1 pb-20 max-w-[600px] mx-auto w-full">
                         {/* Add New Account */}
-                        <div className="bg-muted/50 p-6 rounded-2xl border border-border/50 space-y-4">
-                            <h3 className="font-bold text-foreground">Neues Konto anlegen</h3>
-
-                            {/* Type Selection */}
-                            <div className="flex bg-muted rounded-xl p-1">
-                                <button
-                                    onClick={() => setNewAccountType('distribution')}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${newAccountType === 'distribution' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
-                                >
-                                    Aufteilung
-                                </button>
-                                <button
-                                    onClick={() => setNewAccountType('savings')}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${newAccountType === 'savings' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
-                                >
-                                    Sparkonto
-                                </button>
-                            </div>
-
-                            <div className="space-y-3">
-                                <input
-                                    placeholder="Name des Kontos"
-                                    value={newAccountName}
-                                    onChange={(e) => setNewAccountName(e.target.value)}
-                                    className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-foreground"
-                                />
-                                <div className="flex gap-3">
-                                    <input
-                                        type="number"
-                                        placeholder="Aktueller Betrag (€)"
-                                        value={newAccountAmount}
-                                        onChange={(e) => setNewAccountAmount(e.target.value)}
-                                        className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-foreground"
-                                    />
-                                    {newAccountType === 'distribution' && (
-                                        <input
-                                            type="number"
-                                            placeholder="Monate"
-                                            value={newAccountMonths}
-                                            onChange={(e) => setNewAccountMonths(e.target.value)}
-                                            className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-foreground"
-                                        />
-                                    )}
-                                    <div className="flex-1">
-                                        <input
-                                            type="date"
-                                            placeholder="Startdatum"
-                                            value={newAccountValidFrom}
-                                            onChange={(e) => setNewAccountValidFrom(e.target.value)}
-                                            className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-sm text-muted-foreground"
-                                            title="Startdatum (Optional)"
-                                        />
-                                    </div>
+                        <Card className="rounded-[2rem] border-primary/20 bg-primary/5 backdrop-blur-md shadow-sm">
+                            <CardHeader className="pb-4">
+                                <CardTitle className="text-lg">Neues Konto anlegen</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {/* Type Selection */}
+                                <div className="flex bg-muted/50 rounded-2xl p-1 mb-4">
+                                    <button
+                                        onClick={() => setNewAccountType('distribution')}
+                                        className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${newAccountType === 'distribution' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        Aufteilung
+                                    </button>
+                                    <button
+                                        onClick={() => setNewAccountType('savings')}
+                                        className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${newAccountType === 'savings' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        Sparkonto
+                                    </button>
                                 </div>
 
-                                {newAccountType === 'savings' && (
-                                    <div className="space-y-3 pt-2 border-t border-border/50">
-                                        <div className="flex gap-3">
-                                            <div className="flex-1">
-                                                <label className="text-xs text-muted-foreground ml-2">Zielbetrag (€) (Optional)</label>
-                                                <input
+                                <FieldGroup className="space-y-4">
+                                    <Field>
+                                        <Input
+                                            placeholder="Name des Kontos"
+                                            value={newAccountName}
+                                            onChange={(e) => setNewAccountName(e.target.value)}
+                                            className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                        />
+                                    </Field>
+                                    <div className="flex gap-2">
+                                        <Field className="flex-1">
+                                            <Input
+                                                type="number"
+                                                placeholder="Aktueller Betrag (€)"
+                                                value={newAccountAmount}
+                                                onChange={(e) => setNewAccountAmount(e.target.value)}
+                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                            />
+                                        </Field>
+                                        {newAccountType === 'distribution' && (
+                                            <Field className="flex-1">
+                                                <Input
                                                     type="number"
-                                                    placeholder="Ziel (€)"
-                                                    value={newAccountTargetAmount}
-                                                    onChange={(e) => setNewAccountTargetAmount(e.target.value)}
-                                                    className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-foreground"
+                                                    placeholder="Monate"
+                                                    value={newAccountMonths}
+                                                    onChange={(e) => setNewAccountMonths(e.target.value)}
+                                                    className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
                                                 />
-                                            </div>
-                                            <div className="flex-1">
-                                                <label className="text-xs text-muted-foreground ml-2">Zieldatum (Optional)</label>
-                                                <input
-                                                    type="date"
-                                                    value={newAccountTargetDate}
-                                                    onChange={(e) => setNewAccountTargetDate(e.target.value)}
-                                                    className="w-full px-4 py-3 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-blue-300 outline-none text-foreground"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {calculatedWeeklyRate !== null && calculatedWeeklyRate > 0 && (
-                                            <div className="p-3 bg-green-50 text-green-700 rounded-xl text-sm font-bold border border-green-100 flex justify-between items-center">
-                                                <span>Wöchentliche Sparrate:</span>
-                                                <span>€{calculatedWeeklyRate.toFixed(2)}</span>
-                                            </div>
+                                            </Field>
                                         )}
+                                        <Field className="flex-1">
+                                            <Input
+                                                type="date"
+                                                placeholder="Startdatum"
+                                                value={newAccountValidFrom}
+                                                onChange={(e) => setNewAccountValidFrom(e.target.value)}
+                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary text-sm"
+                                                title="Startdatum (Optional)"
+                                            />
+                                        </Field>
                                     </div>
-                                )}
 
-                                <button
-                                    onClick={handleAddAccount}
-                                    disabled={!newAccountName || !newAccountAmount || (newAccountType === 'distribution' && !newAccountMonths)}
-                                    className="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-bold shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Hinzufügen
-                                </button>
-                            </div>
-                        </div>
+                                    {newAccountType === 'savings' && (
+                                        <div className="space-y-4 pt-2 border-t border-border/50 mt-2">
+                                            <div className="flex gap-2">
+                                                <Field className="flex-1">
+                                                    <FieldLabel className="text-xs text-muted-foreground ml-2">Zielbetrag (€) (Optional)</FieldLabel>
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="Ziel (€)"
+                                                        value={newAccountTargetAmount}
+                                                        onChange={(e) => setNewAccountTargetAmount(e.target.value)}
+                                                        className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                                    />
+                                                </Field>
+                                                <Field className="flex-1">
+                                                    <FieldLabel className="text-xs text-muted-foreground ml-2">Zieldatum (Optional)</FieldLabel>
+                                                    <Input
+                                                        type="date"
+                                                        value={newAccountTargetDate}
+                                                        onChange={(e) => setNewAccountTargetDate(e.target.value)}
+                                                        className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary text-sm"
+                                                    />
+                                                </Field>
+                                            </div>
+
+                                            {calculatedWeeklyRate !== null && calculatedWeeklyRate > 0 && (
+                                                <div className="p-3 bg-green-50/80 text-green-700 rounded-2xl text-sm font-bold border border-green-100 flex justify-between items-center shadow-sm">
+                                                    <span>Wöchentliche Sparrate:</span>
+                                                    <span>€{calculatedWeeklyRate.toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <Button
+                                        onClick={handleAddAccount}
+                                        disabled={!newAccountName || !newAccountAmount || (newAccountType === 'distribution' && !newAccountMonths)}
+                                        className="w-full h-12 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md"
+                                    >
+                                        Hinzufügen
+                                    </Button>
+                                </FieldGroup>
+                            </CardContent>
+                        </Card>
 
                         {/* Accounts List */}
                         <div className="space-y-4">
-                            <h3 className="font-bold text-foreground">Deine Konten</h3>
+                            <h3 className="text-xl font-bold text-foreground">Deine Konten</h3>
                             {accounts.length === 0 ? (
                                 <p className="text-muted-foreground text-center py-8">Noch keine Konten angelegt.</p>
                             ) : (
@@ -951,36 +968,36 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                         if (isEditing) {
                                             return (
-                                                <div key={acc.id} className="p-4 bg-card rounded-xl border-2 border-blue-500 shadow-lg space-y-3">
-                                                    <div className="space-y-3">
-                                                        <input
+                                                <Card key={acc.id} className="rounded-3xl border-2 border-primary shadow-lg bg-card/80 backdrop-blur-md">
+                                                    <CardContent className="p-4 space-y-3">
+                                                        <Input
                                                             value={editAccountName}
                                                             onChange={e => setEditAccountName(e.target.value)}
-                                                            className="w-full px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                                                            className="rounded-xl bg-muted border-transparent focus-visible:ring-primary"
                                                             placeholder="Name"
                                                         />
                                                         <div className="flex gap-2">
-                                                            <input
+                                                            <Input
                                                                 type="number"
                                                                 value={editAccountAmount}
                                                                 onChange={e => setEditAccountAmount(e.target.value)}
-                                                                className="flex-1 px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                                                                className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-primary"
                                                                 placeholder="Betrag"
                                                             />
                                                             {acc.type === 'distribution' && (
                                                                 <>
-                                                                    <input
+                                                                    <Input
                                                                         type="number"
                                                                         value={editAccountMonths}
                                                                         onChange={e => setEditAccountMonths(e.target.value)}
-                                                                        className="flex-1 px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                                                                        className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-primary"
                                                                         placeholder="Monate"
                                                                     />
-                                                                    <input
+                                                                    <Input
                                                                         type="date"
                                                                         value={editAccountValidFrom}
                                                                         onChange={e => setEditAccountValidFrom(e.target.value)}
-                                                                        className="flex-1 px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                                                                        className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-primary text-xs"
                                                                         title="Startdatum"
                                                                     />
                                                                 </>
@@ -988,34 +1005,34 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                         </div>
                                                         {acc.type === 'savings' && (
                                                             <div className="flex gap-2">
-                                                                <input
+                                                                <Input
                                                                     type="number"
                                                                     value={editAccountTargetAmount}
                                                                     onChange={e => setEditAccountTargetAmount(e.target.value)}
-                                                                    className="flex-1 px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                                                                    className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-primary"
                                                                     placeholder="Ziel (€)"
                                                                 />
-                                                                <input
+                                                                <Input
                                                                     type="date"
                                                                     value={editAccountTargetDate}
                                                                     onChange={e => setEditAccountTargetDate(e.target.value)}
-                                                                    className="flex-1 px-4 py-2 bg-muted rounded-lg border focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                                                                    className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-primary text-xs"
                                                                 />
                                                             </div>
                                                         )}
                                                         <div className="flex justify-end gap-2 pt-2">
-                                                            <button onClick={() => setEditingAccountId(null)} className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg">Abbrechen</button>
-                                                            <button onClick={handleSaveEditAccount} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-sm">Speichern</button>
+                                                            <Button variant="ghost" size="sm" onClick={() => setEditingAccountId(null)} className="rounded-xl">Abbrechen</Button>
+                                                            <Button size="sm" onClick={handleSaveEditAccount} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">Speichern</Button>
                                                         </div>
-                                                    </div>
-                                                </div>
+                                                    </CardContent>
+                                                </Card>
                                             )
                                         }
 
                                         return (
                                             <div
                                                 key={acc.id}
-                                                className={`p-4 rounded-xl shadow-sm border border-border/50 flex justify-between items-center group cursor-pointer hover:bg-muted/50 bg-card`}
+                                                className={`p-5 rounded-3xl shadow-sm border border-border/50 flex justify-between items-center group cursor-pointer hover:bg-muted/50 bg-card/80 backdrop-blur-md transition-all`}
                                                 onClick={() => {
                                                     if (acc.type === 'savings') {
                                                         handleTransferFromSavings(acc)
@@ -1023,53 +1040,47 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 }}
                                             >
                                                 <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="font-bold text-foreground">{acc.name}</p>
-                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${acc.type === 'savings' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <p className="font-bold text-foreground text-lg">{acc.name}</p>
+                                                        <Badge variant="secondary" className={`text-[10px] px-2 py-0 rounded-full font-bold uppercase ${acc.type === 'savings' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                                                             {acc.type === 'savings' ? 'Sparkonto' : 'Aufteilung'}
-                                                        </span>
+                                                        </Badge>
                                                     </div>
-                                                    <div className="flex gap-2 text-xs text-muted-foreground font-medium mt-1">
-                                                        <span className="bg-muted px-2 py-0.5 rounded">€{acc.amount.toFixed(2)}</span>
+                                                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground font-medium mt-1">
+                                                        <Badge variant="outline" className="bg-muted px-2 py-0.5 rounded-lg border-transparent">€{acc.amount.toFixed(2)}</Badge>
                                                         {acc.type === 'distribution' && (
                                                             <>
-                                                                <span className="bg-muted px-2 py-0.5 rounded">{acc.months} Monate übrig</span>
+                                                                <Badge variant="outline" className="bg-muted px-2 py-0.5 rounded-lg border-transparent">{acc.months} Monate übrig</Badge>
                                                                 {acc.valid_from && (
-                                                                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
+                                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg border-blue-100">
                                                                         Start: {new Date(acc.valid_from).toLocaleDateString()}
-                                                                    </span>
+                                                                    </Badge>
                                                                 )}
                                                             </>
                                                         )}
                                                         {acc.type === 'savings' && acc.target_amount && (
-                                                            <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-100">
+                                                            <Badge variant="outline" className="bg-green-50 text-green-700 px-2 py-0.5 rounded-lg border-green-100">
                                                                 Ziel: €{acc.target_amount} bis {acc.target_date ? new Date(acc.target_date).toLocaleDateString() : '?'}
-                                                            </span>
+                                                            </Badge>
                                                         )}
                                                     </div>
                                                     {/* Progress Bar for Savings */}
                                                     {acc.type === 'savings' && acc.target_amount && (
-                                                        <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                                                        <div className="mt-3 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                                                             <div
-                                                                className="h-full bg-green-500 rounded-full"
+                                                                className="h-full bg-green-500 rounded-full transition-all"
                                                                 style={{ width: `${Math.min(100, (acc.amount / Number(acc.target_amount)) * 100)}%` }}
                                                             />
                                                         </div>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
-                                                    <button
-                                                        onClick={() => handleStartEditAccount(acc)}
-                                                        className="p-2 text-muted-foreground/50 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    >
+                                                    <Button variant="ghost" size="icon" onClick={() => handleStartEditAccount(acc)} className="text-muted-foreground hover:text-blue-500 hover:bg-blue-50 rounded-xl">
                                                         <FileText className="w-5 h-5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteAccount(acc.id)}
-                                                        className="p-2 text-muted-foreground/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                    >
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteAccount(acc.id)} className="text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-xl">
                                                         <Trash2 className="w-5 h-5" />
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             </div>
                                         )
@@ -1079,8 +1090,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </div>
 
                         {/* Info Box */}
-                        <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                            <p className="text-xs text-blue-700 leading-relaxed">
+                        <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl">
+                            <p className="text-xs text-primary/80 leading-relaxed text-center">
                                 <b>Aufteilung:</b> Guthaben wird monatlich ausgezahlt.<br />
                                 <b>Sparkonto:</b> Setze ein Sparziel. Eine automatische Fixkoste wird erstellt, um das Ziel zu erreichen.
                             </p>
@@ -1095,76 +1106,83 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- FIXED COSTS SUB-VIEW ---
     if (showFixedCosts) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right duration-300 flex justify-center">
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background/80 backdrop-blur-xl animate-in fade-in slide-in-from-right duration-300 flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none">
                 <div className="w-full h-full md:max-w-2xl flex flex-col mx-auto">
-                    <div className="p-8 flex items-center justify-between border-b border-border/20 shrink-0 bg-transparent sticky top-0 z-20">
+                    <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setShowFixedCosts(false)} className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors">
-                                <ArrowLeft className="w-8 h-8" />
-                            </button>
-                            <h1 className="text-2xl font-bold text-foreground">Fixkosten Verwalten</h1>
+                            <Button variant="ghost" size="icon" onClick={() => setShowFixedCosts(false)} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50">
+                                <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
+                            </Button>
+                            <h1 className="text-xl md:text-3xl font-light tracking-widest text-foreground">Fixkosten</h1>
                         </div>
                     </div>
 
-                    <div className="p-8 space-y-8 flex-1 pb-20">
+                    <div className="p-4 md:p-8 space-y-8 flex-1 pb-20 max-w-[600px] mx-auto w-full">
                         {/* Add New Fixed Cost */}
-                        <div className="bg-primary/5 p-6 rounded-2xl border border-primary/20 space-y-4">
-                            <h3 className="font-bold text-foreground">Neue Fixkosten hinzufügen</h3>
-                            <div className="space-y-3">
-                                <div className="flex gap-2">
-                                    <input
-                                        placeholder="Titel"
-                                        value={newCostTitle}
-                                        onChange={(e) => setNewCostTitle(e.target.value)}
-                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
-                                    />
-                                    <input
-                                        type="number"
-                                        placeholder="€ (Monatlich)"
-                                        value={newCostAmount}
-                                        onChange={(e) => setNewCostAmount(e.target.value)}
-                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
-                                    />
-                                </div>
-                                {/* Date Range */}
-                                <div className="flex gap-2">
-                                    <div className="flex-1">
-                                        <label className="text-xs text-muted-foreground ml-2">Gültig ab</label>
-                                        <input
-                                            type="date"
-                                            value={newCostValidFrom}
-                                            onChange={(e) => setNewCostValidFrom(e.target.value)}
-                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/50 outline-none text-sm text-foreground"
-                                        />
+                        <Card className="rounded-[2rem] border-primary/20 bg-primary/5 backdrop-blur-md shadow-sm">
+                            <CardHeader className="pb-4">
+                                <CardTitle className="text-lg">Neue Fixkosten hinzufügen</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <FieldGroup className="space-y-4">
+                                    <div className="flex gap-2">
+                                        <Field className="flex-[2]">
+                                            <Input
+                                                placeholder="Titel"
+                                                value={newCostTitle}
+                                                onChange={(e) => setNewCostTitle(e.target.value)}
+                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                            />
+                                        </Field>
+                                        <Field className="flex-1">
+                                            <Input
+                                                type="number"
+                                                placeholder="€ / Monat"
+                                                value={newCostAmount}
+                                                onChange={(e) => setNewCostAmount(e.target.value)}
+                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                            />
+                                        </Field>
                                     </div>
-                                    <div className="flex-1">
-                                        <label className="text-xs text-muted-foreground ml-2">Gültig bis (Optional)</label>
-                                        <input
-                                            type="date"
-                                            value={newCostValidTo}
-                                            onChange={(e) => setNewCostValidTo(e.target.value)}
-                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/50 outline-none text-sm text-foreground"
-                                        />
+                                    {/* Date Range */}
+                                    <div className="flex gap-2">
+                                        <Field className="flex-1">
+                                            <FieldLabel className="text-xs text-muted-foreground ml-2">Gültig ab</FieldLabel>
+                                            <DatePicker
+                                                date={newCostValidFrom}
+                                                setDate={setNewCostValidFrom}
+                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary text-sm"
+                                            />
+                                        </Field>
+                                        <Field className="flex-1">
+                                            <FieldLabel className="text-xs text-muted-foreground ml-2">Gültig bis (Optional)</FieldLabel>
+                                            <DatePicker
+                                                date={newCostValidTo}
+                                                setDate={setNewCostValidTo}
+                                                placeholder="Optional"
+                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary text-sm"
+                                            />
+                                        </Field>
                                     </div>
-                                </div>
 
-                                <button
-                                    onClick={handleAddCost}
-                                    disabled={!newCostTitle || !newCostAmount}
-                                    className="w-full h-12 px-6 bg-primary text-primary-foreground hover:opacity-90 rounded-xl transition-colors shadow-md flex items-center justify-center font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Hinzufügen
-                                </button>
-                            </div>
-                        </div>
+                                    <Button
+                                        onClick={handleAddCost}
+                                        disabled={!newCostTitle || !newCostAmount}
+                                        className="w-full h-12 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md"
+                                    >
+                                        Hinzufügen
+                                    </Button>
+                                </FieldGroup>
+                            </CardContent>
+                        </Card>
 
                         {/* Fixed Costs List */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-foreground">Deine Fixkosten</h3>
-                                <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
+                                <h3 className="text-xl font-bold text-foreground">Deine Fixkosten</h3>
+                                <Badge variant="secondary" className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
                                     Summe: €{totalFixed.toFixed(2)}
-                                </span>
+                                </Badge>
                             </div>
 
                             {fixedCosts.length === 0 ? (
@@ -1193,64 +1211,65 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                         if (isEditing) {
                                             return (
-                                                <div key={cost.id} className="p-4 bg-card rounded-xl border-2 border-primary shadow-lg space-y-3">
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            value={editCostTitle}
-                                                            onChange={e => setEditCostTitle(e.target.value)}
-                                                            className="flex-[2] px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
-                                                            placeholder="Titel"
-                                                        />
-                                                        <input
-                                                            type="number"
-                                                            value={editCostAmount}
-                                                            onChange={e => setEditCostAmount(e.target.value)}
-                                                            className="flex-1 px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
-                                                            placeholder="Betrag"
-                                                        />
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <div className="flex-1">
-                                                            <label className="text-[10px] text-muted-foreground ml-1">Von</label>
-                                                            <input
-                                                                type="date"
-                                                                value={editCostValidFrom}
-                                                                onChange={e => setEditCostValidFrom(e.target.value)}
-                                                                className="w-full px-3 py-2 bg-muted rounded-lg text-xs border focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
+                                                <Card key={cost.id} className="rounded-3xl border-2 border-primary shadow-lg bg-card/80 backdrop-blur-md">
+                                                    <CardContent className="p-4 space-y-3">
+                                                        <div className="flex gap-2">
+                                                            <Input
+                                                                value={editCostTitle}
+                                                                onChange={e => setEditCostTitle(e.target.value)}
+                                                                className="flex-[2] rounded-xl bg-muted border-transparent focus-visible:ring-primary"
+                                                                placeholder="Titel"
+                                                            />
+                                                            <Input
+                                                                type="number"
+                                                                value={editCostAmount}
+                                                                onChange={e => setEditCostAmount(e.target.value)}
+                                                                className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-primary"
+                                                                placeholder="Betrag"
                                                             />
                                                         </div>
-                                                        <div className="flex-1">
-                                                            <label className="text-[10px] text-muted-foreground ml-1">Bis</label>
-                                                            <input
-                                                                type="date"
-                                                                value={editCostValidTo}
-                                                                onChange={e => setEditCostValidTo(e.target.value)}
-                                                                className="w-full px-3 py-2 bg-muted rounded-lg text-xs border focus:ring-2 focus:ring-primary/50 outline-none text-foreground"
-                                                            />
+                                                        <div className="flex gap-2">
+                                                            <div className="flex-1">
+                                                                <FieldLabel className="text-[10px] text-muted-foreground ml-1">Von</FieldLabel>
+                                                                <DatePicker
+                                                                    date={editCostValidFrom}
+                                                                    setDate={setEditCostValidFrom}
+                                                                    className="rounded-xl bg-muted border-transparent focus-visible:ring-primary text-xs"
+                                                                />
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <FieldLabel className="text-[10px] text-muted-foreground ml-1">Bis</FieldLabel>
+                                                                <DatePicker
+                                                                    date={editCostValidTo}
+                                                                    setDate={setEditCostValidTo}
+                                                                    placeholder="Optional"
+                                                                    className="rounded-xl bg-muted border-transparent focus-visible:ring-primary text-xs"
+                                                                />
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex justify-end gap-2 pt-2">
-                                                        <button onClick={() => setEditingCostId(null)} className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg">Abbrechen</button>
-                                                        <button onClick={handleSaveEditCost} className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:opacity-90 font-bold shadow-sm">Speichern</button>
-                                                    </div>
-                                                </div>
+                                                        <div className="flex justify-end gap-2 pt-2">
+                                                            <Button variant="ghost" size="sm" onClick={() => setEditingCostId(null)} className="rounded-xl">Abbrechen</Button>
+                                                            <Button size="sm" onClick={handleSaveEditCost} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">Speichern</Button>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
                                             )
                                         }
 
                                         return (
-                                            <div key={cost.id} className={`flex items-center justify-between p-4 bg-card rounded-xl border shadow-sm group ${isExpired ? 'bg-muted border-border opacity-60' : isSavings ? 'border-green-200 bg-green-50/30' : 'border-border'}`}>
+                                            <div key={cost.id} className={`flex items-center justify-between p-5 rounded-3xl border shadow-sm group ${isExpired ? 'bg-muted/50 border-border/50 opacity-60' : isSavings ? 'border-green-200 bg-green-50/50 backdrop-blur-md' : 'border-border/50 bg-card/80 backdrop-blur-md'} transition-all`}>
                                                 <div className="min-w-0 flex-1 mr-4">
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 mb-1">
                                                         <p className={`font-bold truncate text-lg ${isExpired ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{cost.title}</p>
                                                         {isSavings && (
-                                                            <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">
+                                                            <Badge variant="secondary" className="text-[10px] bg-green-100 text-green-700 px-2 py-0 rounded-full font-bold">
                                                                 SPAREN
-                                                            </span>
+                                                            </Badge>
                                                         )}
                                                         {isExpired && (
-                                                            <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">
+                                                            <Badge variant="secondary" className="text-[10px] bg-muted text-muted-foreground px-2 py-0 rounded-full font-bold">
                                                                 ABGELAUFEN
-                                                            </span>
+                                                            </Badge>
                                                         )}
                                                     </div>
                                                     <p className={`text-sm font-bold ${isExpired ? 'text-muted-foreground' : 'text-primary'}`}>-€{cost.amount.toFixed(2)}</p>
@@ -1260,18 +1279,12 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-1">
-                                                    <button
-                                                        onClick={() => handleStartEditCost(cost)}
-                                                        className="p-2 text-muted-foreground/50 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    >
+                                                    <Button variant="ghost" size="icon" onClick={() => handleStartEditCost(cost)} className="text-muted-foreground hover:text-blue-500 hover:bg-blue-50 rounded-xl">
                                                         <FileText className="w-5 h-5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteCost(cost.id)}
-                                                        className="p-2 text-muted-foreground/50 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                                                    >
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteCost(cost.id)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl">
                                                         <Trash2 className="w-5 h-5" />
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             </div>
                                         )
@@ -1281,12 +1294,11 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </div>
 
                         {/* Info Box */}
-                        <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
-                            <p className="text-xs text-primary leading-relaxed">
+                        <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl">
+                            <p className="text-xs text-primary/80 leading-relaxed text-center">
                                 Diese Kosten werden automatisch von deinem monatlichen Budget abgezogen.
                             </p>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -1296,84 +1308,94 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- INCOME SUB-VIEW ---
     if (showIncome) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right duration-300 flex justify-center">
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background/80 backdrop-blur-xl overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right duration-300 flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
                 <div className="w-full h-full md:max-w-2xl flex flex-col mx-auto">
-                    <div className="p-8 flex items-center justify-between border-b border-border/20 shrink-0 bg-transparent sticky top-0 z-20">
+                    <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-transparent sticky top-0 z-20">
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setShowIncome(false)} className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors">
-                                <ArrowLeft className="w-8 h-8" />
-                            </button>
-                            <h1 className="text-2xl font-bold text-foreground">Einnahmen Verwalten</h1>
+                            <Button variant="ghost" size="icon" onClick={() => setShowIncome(false)} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50">
+                                <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
+                            </Button>
+                            <h1 className="text-xl md:text-3xl font-light tracking-widest text-foreground">Einnahmen</h1>
                         </div>
                     </div>
 
-                    <div className="p-8 space-y-8 flex-1 pb-20">
+                    <div className="p-4 md:p-8 space-y-8 flex-1 pb-20 max-w-[600px] mx-auto w-full">
                         {/* Add New Income */}
-                        <div className="bg-green-50/50 p-6 rounded-2xl border border-green-100/50 space-y-4">
-                            <h3 className="font-bold text-foreground">Neue Einnahme hinzufügen</h3>
-                            <div className="space-y-3">
-                                <div className="flex gap-2">
-                                    <input
-                                        placeholder="Quelle (z.B. Gehalt)"
-                                        value={newIncomeTitle}
-                                        onChange={(e) => setNewIncomeTitle(e.target.value)}
-                                        className="flex-[2] min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-foreground"
-                                    />
-                                    <input
-                                        type="number"
-                                        placeholder="€"
-                                        value={newIncomeAmount}
-                                        onChange={(e) => setNewIncomeAmount(e.target.value)}
-                                        className="flex-1 min-w-0 h-14 px-4 text-base md:text-lg bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-foreground"
-                                    />
-                                    <select
-                                        value={newIncomeFrequency}
-                                        onChange={(e: any) => setNewIncomeFrequency(e.target.value)}
-                                        className="h-14 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm font-medium text-foreground"
+                        <Card className="rounded-[2rem] border-green-500/20 bg-green-50/30 backdrop-blur-md shadow-sm">
+                            <CardHeader className="pb-4">
+                                <CardTitle className="text-lg">Neue Einnahme hinzufügen</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <FieldGroup className="space-y-4">
+                                    <Field>
+                                        <Input
+                                            placeholder="Quelle (z.B. Gehalt)"
+                                            value={newIncomeTitle}
+                                            onChange={(e) => setNewIncomeTitle(e.target.value)}
+                                            className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-green-500"
+                                        />
+                                    </Field>
+                                    <div className="flex gap-2">
+                                        <Field className="flex-1">
+                                            <Input
+                                                type="number"
+                                                placeholder="€ / Betrag"
+                                                value={newIncomeAmount}
+                                                onChange={(e) => setNewIncomeAmount(e.target.value)}
+                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-green-500"
+                                            />
+                                        </Field>
+                                        <Field className="flex-1">
+                                            <Select value={newIncomeFrequency} onValueChange={(val: any) => setNewIncomeFrequency(val)}>
+                                                <SelectTrigger className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus:ring-green-500 w-full">
+                                                    <SelectValue placeholder="Intervall" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-2xl">
+                                                    <SelectItem value="monthly" className="rounded-xl">Monatlich</SelectItem>
+                                                    <SelectItem value="yearly" className="rounded-xl">Jährlich</SelectItem>
+                                                    <SelectItem value="weekly" className="rounded-xl">Wöchentlich</SelectItem>
+                                                    <SelectItem value="daily" className="rounded-xl">Täglich</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </Field>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Field className="flex-1">
+                                            <FieldLabel className="text-xs text-muted-foreground ml-2">Gültig ab</FieldLabel>
+                                            <DatePicker
+                                                date={newIncomeValidFrom}
+                                                setDate={setNewIncomeValidFrom}
+                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-green-500 text-sm"
+                                            />
+                                        </Field>
+                                        <Field className="flex-1">
+                                            <FieldLabel className="text-xs text-muted-foreground ml-2">Gültig bis (Optional)</FieldLabel>
+                                            <DatePicker
+                                                date={newIncomeValidTo}
+                                                setDate={setNewIncomeValidTo}
+                                                placeholder="Optional"
+                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-green-500 text-sm"
+                                            />
+                                        </Field>
+                                    </div>
+                                    <Button
+                                        onClick={handleAddIncome}
+                                        disabled={!newIncomeTitle || !newIncomeAmount}
+                                        className="w-full h-12 rounded-2xl bg-green-600 hover:bg-green-700 text-white font-bold shadow-md"
                                     >
-                                        <option value="monthly">Monatlich</option>
-                                        <option value="yearly">Jährlich</option>
-                                        <option value="weekly">Wöchentlich</option>
-                                        <option value="daily">Täglich</option>
-                                    </select>
-                                </div>
-                                <div className="flex gap-2">
-                                    <div className="flex-1">
-                                        <label className="text-xs text-muted-foreground ml-2">Gültig ab</label>
-                                        <input
-                                            type="date"
-                                            value={newIncomeValidFrom}
-                                            onChange={(e) => setNewIncomeValidFrom(e.target.value)}
-                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm text-foreground"
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <label className="text-xs text-muted-foreground ml-2">Gültig bis (Optional)</label>
-                                        <input
-                                            type="date"
-                                            value={newIncomeValidTo}
-                                            onChange={(e) => setNewIncomeValidTo(e.target.value)}
-                                            className="w-full h-12 px-4 bg-card rounded-xl border-none shadow-sm focus:ring-2 focus:ring-green-500/50 outline-none text-sm text-foreground"
-                                        />
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={handleAddIncome}
-                                    disabled={!newIncomeTitle || !newIncomeAmount}
-                                    className="w-full h-12 bg-green-600 text-white hover:opacity-90 rounded-xl transition-colors shadow-md flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed font-bold"
-                                >
-                                    Hinzufügen
-                                </button>
-                            </div>
-                        </div>
+                                        Hinzufügen
+                                    </Button>
+                                </FieldGroup>
+                            </CardContent>
+                        </Card>
 
                         {/* Income List */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-foreground">Deine Einnahmen</h3>
-                                <span className="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                                <h3 className="text-xl font-bold text-foreground">Deine Einnahmen</h3>
+                                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 px-3 py-1 rounded-full font-bold">
                                     Summe: €{Number(budget).toFixed(2)}
-                                </span>
+                                </Badge>
                             </div>
 
                             {incomeSources.length === 0 ? (
@@ -1381,14 +1403,9 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                             ) : (
                                 <div className="space-y-3">
                                     {incomeSources.sort((a, b) => {
-                                        // 1. Unlimited (no valid_to) first
                                         if (!a.valid_to && b.valid_to) return -1
                                         if (a.valid_to && !b.valid_to) return 1
-
-                                        // 2. Both unlimited -> sort by creation (optional, stable sort) or title
                                         if (!a.valid_to && !b.valid_to) return 0
-
-                                        // 3. Both limited -> sort by End Date DESCENDING (latest end date first)
                                         return new Date(b.valid_to!).getTime() - new Date(a.valid_to!).getTime()
                                     }).map(src => {
                                         const now = new Date()
@@ -1399,62 +1416,66 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                         if (isEditing) {
                                             return (
-                                                <div key={src.id} className="p-4 bg-card rounded-xl border-2 border-green-500 shadow-lg space-y-3">
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            value={editIncomeTitle}
-                                                            onChange={e => setEditIncomeTitle(e.target.value)}
-                                                            className="flex-[2] px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none text-foreground"
-                                                            placeholder="Titel"
-                                                        />
-                                                        <input
-                                                            type="number"
-                                                            value={editIncomeAmount}
-                                                            onChange={e => setEditIncomeAmount(e.target.value)}
-                                                            className="flex-1 px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none text-foreground"
-                                                            placeholder="Amount"
-                                                        />
-                                                        <select
-                                                            value={editIncomeFrequency}
-                                                            onChange={(e: any) => setEditIncomeFrequency(e.target.value)}
-                                                            className="px-3 py-2 bg-muted rounded-lg text-sm border focus:ring-2 focus:ring-green-500/50 outline-none text-foreground"
-                                                        >
-                                                            <option value="monthly">Mtl.</option>
-                                                            <option value="yearly">Jährl.</option>
-                                                            <option value="weekly">Wöch.</option>
-                                                            <option value="daily">Tägl.</option>
-                                                        </select>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            type="date"
-                                                            value={editIncomeValidFrom}
-                                                            onChange={e => setEditIncomeValidFrom(e.target.value)}
-                                                            className="flex-1 px-3 py-2 bg-muted rounded-lg text-xs border text-foreground"
-                                                        />
-                                                        <input
-                                                            type="date"
-                                                            value={editIncomeValidTo}
-                                                            onChange={e => setEditIncomeValidTo(e.target.value)}
-                                                            className="flex-1 px-3 py-2 bg-muted rounded-lg text-xs border text-foreground"
-                                                        />
-                                                    </div>
-                                                    <div className="flex justify-end gap-2 pt-2">
-                                                        <button onClick={() => setEditingIncomeId(null)} className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg">Abbrechen</button>
-                                                        <button onClick={handleSaveEditIncome} className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-sm">Speichern</button>
-                                                    </div>
-                                                </div>
+                                                <Card key={src.id} className="rounded-3xl border-2 border-green-500 shadow-lg bg-card/80 backdrop-blur-md">
+                                                    <CardContent className="p-4 space-y-3">
+                                                        <div className="space-y-2">
+                                                            <Input
+                                                                value={editIncomeTitle}
+                                                                onChange={e => setEditIncomeTitle(e.target.value)}
+                                                                className="w-full rounded-xl bg-muted border-transparent focus-visible:ring-green-500 text-sm"
+                                                                placeholder="Titel"
+                                                            />
+                                                            <div className="flex gap-2">
+                                                                <Input
+                                                                    type="number"
+                                                                    value={editIncomeAmount}
+                                                                    onChange={e => setEditIncomeAmount(e.target.value)}
+                                                                    className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-green-500 text-sm"
+                                                                    placeholder="Betrag"
+                                                                />
+                                                                <Select value={editIncomeFrequency} onValueChange={(val: any) => setEditIncomeFrequency(val)}>
+                                                                    <SelectTrigger className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-green-500 text-sm">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        <SelectItem value="monthly" className="rounded-lg text-sm">Monatlich</SelectItem>
+                                                                        <SelectItem value="yearly" className="rounded-lg text-sm">Jährlich</SelectItem>
+                                                                        <SelectItem value="weekly" className="rounded-lg text-sm">Wöchentlich</SelectItem>
+                                                                        <SelectItem value="daily" className="rounded-lg text-sm">Täglich</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <DatePicker
+                                                                date={editIncomeValidFrom}
+                                                                setDate={setEditIncomeValidFrom}
+                                                                className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-green-500 text-xs"
+                                                            />
+                                                            <DatePicker
+                                                                date={editIncomeValidTo}
+                                                                setDate={setEditIncomeValidTo}
+                                                                placeholder="Optional"
+                                                                className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-green-500 text-xs"
+                                                            />
+                                                        </div>
+                                                        <div className="flex justify-end gap-2 pt-2">
+                                                            <Button variant="ghost" size="sm" onClick={() => setEditingIncomeId(null)} className="rounded-xl">Abbrechen</Button>
+                                                            <Button size="sm" onClick={handleSaveEditIncome} className="rounded-xl bg-green-600 hover:bg-green-700 text-white">Speichern</Button>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
                                             )
                                         }
 
                                         return (
-                                            <div key={src.id} className={`flex flex-col p-4 rounded-xl border shadow-sm group transition-all ${isActive ? 'bg-card border-border' : 'bg-muted border-border opacity-70'}`}>
+                                            <div key={src.id} className={`flex flex-col p-5 rounded-3xl border shadow-sm group transition-all ${isActive ? 'bg-card/80 backdrop-blur-md border-border/50' : 'bg-muted/50 border-border/20 opacity-70'}`}>
                                                 <div className="flex items-center justify-between">
                                                     <div className="min-w-0 flex-1 mr-4">
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 mb-1">
                                                             <p className="font-bold text-foreground truncate text-lg">{src.title}</p>
-                                                            {!isActive && <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">Inaktiv</span>}
-                                                            {!src.valid_to && <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold border border-blue-100">Unbegrenzt</span>}
+                                                            {!isActive && <Badge variant="secondary" className="bg-muted text-muted-foreground px-2 py-0 rounded-full text-[10px]">Inaktiv</Badge>}
+                                                            {!src.valid_to && <Badge variant="secondary" className="bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0 rounded-full text-[10px]">Unbegrenzt</Badge>}
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <p className="text-sm text-green-600 font-bold">
@@ -1471,7 +1492,6 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        {/* Quick End Date Button for Unlimited Sources */}
                                                         {!src.valid_to && (
                                                             <div className="relative group/end">
                                                                 <input
@@ -1479,26 +1499,18 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                                     className="absolute inset-0 opacity-0 cursor-pointer w-8"
                                                                     onChange={(e) => handleQuickEndDate(src.id, e.target.value)}
                                                                 />
-                                                                <button className="p-2 text-blue-200 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Enddatum setzen">
+                                                                <Button variant="ghost" size="icon" className="text-blue-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl" title="Enddatum setzen">
                                                                     <ArrowDown className="w-5 h-5 rotate-[-90deg]" />
-                                                                </button>
+                                                                </Button>
                                                             </div>
                                                         )}
 
-                                                        <button
-                                                            onClick={() => handleStartEditIncome(src)}
-                                                            className="p-2 text-muted-foreground hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                                                            title="Bearbeiten"
-                                                        >
+                                                        <Button variant="ghost" size="icon" onClick={() => handleStartEditIncome(src)} className="text-muted-foreground hover:text-blue-500 hover:bg-blue-50 rounded-xl">
                                                             <FileText className="w-5 h-5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteIncome(src.id)}
-                                                            className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                            title="Löschen"
-                                                        >
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteIncome(src.id)} className="text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-xl">
                                                             <Trash2 className="w-5 h-5" />
-                                                        </button>
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1509,49 +1521,41 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </div>
 
                         {/* Info Box */}
-                        <div className="p-4 bg-green-50 border border-green-100 rounded-xl">
-                            <p className="text-xs text-green-700 leading-relaxed">
+                        <div className="p-4 bg-green-50/50 border border-green-100 rounded-2xl">
+                            <p className="text-xs text-green-700 leading-relaxed text-center">
                                 Diese Einnahmen bilden dein monatliches Grundbudget.
                             </p>
                         </div>
-
                     </div>
                 </div>
             </div>
         )
     }
 
-
     // --- MAIN SETTINGS VIEW ---
     return (
-        <div className={`fixed inset-0 z-50 h-dvh w-screen bg-background animate-in fade-in slide-in-from-right duration-300 flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none`} >
-            <div className={`w-full min-h-full md:max-w-2xl flex flex-col md:border-x border-primary/10 transition-colors duration-300`}>
+        <div className="fixed inset-0 z-50 h-dvh w-screen bg-background/80 backdrop-blur-xl animate-in fade-in slide-in-from-right duration-300 flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none">
+            <div className="w-full min-h-full md:max-w-2xl flex flex-col transition-colors duration-300">
                 {/* Header */}
-                <div className="p-3 md:p-8 flex items-center justify-between border-b border-primary/10 shrink-0 bg-transparent sticky top-0 z-20 backdrop-blur-xl">
+                <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-transparent sticky top-0 z-20">
                     <div className="flex items-center gap-2 md:gap-4">
-                        <button onClick={onBack} className="p-1 md:p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors">
+                        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50">
                             <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
-                        </button>
+                        </Button>
                         {/* Hide title on very small screens to make space for icons */}
-                        <h1 className="text-lg md:text-3xl font-bold text-foreground hidden sm:block">Einstellungen</h1>
+                        <h1 className="text-xl md:text-3xl font-light tracking-widest text-foreground hidden sm:block">Einstellungen</h1>
                     </div>
                     <div className="flex gap-1 md:gap-2">
-                        <button
-                            onClick={() => setShowHelp(true)}
-                            className="p-1 md:p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
-                            title="Hilfe & Logik"
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => setShowHelp(true)} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50" title="Hilfe & Logik">
                             <HelpCircle className="w-6 h-6 md:w-8 md:h-8" />
-                        </button>
-                        <button
-                            onClick={() => setShowImportWizard(true)}
-                            className="p-1 md:p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
-                            title="Kontoauszug Importieren"
-                        >
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setShowImportWizard(true)} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50" title="Kontoauszug Importieren">
                             <FileText className="w-6 h-6 md:w-8 md:h-8" />
-                        </button>
-                        <label className="p-1 md:p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors cursor-pointer" title="Backup wiederherstellen">
-                            <Upload className="w-6 h-6 md:w-8 md:h-8" />
+                        </Button>
+                        <label className="cursor-pointer" title="Backup wiederherstellen">
+                            <div className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50 hover:text-accent-foreground rounded-full w-10 h-10 md:w-12 md:h-12">
+                                <Upload className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground" />
+                            </div>
                             <input
                                 type="file"
                                 accept=".pdf"
@@ -1559,108 +1563,108 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                 onChange={handleRestoreBackup}
                             />
                         </label>
-                        <button
-                            onClick={handleDownloadFullReport}
-                            className="p-1 md:p-2 text-muted-foreground hover:bg-muted/50 rounded-full transition-colors"
-                            title="PDF Report & Backup Laden"
-                        >
+                        <Button variant="ghost" size="icon" onClick={handleDownloadFullReport} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50" title="PDF Report & Backup Laden">
                             <Download className="w-6 h-6 md:w-8 md:h-8" />
-                        </button>
+                        </Button>
                     </div>
                 </div>
 
 
-                <div className="p-4 md:p-10 space-y-6 md:space-y-8 flex-1 pb-32">
+                <div className="p-4 md:p-8 space-y-6 flex-1 pb-32 max-w-[600px] mx-auto w-full">
 
-                    {/* Monthly Budget Section */}
-                    {/* Income Sources Section */}
-                    <div className="bg-card shadow-md rounded-2xl p-4 md:p-8 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg md:text-2xl font-bold text-foreground">Monatliche Einnahmen</h3>
-                            <span className="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                    {/* Einnahmen & Konten Section */}
+                    <Card className="rounded-[2rem] shadow-lg border-border/50 bg-card/80 backdrop-blur-xl">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                            <CardTitle className="text-xl md:text-2xl font-bold">Vermögen & Einnahmen</CardTitle>
+                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs px-3 py-1 font-bold rounded-full">
                                 Summe: €{Number(budget).toFixed(2)}
-                            </span>
-                        </div>
+                            </Badge>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowIncome(true)}
+                                className="w-full h-16 bg-green-50/50 hover:bg-green-100 border-green-200 text-green-700 rounded-2xl flex items-center justify-between px-6 transition-all group"
+                            >
+                                <span className="flex items-center gap-3">
+                                    <Wallet className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                                    <span className="text-base md:text-lg font-bold">Einnahmen verwalten</span>
+                                </span>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-sm font-bold">€{Number(budget).toFixed(2)}</span>
+                                    <span className="text-[10px] opacity-70 font-normal">{incomeSources.length} Quellen</span>
+                                </div>
+                            </Button>
 
-                        <button
-                            onClick={() => setShowIncome(true)}
-                            className="w-full h-16 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-between px-6 font-bold group"
-                        >
-                            <span className="flex items-center gap-3">
-                                <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
-                                <span className="text-base md:text-lg">Einnahmen verwalten</span>
-                            </span>
-                            <div className="flex flex-col items-end">
-                                <span className="text-sm font-bold">€{Number(budget).toFixed(2)}</span>
-                                <span className="text-[10px] opacity-70">{incomeSources.length} Quellen</span>
-                            </div>
-                        </button>
-
-                        {/* Konten Button */}
-                        <button
-                            onClick={() => setShowAccounts(true)}
-                            className="w-full h-16 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-between px-6 font-bold group mt-4"
-                        >
-                            <span className="flex items-center gap-3">
-                                <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
-                                <span className="text-base md:text-lg">Konten verwalten</span>
-                            </span>
-                            <span className="text-xs bg-primary/20 text-primary px-3 py-1 rounded-full">
-                                {accounts.length} Aktiv
-                            </span>
-                        </button>
-                    </div>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowAccounts(true)}
+                                className="w-full h-16 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary rounded-2xl flex items-center justify-between px-6 transition-all group"
+                            >
+                                <span className="flex items-center gap-3">
+                                    <Wallet className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                                    <span className="text-base md:text-lg font-bold">Konten verwalten</span>
+                                </span>
+                                <Badge variant="secondary" className="bg-primary/10 text-primary px-3 py-1 rounded-full font-bold">
+                                    {accounts.length} Aktiv
+                                </Badge>
+                            </Button>
+                        </CardContent>
+                    </Card>
 
                     {/* Fixed Costs Section */}
-                    <div className="bg-card shadow-md rounded-2xl p-4 md:p-8 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg md:text-2xl font-bold text-foreground">Fixkosten</h3>
-                            <span className="text-xs font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full">
+                    <Card className="rounded-[2rem] shadow-lg border-border/50 bg-card/80 backdrop-blur-xl">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                            <CardTitle className="text-xl md:text-2xl font-bold">Fixkosten</CardTitle>
+                            <Badge variant="secondary" className="bg-red-100 text-red-700 hover:bg-red-100 px-3 py-1 rounded-full font-bold">
                                 Summe: €{totalFixed.toFixed(2)}
-                            </span>
-                        </div>
-
-                        <button
-                            onClick={() => setShowFixedCosts(true)}
-                            className="w-full h-16 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-between px-6 font-bold group"
-                        >
-                            <span className="flex items-center gap-3">
-                                <Wallet className="w-8 h-8 group-hover:scale-110 transition-transform" />
-                                <span className="text-base md:text-lg">Fixkosten verwalten</span>
-                            </span>
-                            <div className="flex flex-col items-end">
-                                <span className="text-sm font-bold">€{totalFixed.toFixed(2)}</span>
-                                <span className="text-sm opacity-70">{fixedCosts.length} Posten</span>
-                            </div>
-                        </button>
-                    </div>
-
-
-
+                            </Badge>
+                        </CardHeader>
+                        <CardContent>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowFixedCosts(true)}
+                                className="w-full h-16 bg-red-50/50 hover:bg-red-100 border-red-200 text-red-700 rounded-2xl flex items-center justify-between px-6 transition-all group"
+                            >
+                                <span className="flex items-center gap-3">
+                                    <Wallet className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                                    <span className="text-base md:text-lg font-bold">Fixkosten verwalten</span>
+                                </span>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-sm font-bold">€{totalFixed.toFixed(2)}</span>
+                                    <span className="text-[10px] opacity-70 font-normal">{fixedCosts.length} Posten</span>
+                                </div>
+                            </Button>
+                        </CardContent>
+                    </Card>
 
                     {/* Design Section */}
-                    <div className="bg-card shadow-md rounded-2xl p-4 md:p-8 space-y-4">
-                        <h3 className="text-lg md:text-2xl font-bold text-foreground">Design</h3>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => handleThemeChange('paper')}
-                                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme !== 'pink' ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-card text-muted-foreground hover:bg-muted'}`}
-                            >
-                                <div className="w-8 h-8 rounded-full bg-[#f8f5e6] border border-border shadow-sm"></div>
-                                <span className="font-bold">Standard</span>
-                            </button>
-                            <button
-                                onClick={() => handleThemeChange('pink')}
-                                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme === 'pink' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-border bg-card text-muted-foreground hover:bg-muted'}`}
-                            >
-                                <div className="w-8 h-8 rounded-full bg-[#fff1f2] border border-border shadow-sm"></div>
-                                <span className="font-bold">Pink Premium</span>
-                            </button>
-                        </div>
-                    </div>
+                    <Card className="rounded-[2rem] shadow-lg border-border/50 bg-card/80 backdrop-blur-xl">
+                        <CardHeader className="pb-4">
+                            <CardTitle className="text-xl md:text-2xl font-bold">Design</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => handleThemeChange('paper')}
+                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme !== 'pink' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-transparent text-muted-foreground hover:bg-muted/50'}`}
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-[#f8f5e6] border border-border shadow-sm"></div>
+                                    <span className="font-bold">Standard</span>
+                                </button>
+                                <button
+                                    onClick={() => handleThemeChange('pink')}
+                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme === 'pink' ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-sm' : 'border-border bg-transparent text-muted-foreground hover:bg-muted/50'}`}
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-[#fff1f2] border border-border shadow-sm"></div>
+                                    <span className="font-bold">Pink Premium</span>
+                                </button>
+                            </div>
+                        </CardContent>
+                    </Card>
 
                     {/* Summary */}
-                    <div className="p-6 bg-primary/5 border border-primary/10 rounded-2xl shadow-sm">
+                    <div className="p-6 bg-primary/5 border border-primary/10 rounded-[2rem] shadow-sm backdrop-blur-md">
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-sm text-muted-foreground font-medium">Verfügbar nach Fixkosten</span>
                             <span className="text-xl font-bold text-primary">€{available.toFixed(2)}</span>
@@ -1673,16 +1677,16 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                     </div>
 
                     {/* Logout Button */}
-                    <button
+                    <Button
+                        variant="outline"
                         onClick={onLogout}
-                        className="w-full border-2 border-red-500 text-red-500 font-bold py-3 rounded-xl hover:bg-red-50 transition flex items-center justify-center gap-2 mb-8"
+                        className="w-full border-2 border-red-500/50 text-red-500 font-bold py-6 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-all flex items-center justify-center gap-2 mb-8 bg-card"
                     >
                         <LogOut className="w-6 h-6" />
                         Abmelden
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
-
     )
 }

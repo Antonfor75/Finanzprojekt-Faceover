@@ -1,5 +1,8 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
+@custom-variant dark (&:is(.dark *));
 
 @theme {
   /* Dynamic Semantic Colors */
@@ -12,12 +15,12 @@
   --color-muted: var(--bg-muted);
   --color-muted-foreground: var(--text-muted-foreground);
 
+  --color-card: var(--bg-card);
+  --color-card-foreground: var(--text-card-foreground);
+
   --color-border: var(--color-border);
 
-  /* Static/Legacy */
-  --color-paper: #f8f5e6;
-
-  /* Viewport Fonts */
+  /* Semantic Viewport Fonts */
   --text-2vh: 2vh;
   --text-3vh: 3vh;
   --text-4vh: 4vh;
@@ -25,165 +28,38 @@
 }
 
 @layer base {
-
   :root {
-    /* DEFAULT THEME: PAPER (Classic/Neutral) */
-    --bg-background: #f8f5e6; /* specific paper color */
-    --text-foreground: #1f2937; /* gray-800 */
-    
-    --color-primary: #3b82f6; /* blue-500 - Classic Blue */
+    /* DEFAULT THEME: PINK ROSE (Apple Style default) */
+    --bg-background: #fff0f5; 
+    --text-foreground: #4a3a3e;
+    --color-primary: #d67b93;
     --text-primary-foreground: #ffffff;
-    
-    --bg-muted: #f1f5f9; /* slate-100 */
-    --text-muted-foreground: #475569; /* slate-600 */
-    
-    --color-border: #e2e8f0; /* slate-200 */
-    
+    --bg-muted: #fae8ed;
+    --text-muted-foreground: #a6848e;
+    --color-border: #f2d8e0;
     --bg-card: #ffffff;
-    --text-card-foreground: #1f2937;
-
-    --chart-pos: #22c55e;
-    --chart-neg: #ef4444;
-    --chart-neg-heavy: #991b1b;
-    --chart-gray: #e5e7eb;
-  }
-
-  /* PINK THEME OVERRIDE */
-  :root[data-theme='pink'] {
-    --bg-background: #faf6f0; /* warm cream */
-    --text-foreground: #4a3c31; /* dark brown serif */
-    
-    --color-primary: #dea8aa; /* soft rose */
-    --text-primary-foreground: #ffffff;
-    
-    --bg-muted: #f3e5e5;
-    --text-muted-foreground: #a68484;
-    
-    --color-border: #ebdcd5;
-    
-    --bg-card: #fcf9f5;
-    --text-card-foreground: #4a3c31;
-
-    --chart-pos: #a8caa6; /* sage green */
-    --chart-neg: #dea8aa; /* dusty rose */
+    --text-card-foreground: #4a3a3e;
+    --chart-pos: #a8caa6;
+    --chart-neg: #dea8aa;
     --chart-neg-heavy: #c68585;
     --chart-gray: #f3e5e5;
   }
 
-  /* Global Layout Overrides for Pink Premium */
-  /* Apply floral background to anything that asks for the background color, including body and overlays */
-  :root[data-theme='pink'] body,
-  :root[data-theme='pink'] .bg-background {
-    font-family: var(--font-manrope), sans-serif !important;
-    background-color: #faf6f0 !important;
-    background-image: url('/two_roses_bg.png') !important;
-    background-size: cover !important;
-    background-position: center !important;
-    background-repeat: no-repeat !important;
-    background-attachment: fixed !important;
-  }
-
-
-  /* Wavy Header Background */
-  :root[data-theme='pink'] body::after {
-    content: "";
-    position: fixed;
-    top: -50%; left: -20%; right: -20%; height: 80%;
-    background-color: #fce4e8;
-    border-radius: 50%;
-    z-index: -1;
-    pointer-events: none;
-  }
-
-  /* Golden text utility */
-  :root[data-theme='pink'] .golden-text {
-    font-family: var(--font-playfair), serif !important;
-    background: linear-gradient(90deg, #c5a059, #e6cd92, #9a7b46);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0 2px 10px rgba(197, 160, 89, 0.15);
-  }
-
-  /* App-wide Form Overrides for Pink Premium */
-  :root[data-theme='pink'] input,
-  :root[data-theme='pink'] select {
-    background-color: #faf6f0 !important;
-    box-shadow: inset 2px 2px 6px #e6dfd5, inset -2px -2px 6px #ffffff !important;
-    color: #4a3c31 !important;
-    border: 1.5px solid rgba(212, 175, 55, 0.5) !important; /* Golden border */
-    border-radius: 12px !important;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  :root[data-theme='pink'] input:focus,
-  :root[data-theme='pink'] select:focus {
-    border-color: rgba(212, 175, 55, 1) !important;
-    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2), inset 2px 2px 6px #e6dfd5, inset -2px -2px 6px #ffffff !important;
-    outline: none !important;
-  }
-
-  :root[data-theme='pink'] select[name="category"],
-  :root[data-theme='pink'] button[type="submit"] {
-    background: linear-gradient(135deg, #dfb771, #f2dbb3, #c5974c) !important;
-    color: #fff !important;
-    box-shadow: 0 4px 15px rgba(197, 160, 89, 0.3) !important;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-
-  /* Golden Button Gradient Utility */
-  :root[data-theme='pink'] .golden-btn-gradient {
-    background: linear-gradient(135deg, #dfb771, #f2dbb3, #c5974c) !important;
-    color: #fff !important;
-    box-shadow: 0 4px 15px rgba(197, 160, 89, 0.3) !important;
-    border: none !important;
-  }
-  
-  /* Add Expense Specific Darker Pink Card */
-  :root[data-theme='pink'] .add-expense-card {
-    background-color: #eedcd8 !important;
-    border-color: #e5d1cd !important;
-    box-shadow: -6px -6px 14px rgba(255,255,255,0.7), 6px 6px 14px rgba(230, 220, 210, 0.4) !important;
-    border-radius: 1.5rem !important;
-  }
-
-  /* Date Input Fixes */
-  :root[data-theme='pink'] .add-expense-card input[type="date"] {
-    background-color: transparent !important;
-    box-shadow: none !important;
-    border: none !important;
-  }
-  
-  :root[data-theme='pink'] input[type="date"]::-webkit-datetime-edit {
-    display: flex;
-    justify-content: center;
-  }
-  
-  :root[data-theme='pink'] input[type="date"]::-webkit-datetime-edit-fields-wrapper {
-    display: flex;
-    justify-content: center;
-  }
-
-
-  /* Neumorphic specific cards in Pink Mode */
-  :root[data-theme='pink'] .bg-card,
-  :root[data-theme='pink'] .bg-white,
-  :root[data-theme='pink'] .bg-card\/60 {
-    background-color: #fcf9f5 !important;
-    box-shadow: -6px -6px 14px rgba(255,255,255,0.7), 6px 6px 14px rgba(230, 220, 210, 0.4) !important;
-    border: 1px solid rgba(212, 175, 55, 0.4) !important; /* Golden borders for settings cards / kästchen */
-  }
-
-  :root[data-theme='pink'] .pink-nav-active {
-    background: transparent !important;
-    border: 1px solid #c5a059 !important;
-    color: #c5a059 !important;
-    box-shadow: none !important;
-  }
-  :root[data-theme='pink'] .pink-nav-inactive {
-    background: transparent !important;
-    border: 1px solid rgba(197, 160, 89, 0.4) !important;
-    color: rgba(197, 160, 89, 0.8) !important;
-    box-shadow: none !important;
+  /* PINK THEME OVERRIDE (Fallback/Compatibility) */
+  :root[data-theme='pink'] {
+    --bg-background: #fff0f5;
+    --text-foreground: #4a3a3e;
+    --color-primary: #d67b93;
+    --text-primary-foreground: #ffffff;
+    --bg-muted: #fae8ed;
+    --text-muted-foreground: #a6848e;
+    --color-border: #f2d8e0;
+    --bg-card: #ffffff;
+    --text-card-foreground: #4a3a3e;
+    --chart-pos: #a8caa6;
+    --chart-neg: #dea8aa;
+    --chart-neg-heavy: #c68585;
+    --chart-gray: #f3e5e5;
   }
 
   body {
@@ -191,19 +67,103 @@
     margin: 0;
     overflow: hidden;
     overscroll-behavior: none;
-
-    /* Apply Semantic Variables */
     background-color: var(--bg-background);
     color: var(--text-foreground);
     transition: background-color 0.3s ease, color 0.3s ease;
+    @apply bg-background text-foreground;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+
+  /* Hide number input arrows globally */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield; /* Firefox */
   }
 }
 
-/* Utilities used by old code, mapped to Tailwind logic where possible */
-.text-budget-positive {
-  @apply text-green-600;
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-.text-budget-negative {
-  @apply text-red-600;
+:root {
+  --background: var(--bg-background);
+  --foreground: var(--text-foreground);
+  --card: var(--bg-card);
+  --card-foreground: var(--text-card-foreground);
+  --popover: var(--bg-card);
+  --popover-foreground: var(--text-card-foreground);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--text-primary-foreground);
+  --secondary: var(--bg-muted);
+  --secondary-foreground: var(--color-primary);
+  --muted: var(--bg-muted);
+  --muted-foreground: var(--text-muted-foreground);
+  --accent: var(--bg-muted);
+  --accent-foreground: var(--color-primary);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-primary);
+  --chart-1: var(--color-primary);
+  --chart-2: var(--chart-pos);
+  --chart-3: var(--chart-neg);
+  --chart-4: var(--chart-neg-heavy);
+  --chart-5: var(--chart-gray);
+  --radius: 1rem;
+  --sidebar: var(--bg-background);
+  --sidebar-foreground: var(--text-foreground);
+  --sidebar-primary: var(--color-primary);
+  --sidebar-primary-foreground: var(--text-primary-foreground);
+  --sidebar-accent: var(--bg-muted);
+  --sidebar-accent-foreground: var(--color-primary);
+  --sidebar-border: var(--color-border);
+  --sidebar-ring: var(--color-primary);
 }

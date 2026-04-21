@@ -12,6 +12,10 @@ import { supabase } from '@/utils/supabase'
 import AddExpenseForm from './AddExpenseForm'
 import SettingsOverlay from './SettingsOverlay'
 import CalendarHistory from './CalendarHistory'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import AnalysisView from './AnalysisView'
 import WeeklyBarChart from './WeeklyBarChart'
 import GirokontoView from './GirokontoView'
@@ -399,116 +403,55 @@ export default function MobileDashboard({
         )
     }
 
-    if (editingExpense) {
-        return (
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-white w-full max-w-md rounded-3xl p-8 relative shadow-2xl">
-                    <button
-                        onClick={() => setEditingExpense(null)}
-                        className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full"
-                    >
-                        <X className="w-10 h-10" />
-                    </button>
-                    <h2 className="text-4xl font-bold mb-8 text-center">Eintrag bearbeiten</h2>
-                    <form action={handleEditSave} className="space-y-6">
-                        <div className="space-y-2">
-                            <input
-                                type="date"
-                                name="date"
-                                defaultValue={editingExpense.expense_date ? new Date(editingExpense.expense_date).toISOString().split('T')[0] : new Date(editingExpense.created_at).toISOString().split('T')[0]}
-                                required
-                                onClick={(e) => e.currentTarget.showPicker()}
-                                className="w-full text-[35px] text-center border-none shadow-md rounded-2xl py-3 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
-                            />
-                        </div>
-                        <select
-                            name="category"
-                            defaultValue={editingExpense.category || 'Sonstiges'}
-                            className="w-full text-[35px] text-center border-none shadow-md rounded-2xl py-3 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400 appearance-none"
-                        >
-                            <option value="Essen">Essen 🍔</option>
-                            <option value="Schminki Schminki">Schminki Schminki 💄</option>
-                            <option value="Shoppi">Shoppi 🛍️</option>
-                            <option value="Freizeit">Freizeit 🎉</option>
-                            <option value="Sparen">Sparen 💰</option>
-                            <option value="Sonstiges">Sonstiges 📦</option>
-                        </select>
-                        <input type="hidden" name="description" value="" />
-                        <input
-                            type="number"
-                            name="amount"
-                            step="0.01"
-                            inputMode="decimal"
-                            defaultValue={editingExpense.amount}
-                            placeholder="Betrag €"
-                            required
-                            className="w-full text-[35px] text-center border-none shadow-md rounded-2xl py-3 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-400"
-                        />
-                        <button
-                            type="submit"
-                            className="w-full text-[35px] font-bold text-center bg-blue-500 text-white rounded-2xl py-4 block hover:bg-blue-600 transition-all active:scale-95 shadow-md"
-                        >
-                            Speichern
-                        </button>
-                    </form>
-                </div>
-            </div>
-        )
-    }
 
     return (
-        <div id="dashboard-container" className="fixed inset-0 h-dvh w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-background text-foreground">
+        <div id="dashboard-container" className="fixed inset-0 h-[100dvh] w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-foreground">
 
             {/* === ENTRY VIEW === */}
             {view === 'entry' && (
                 <div className="w-full h-full overflow-y-auto overflow-x-hidden relative scroll-smooth">
-                    {/* Header Icon */}
-
-
-                    <div className="w-full max-w-xl mx-auto px-4 flex flex-col gap-6 pt-8 pb-32 min-h-full">
+                    <div className="w-full max-w-sm mx-auto px-6 flex flex-col gap-6 pt-10 pb-32 min-h-full">
 
                         {/* BEREICH 1: Verfügbares Budget (Top Center) */}
-                        <div className="flex flex-col items-center justify-center pt-4">
-                            <h2 className="font-bold uppercase tracking-widest text-center text-xs text-muted-foreground/60 mb-2 golden-text">
+                        <div className="flex flex-col items-center justify-center pt-2 mb-4">
+                            <h2 className="font-light uppercase tracking-widest text-center text-xs text-muted-foreground mb-2">
                                 Verfügbar (Woche)
                             </h2>
-                            <div className={`font-bold tracking-tight leading-none text-center text-5xl sm:text-6xl ${isPositive ? 'text-emerald-600' : 'text-primary'} golden-text`}>
-                                €{Math.floor(currentBalance)}<span className="text-2xl sm:text-3xl text-muted-foreground/40 golden-text">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
+                            <div className={`font-light tracking-tight leading-none text-center text-6xl ${isPositive ? 'text-foreground' : 'text-primary'}`}>
+                                €{Math.floor(currentBalance)}<span className="text-3xl text-muted-foreground/60">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
                             </div>
                         </div>
 
-                        {/* BEREICH 2: Girokonto */}
+                        {/* BEREICH 2: Girokonto (Frosted Glass Card) */}
                         <div className="w-full">
                             <div
                                 onClick={() => setShowGirokonto(true)}
-                                className="bg-card/60 backdrop-blur-md border border-border/40 rounded-3xl p-5 shadow-sm relative overflow-hidden group hover:scale-[1.01] transition-transform cursor-pointer active:scale-95"
+                                className="bg-white/70 backdrop-blur-2xl border border-white/60 rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer active:scale-95"
                             >
                                 <div className="flex items-center justify-between z-10 relative">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-muted rounded-2xl text-primary">
-                                            <PiggyBank className="w-8 h-8" />
+                                    <div className="flex items-center gap-5">
+                                        <div className="p-4 bg-white rounded-2xl text-primary shadow-sm">
+                                            <PiggyBank className="w-8 h-8" strokeWidth={1.5} />
                                         </div>
                                         <div>
-                                            <p className="text-xs font-bold uppercase text-muted-foreground/60 tracking-wider mb-0.5">Girokonto</p>
-                                            <p className={`text-2xl font-bold ${currentGiroBalance < 0 ? 'text-red-500' : 'text-foreground'}`}>
+                                            <p className="text-xs font-light uppercase tracking-widest text-muted-foreground mb-1">Girokonto</p>
+                                            <p className={`text-2xl font-light ${currentGiroBalance < 0 ? 'text-red-500' : 'text-foreground'}`}>
                                                 €{currentGiroBalance.toFixed(2)}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="h-full flex flex-col justify-center items-end">
-                                        <ChevronRight className="text-muted-foreground/40 w-6 h-6" />
+                                        <ChevronRight className="text-primary/40 w-6 h-6" />
                                     </div>
                                 </div>
-                                {/* Decorative Background - Only visible in Pink Mode via CSS variable opacity? Or keep generic? */}
-                                <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all"></div>
                             </div>
-                            <p className="text-[10px] text-center text-muted-foreground/50 italic mt-2">
-                                Automatisch berechnet (Einnahmen - Ausgaben)
+                            <p className="text-[10px] text-center text-muted-foreground/50 font-medium mt-3 uppercase tracking-wider">
+                                Dynamisch berechnet
                             </p>
                         </div>
 
-                        {/* BEREICH 3: Eingabe-Panel */}
-                        <div className="bg-card/80 backdrop-blur-md border border-border/40 rounded-3xl p-1 shadow-xl z-10 overflow-hidden add-expense-card">
+                        {/* BEREICH 3: Eingabe-Panel (Frosted Glass Container) */}
+                        <div className="bg-white/70 backdrop-blur-2xl border border-white/60 rounded-[2rem] p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] z-10 overflow-hidden mt-2">
                             <AddExpenseForm accounts={initialAccounts} onRefresh={onUpdate} />
                         </div>
 
@@ -522,26 +465,13 @@ export default function MobileDashboard({
                     {/* Header & Tabs */}
                     <div className="flex flex-col gap-1 mb-1 shrink-0 mt-1">
                         {/* Tabs - Spread out and moved up */}
-                        <div className="flex justify-between items-center bg-muted/50 rounded-2xl p-1">
-                            <button
-                                onClick={() => setHistoryMode('calendar')}
-                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${historyMode === 'calendar' ? 'bg-card shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                            >
-                                Kalender
-                            </button>
-                            <button
-                                onClick={() => setHistoryMode('list')}
-                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${historyMode === 'list' ? 'bg-card shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                            >
-                                Liste
-                            </button>
-                            <button
-                                onClick={() => setHistoryMode('analysis')}
-                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${historyMode === 'analysis' ? 'bg-card shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                            >
-                                Analyse
-                            </button>
-                        </div>
+                        <Tabs value={historyMode} onValueChange={(val: any) => setHistoryMode(val)} className="w-full">
+                            <TabsList className="flex w-full rounded-2xl p-1 h-auto bg-muted/50">
+                                <TabsTrigger value="calendar" className="flex-1 py-2.5 rounded-xl text-sm font-bold data-[state=active]:text-primary data-[state=active]:bg-card">Kalender</TabsTrigger>
+                                <TabsTrigger value="list" className="flex-1 py-2.5 rounded-xl text-sm font-bold data-[state=active]:text-primary data-[state=active]:bg-card">Liste</TabsTrigger>
+                                <TabsTrigger value="analysis" className="flex-1 py-2.5 rounded-xl text-sm font-bold data-[state=active]:text-primary data-[state=active]:bg-card">Analyse</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
 
                         {/* Back Button (Only if going deep) */}
                         <div className={`flex items-center justify-start ${viewLevel === 'weeks' ? 'hidden' : 'block'}`}>
@@ -615,12 +545,12 @@ export default function MobileDashboard({
                                             <div className="flex items-center gap-3">
                                                 <span className="font-bold text-primary">-€{expense.amount.toFixed(2)}</span>
                                                 <div className="flex gap-1">
-                                                    <button onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="p-2 text-muted-foreground hover:text-blue-500 bg-card rounded-lg shadow-sm">
+                                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="w-8 h-8 rounded-lg shadow-sm bg-card hover:bg-card hover:text-blue-500 text-muted-foreground border-none">
                                                         <Pencil className="w-4 h-4" />
-                                                    </button>
-                                                    <button onClick={async (e) => { e.stopPropagation(); if (confirm('Löschen?')) await deleteExpenseLocal(expense.id) }} className="p-2 text-muted-foreground hover:text-red-500 bg-card rounded-lg shadow-sm">
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={async (e) => { e.stopPropagation(); if (confirm('Löschen?')) await deleteExpenseLocal(expense.id) }} className="w-8 h-8 rounded-lg shadow-sm bg-card hover:bg-card hover:text-red-500 text-muted-foreground border-none">
                                                         <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             </div>
                                         </div>
@@ -632,47 +562,95 @@ export default function MobileDashboard({
                 </div>
             )}
 
-            {/* === BOTTOM NAVIGATION BAR (Split & Reordered) === */}
-            <div className="fixed bottom-4 md:bottom-6 left-0 w-full flex justify-center z-40 pointer-events-none pb-[env(safe-area-inset-bottom)] px-6 md:px-8">
-                <div className="w-full max-w-lg flex justify-between items-center">
-
+            {/* === BOTTOM NAVIGATION BAR (Apple Floating Island) === */}
+            <div className="fixed bottom-6 left-0 w-full flex justify-center z-40 pointer-events-none pb-[env(safe-area-inset-bottom)] px-6">
+                <div className="w-full max-w-[18rem] flex justify-between items-center bg-white/70 backdrop-blur-3xl border border-white/60 rounded-full p-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+                    
                     {/* LEFT: History */}
                     <button
-                        data-testid="nav-history"
                         onClick={() => setView('history')}
-                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${view === 'history'
-                            ? 'bg-gray-900 text-white scale-110 pink-nav-active'
-                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary pink-nav-inactive'
+                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 flex-1 flex justify-center items-center font-medium ${view === 'history'
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'text-muted-foreground hover:bg-white/50'
                             }`}
                     >
-                        <List className="w-5 h-5 md:w-6 md:h-6" />
+                        <List className="w-5 h-5 md:w-6 md:h-6" strokeWidth={view==='history'? 2 : 1.5} />
                     </button>
 
                     {/* CENTER: Home */}
                     <button
-                        data-testid="nav-home"
                         onClick={() => setView('entry')}
-                        className={`p-4 md:p-5 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${view === 'entry'
-                            ? 'bg-gray-900 text-white scale-110 pink-nav-active'
-                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary pink-nav-inactive'
+                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 flex-1 flex justify-center items-center font-medium mx-1 ${view === 'entry'
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'text-muted-foreground hover:bg-white/50'
                             }`}
                     >
-                        <Home className="w-6 h-6 md:w-8 md:h-8" />
+                        <Home className="w-5 h-5 md:w-6 md:h-6" strokeWidth={view==='entry'? 2 : 1.5} />
                     </button>
 
                     {/* RIGHT: Settings */}
                     <button
-                        data-testid="nav-settings"
                         onClick={() => setIsSettingsOpen(true)}
-                        className={`p-4 md:p-5 rounded-full pointer-events-auto transition-all duration-300 shadow-xl border border-white/40 backdrop-blur-xl ${isSettingsOpen
-                            ? 'bg-gray-900 text-white scale-110 pink-nav-active'
-                            : 'bg-card/80 text-muted-foreground hover:bg-card hover:text-primary pink-nav-inactive'
+                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 flex-1 flex justify-center items-center font-medium ${isSettingsOpen
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'text-muted-foreground hover:bg-white/50'
                             }`}
                     >
-                        <Settings className="w-6 h-6 md:w-8 md:h-8" />
+                        <Settings className="w-5 h-5 md:w-6 md:h-6" strokeWidth={isSettingsOpen ? 2 : 1.5} />
                     </button>
                 </div>
             </div>
+
+            {/* Edit Expense Dialog */}
+            <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
+                <DialogContent className="sm:max-w-[425px] rounded-3xl p-8 bg-card border-none shadow-2xl mx-4 max-w-[calc(100%-2rem)]">
+                    <DialogHeader>
+                        <DialogTitle className="text-4xl font-bold mb-8 text-center text-foreground">Eintrag bearbeiten</DialogTitle>
+                        <DialogDescription className="sr-only">Passen Sie die Details Ihrer Ausgabe an.</DialogDescription>
+                    </DialogHeader>
+                    <form action={handleEditSave} className="space-y-6">
+                        <div className="space-y-2">
+                            <input
+                                type="date"
+                                name="date"
+                                defaultValue={editingExpense?.expense_date ? new Date(editingExpense.expense_date).toISOString().split('T')[0] : (editingExpense?.created_at ? new Date(editingExpense.created_at).toISOString().split('T')[0] : '')}
+                                required
+                                onClick={(e) => e.currentTarget.showPicker()}
+                                className="w-full text-[35px] text-center border-none shadow-md rounded-2xl py-3 bg-muted outline-none focus:ring-2 focus:ring-primary cursor-pointer text-foreground"
+                            />
+                        </div>
+                        <select
+                            name="category"
+                            defaultValue={editingExpense?.category || 'Sonstiges'}
+                            className="w-full text-[35px] text-center border-none shadow-md rounded-2xl py-3 bg-muted outline-none focus:ring-2 focus:ring-primary appearance-none text-foreground"
+                        >
+                            <option value="Essen">Essen 🍔</option>
+                            <option value="Schminki Schminki">Schminki Schminki 💄</option>
+                            <option value="Shoppi">Shoppi 🛍️</option>
+                            <option value="Freizeit">Freizeit 🎉</option>
+                            <option value="Sparen">Sparen 💰</option>
+                            <option value="Sonstiges">Sonstiges 📦</option>
+                        </select>
+                        <input type="hidden" name="description" value="" />
+                        <Input
+                            type="number"
+                            name="amount"
+                            step="0.01"
+                            inputMode="decimal"
+                            defaultValue={editingExpense?.amount}
+                            placeholder="Betrag €"
+                            required
+                            className="w-full text-[35px] text-center border-none shadow-md rounded-2xl py-3 bg-muted outline-none focus:ring-2 focus:ring-primary placeholder-muted-foreground h-auto text-foreground"
+                        />
+                        <Button
+                            type="submit"
+                            className="w-full text-[35px] font-bold text-center bg-primary text-primary-foreground rounded-2xl py-8 block hover:opacity-90 transition-all active:scale-95 shadow-md h-auto"
+                        >
+                            Speichern
+                        </Button>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
         </div>
     )

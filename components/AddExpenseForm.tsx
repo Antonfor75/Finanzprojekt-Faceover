@@ -4,10 +4,17 @@ import { useRef, useState } from 'react'
 import { supabase } from '@/utils/supabase'
 import { Account } from '@/app/types'
 import { Loader2 } from 'lucide-react'
+import { format } from 'date-fns'
+import { de } from 'date-fns/locale'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
 
 export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?: Account[], onRefresh?: () => void }) {
     const formRef = useRef<HTMLFormElement>(null)
     const [loading, setLoading] = useState(false)
+    const [date, setDate] = useState<Date | undefined>(new Date())
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false)
 
     const savingsAccounts = accounts.filter(a => a.type === 'savings')
 
@@ -109,9 +116,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                 alert('Fehler beim Speichern.')
             } else {
                 formRef.current?.reset()
-                // Reset Date to Today (since reset clears it to default)
-                // Actually defaultValue is handled by React, standard reset might clear it to empty if not controlled.
-                // But native reset restores defaultValues.
+                setDate(new Date())
 
                 // Trigger refresh
                 onRefresh?.()
@@ -130,16 +135,33 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
             className="w-full h-full flex flex-col justify-evenly gap-6 py-6"
         >
             {/* Date Picker */}
-            <div className="relative w-full text-center">
-                <input
-                    type="date"
-                    name="date"
-                    defaultValue={new Date().toISOString().split('T')[0]}
-                    required
-                    onClick={(e) => e.currentTarget.showPicker()}
-                    className="w-full text-center border-none bg-transparent outline-none cursor-pointer font-bold text-primary"
-                    style={{ fontSize: '3.5vh' }}
-                />
+            <div className="relative w-full text-center flex justify-center">
+                <input type="hidden" name="date" value={date ? format(date, 'yyyy-MM-dd') : ''} required />
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                    <PopoverTrigger asChild>
+                        <button
+                            type="button"
+                            className="w-full text-center border-none bg-transparent outline-none cursor-pointer font-bold text-primary flex justify-center"
+                            style={{ fontSize: '3.5vh' }}
+                        >
+                            {date ? format(date, 'dd. MMMM yyyy', { locale: de }) : "Datum wählen"}
+                        </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-4" align="center">
+                        <Calendar
+                            mode="single"
+                            selected={date}
+                            onSelect={(d) => {
+                                if (d) {
+                                    setDate(d)
+                                    setIsCalendarOpen(false)
+                                }
+                            }}
+                            initialFocus
+                            locale={de}
+                        />
+                    </PopoverContent>
+                </Popover>
             </div>
 
             <div className="w-full px-4">
@@ -182,20 +204,20 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     placeholder="€"
                     required
                     autoFocus
-                    className="w-full text-center border-none shadow-sm rounded-3xl py-4 bg-primary/10 outline-none focus:ring-2 focus:ring-primary placeholder-primary/50 font-bold text-foreground"
+                    className="w-full text-center border-none shadow-sm rounded-3xl py-4 bg-primary/10 outline-none focus:ring-2 focus:ring-primary placeholder-primary/50 font-bold text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     style={{ fontSize: '4.5vh' }}
                 />
             </div>
 
             <div className="w-full px-4">
-                <button
+                <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full font-bold text-center bg-black text-white rounded-2xl py-4 flex items-center justify-center hover:bg-gray-800 transition-all active:scale-95 shadow-md active:shadow-none disabled:opacity-50"
+                    className="w-full font-bold text-center bg-primary text-primary-foreground rounded-2xl py-8 flex items-center justify-center hover:opacity-90 transition-all active:scale-95 shadow-md active:shadow-none disabled:opacity-50"
                     style={{ fontSize: '3vh' }}
                 >
                     {loading ? <Loader2 className="animate-spin w-10 h-10" /> : 'Eintragen'}
-                </button>
+                </Button>
             </div>
         </form>
     )

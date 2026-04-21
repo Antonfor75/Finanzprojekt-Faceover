@@ -6,6 +6,7 @@ import { supabase } from '@/utils/supabase'
 import MobileDashboard from '@/components/MobileDashboard'
 import LoginScreen from '@/components/LoginScreen'
 import { Loader2, AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
 
 export default function Home() {
@@ -169,11 +170,22 @@ export default function Home() {
   // LOADING STATE (Auth or Initial Data)
   const isLoading = authLoading || (session && dataLoading && !data)
 
+  const AnimatedBackground = () => (
+    <>
+        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-rose-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse pointer-events-none" style={{ animationDelay: '2s', animationDuration: '4s' }}></div>
+        <div className="absolute top-[20%] right-[10%] w-[30vw] h-[30vw] bg-white rounded-full mix-blend-overlay filter blur-2xl opacity-50 animate-pulse pointer-events-none" style={{ animationDelay: '1s', animationDuration: '5s' }}></div>
+    </>
+  )
+
   if (isLoading && !error) {
     return (
-      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-[#f8f5e6] gap-4">
-        <Loader2 className="w-10 h-10 animate-spin text-black" />
-        <p className="text-gray-500 font-medium animate-pulse">Lade...</p>
+      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-background relative overflow-hidden gap-6">
+        <AnimatedBackground />
+        <div className="z-10 bg-white/50 p-6 rounded-[2rem] backdrop-blur-md shadow-sm border border-white/60">
+            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        </div>
+        <p className="z-10 text-foreground uppercase tracking-widest font-light text-sm animate-pulse">Lade Finanzen...</p>
       </div>
     )
   }
@@ -181,24 +193,31 @@ export default function Home() {
   // ERROR STATE
   if (error) {
     return (
-      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-[#f8f5e6] gap-4 p-8 text-center">
-        <AlertCircle className="w-12 h-12 text-red-500" />
-        <h2 className="text-xl font-bold text-gray-800">Etwas ist schiefgelaufen</h2>
-        <p className="text-gray-600 max-w-md bg-white p-4 rounded-xl border border-red-100 shadow-sm">
-          {error}
-        </p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-4 px-6 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-colors"
-        >
-          Neu laden
-        </button>
-        <button
-          onClick={() => { supabase.auth.signOut(); window.location.reload() }}
-          className="text-sm text-gray-400 underline hover:text-gray-600"
-        >
-          Ausloggen
-        </button>
+      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-background relative overflow-hidden p-6 text-center">
+        <AnimatedBackground />
+        
+        <div className="z-10 flex flex-col items-center max-w-sm">
+            <div className="bg-white/50 p-6 rounded-[2rem] backdrop-blur-md shadow-sm border border-white/60 mb-6">
+                <AlertCircle className="w-12 h-12 text-red-500" />
+            </div>
+            <h2 className="text-2xl font-light tracking-widest uppercase text-foreground mb-4">Fehler</h2>
+            <p className="text-muted-foreground bg-white/70 backdrop-blur-xl p-6 rounded-[2rem] border border-white/60 shadow-sm mb-8">
+            {error}
+            </p>
+            <Button
+                onClick={() => window.location.reload()}
+                className="w-full bg-primary text-primary-foreground p-6 rounded-full font-bold text-lg hover:opacity-90 active:scale-95 transition-all shadow-md mb-4"
+            >
+                Erneut versuchen
+            </Button>
+            <Button
+                variant="ghost"
+                onClick={() => { supabase.auth.signOut(); window.location.reload() }}
+                className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors rounded-full"
+            >
+                Ausloggen
+            </Button>
+        </div>
       </div>
     )
   }
@@ -206,8 +225,9 @@ export default function Home() {
   // ADMIN REDIRECT PLACEHOLDER
   if (session?.user?.email === 'chef@anton.de') {
     return (
-      <div className="h-[100dvh] w-full flex items-center justify-center bg-[#f8f5e6]">
-        <Loader2 className="w-10 h-10 animate-spin text-black" />
+      <div className="h-[100dvh] w-full flex items-center justify-center bg-background relative overflow-hidden">
+        <AnimatedBackground />
+        <Loader2 className="w-10 h-10 animate-spin text-primary z-10" />
       </div>
     )
   }
@@ -219,16 +239,19 @@ export default function Home() {
 
   // AUTHENTICATED APP
   return (
-    <main className="h-[100dvh] w-full bg-white">
-      <MobileDashboard
-        expenses={data?.expenses || []}
-        initialBudget={data?.monthlyBudget || 0}
-        initialFixedCosts={data?.fixedCosts || []}
-        initialSettings={data?.settings!}
-        initialAccounts={data?.accounts || []}
-        initialIncomeSources={data?.incomeSources || []}
-        onUpdate={fetchData}
-      />
+    <main className="h-[100dvh] w-full bg-background relative overflow-hidden">
+      <AnimatedBackground />
+      <div className="absolute inset-0 z-10">
+          <MobileDashboard
+            expenses={data?.expenses || []}
+            initialBudget={data?.monthlyBudget || 0}
+            initialFixedCosts={data?.fixedCosts || []}
+            initialSettings={data?.settings!}
+            initialAccounts={data?.accounts || []}
+            initialIncomeSources={data?.incomeSources || []}
+            onUpdate={fetchData}
+          />
+      </div>
     </main>
   )
 }
