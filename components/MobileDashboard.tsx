@@ -410,7 +410,7 @@ export default function MobileDashboard({
             {/* === ENTRY VIEW === */}
             {view === 'entry' && (
                 <div className="w-full h-full overflow-y-auto overflow-x-hidden relative scroll-smooth">
-                    <div className="w-full max-w-md mx-auto px-4 flex flex-col gap-6 pt-10 pb-32 min-h-full">
+                    <div className="w-full max-w-lg mx-auto px-4 flex flex-col gap-6 pt-10 pb-32 min-h-full">
 
                         {/* BEREICH 1: Verfügbares Budget (Top Center) */}
                         <div className="flex flex-col items-center justify-center pt-2 mb-4">
@@ -564,7 +564,7 @@ export default function MobileDashboard({
 
             {/* === BOTTOM NAVIGATION BAR (Apple Floating Island) === */}
             <div className="fixed bottom-6 left-0 w-full flex justify-center z-40 pointer-events-none pb-[env(safe-area-inset-bottom)] px-6">
-                <div className="w-full max-w-[18rem] flex justify-between items-center bg-white/70 backdrop-blur-3xl border border-white/60 rounded-full p-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+                <div className="w-full max-w-sm flex justify-between items-center bg-white/70 backdrop-blur-3xl border border-white/60 rounded-full p-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
                     
                     {/* LEFT: History */}
                     <button
