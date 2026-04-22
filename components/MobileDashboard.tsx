@@ -410,7 +410,7 @@ export default function MobileDashboard({
             {/* === ENTRY VIEW === */}
             {view === 'entry' && (
                 <div className="w-full h-full overflow-y-auto overflow-x-hidden relative scroll-smooth">
-                    <div className="w-full max-w-sm mx-auto px-6 flex flex-col gap-6 pt-10 pb-32 min-h-full">
+                    <div className="w-full max-w-md mx-auto px-4 flex flex-col gap-6 pt-10 pb-32 min-h-full">
 
                         {/* BEREICH 1: Verfügbares Budget (Top Center) */}
                         <div className="flex flex-col items-center justify-center pt-2 mb-4">
