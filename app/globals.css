@@ -45,21 +45,21 @@
     --chart-gray: #f3e5e5;
   }
 
-  /* PINK THEME OVERRIDE (Fallback/Compatibility) */
-  :root[data-theme='pink'] {
-    --bg-background: #fff0f5;
-    --text-foreground: #4a3a3e;
-    --color-primary: #d67b93;
+  /* BLUE PREMIUM THEME */
+  :root[data-theme='blue'] {
+    --bg-background: #f0f9ff; /* sky-50, a very bright clean blue */
+    --text-foreground: #0f172a; /* slate-900 */
+    --color-primary: #0ea5e9; /* sky-500, fresh and vibrant */
     --text-primary-foreground: #ffffff;
-    --bg-muted: #fae8ed;
-    --text-muted-foreground: #a6848e;
-    --color-border: #f2d8e0;
+    --bg-muted: #e0f2fe; /* sky-100 */
+    --text-muted-foreground: #64748b; /* slate-500 */
+    --color-border: #bae6fd; /* sky-200 */
     --bg-card: #ffffff;
-    --text-card-foreground: #4a3a3e;
-    --chart-pos: #a8caa6;
-    --chart-neg: #dea8aa;
-    --chart-neg-heavy: #c68585;
-    --chart-gray: #f3e5e5;
+    --text-card-foreground: #0f172a;
+    --chart-pos: #34d399; /* emerald-400 */
+    --chart-neg: #f87171; /* red-400 */
+    --chart-neg-heavy: #ef4444; /* red-500 */
+    --chart-gray: #e2e8f0; /* slate-200 */
   }
 
   body {

@@ -26,13 +26,13 @@ export const getThemeVariables = (themeName: string): ThemeColors => {
     }
     // Default: Paper
     return {
-        background: '#f8f5e6', // paper
-        foreground: '#1f2937', // gray-800
-        primary: '#3b82f6',    // blue-500
+        background: '#f0f9ff', // sky-50
+        foreground: '#0f172a', // slate-900
+        primary: '#0ea5e9',    // sky-500
         primaryForeground: '#ffffff',
-        muted: '#f1f5f9',      // slate-100
-        mutedForeground: '#475569', // slate-600
-        border: '#e2e8f0'      // slate-200
+        muted: '#e0f2fe',      // sky-100
+        mutedForeground: '#64748b', // slate-500
+        border: '#bae6fd'      // sky-200
     }
 }
 
@@ -43,15 +43,15 @@ export const applyTheme = (themeName: string) => {
     // Save to local storage
     localStorage.setItem('theme', themeName)
 
-    if (themeName === 'pink') {
-        root.setAttribute('data-theme', 'pink')
+    if (themeName === 'blue') {
+        root.setAttribute('data-theme', 'blue')
     } else {
-        root.removeAttribute('data-theme') // Default is Paper (no attribute)
+        root.removeAttribute('data-theme') // Default is Pink Premium (no attribute)
     }
 }
 
 export const loadTheme = () => {
     if (typeof window === 'undefined') return
-    const saved = localStorage.getItem('theme') || 'paper'
+    const saved = localStorage.getItem('theme') || 'pink'
     applyTheme(saved)
 }

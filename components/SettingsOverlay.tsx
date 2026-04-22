@@ -1646,18 +1646,18 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         <CardContent>
                             <div className="grid grid-cols-2 gap-3">
                                 <button
-                                    onClick={() => handleThemeChange('paper')}
-                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme !== 'pink' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-transparent text-muted-foreground hover:bg-muted/50'}`}
+                                    onClick={() => handleThemeChange('pink')}
+                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme !== 'blue' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-transparent text-muted-foreground hover:bg-muted/50'}`}
                                 >
-                                    <div className="w-8 h-8 rounded-full bg-[#f8f5e6] border border-border shadow-sm"></div>
-                                    <span className="font-bold">Standard</span>
+                                    <div className="w-8 h-8 rounded-full bg-[#fff0f5] border border-border shadow-sm"></div>
+                                    <span className="font-bold">Pink Premium</span>
                                 </button>
                                 <button
-                                    onClick={() => handleThemeChange('pink')}
-                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme === 'pink' ? 'border-rose-500 bg-rose-50 text-rose-700 shadow-sm' : 'border-border bg-transparent text-muted-foreground hover:bg-muted/50'}`}
+                                    onClick={() => handleThemeChange('blue')}
+                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme === 'blue' ? 'border-sky-500 bg-sky-50 text-sky-700 shadow-sm' : 'border-border bg-transparent text-muted-foreground hover:bg-muted/50'}`}
                                 >
-                                    <div className="w-8 h-8 rounded-full bg-[#fff1f2] border border-border shadow-sm"></div>
-                                    <span className="font-bold">Pink Premium</span>
+                                    <div className="w-8 h-8 rounded-full bg-[#f0f9ff] border border-border shadow-sm"></div>
+                                    <span className="font-bold">Blue Premium</span>
                                 </button>
                             </div>
                         </CardContent>
