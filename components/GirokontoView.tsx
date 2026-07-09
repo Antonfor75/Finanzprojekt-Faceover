@@ -83,27 +83,27 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
     const isPositive = (currentBalance || 0) >= 0
 
     return (
-        <div className="fixed inset-0 bg-background z-50 overflow-y-auto animate-in slide-in-from-right duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-            <div className="flex flex-col min-h-full pb-8">
+        <div className="fixed inset-0 bg-background z-50 overflow-y-auto animate-in fade-in slide-in-from-right-8 duration-300 ease-[var(--ease-out-strong)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+            <div className="flex flex-col min-h-full pb-8 max-w-2xl mx-auto w-full">
                 {/* HEAD */}
                 <div className="p-6 md:pt-12 pb-2 shrink-0">
                     <button
                         onClick={onBack}
-                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors px-2 py-4 -ml-2"
+                        className="press flex items-center gap-1.5 text-muted-foreground hover:text-foreground mb-8 transition-colors duration-200 py-2 -ml-1"
                     >
-                        <ArrowLeft className="w-8 h-8" />
-                        <span className="text-xl font-medium">Zurück</span>
+                        <ArrowLeft className="w-4 h-4" strokeWidth={2} />
+                        <span className="text-sm font-medium">Zurück</span>
                     </button>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-end justify-between">
                         <div>
-                            <p className="text-sm font-bold uppercase text-gray-400 tracking-wider">Girokonto Übersicht</p>
-                            <h1 className={`text-4xl font-bold ${isPositive ? 'text-gray-900' : 'text-red-600'}`}>
+                            <p className="eyebrow mb-3">Girokonto</p>
+                            <h1 className={`amount text-5xl font-light ${isPositive ? 'text-foreground' : 'text-[var(--chart-neg-heavy)]'}`}>
                                 €{currentBalance.toFixed(2)}
                             </h1>
                         </div>
-                        <div className={`p-4 rounded-2xl ${isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            <TrendingUp className="w-8 h-8" />
+                        <div className={`p-3 rounded-xl ${isPositive ? 'bg-[var(--chart-pos)]/10 text-[var(--chart-pos)]' : 'bg-[var(--chart-neg)]/10 text-[var(--chart-neg-heavy)]'}`}>
+                            <TrendingUp className="w-6 h-6" strokeWidth={1.75} />
                         </div>
                     </div>
                 </div>
@@ -112,12 +112,12 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
 
                 {/* CHART */}
                 <div className="p-6 flex flex-col flex-1">
-                    <div className="bg-card rounded-3xl p-4 border border-border h-[60vh] min-h-[500px] flex flex-col relative shadow-sm">
+                    <div className="surface p-4 h-[60vh] min-h-[500px] flex flex-col relative">
                         <div className="flex justify-between items-center mb-4 px-2">
-                            <h3 className="font-bold text-muted-foreground text-sm uppercase">Verlauf</h3>
+                            <h3 className="eyebrow">Verlauf</h3>
                             <div className="flex gap-1">
-                                <button onClick={() => scroll('left')} className="p-2 rounded-full hover:bg-muted transition-colors"><ChevronLeft className="w-5 h-5 text-muted-foreground" /></button>
-                                <button onClick={() => scroll('right')} className="p-2 rounded-full hover:bg-muted transition-colors"><ChevronRight className="w-5 h-5 text-muted-foreground" /></button>
+                                <button onClick={() => scroll('left')} className="press p-2 rounded-full hover:bg-muted transition-colors duration-200"><ChevronLeft className="w-5 h-5 text-muted-foreground" strokeWidth={1.75} /></button>
+                                <button onClick={() => scroll('right')} className="press p-2 rounded-full hover:bg-muted transition-colors duration-200"><ChevronRight className="w-5 h-5 text-muted-foreground" strokeWidth={1.75} /></button>
                             </div>
                         </div>
 
@@ -127,24 +127,24 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
                                     <AreaChart data={chartData} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="splitColor" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset={splitOffset} stopColor="#10b981" stopOpacity={0.8} />
-                                                <stop offset={splitOffset} stopColor="#ef4444" stopOpacity={0.8} />
+                                                <stop offset={splitOffset} stopColor="var(--chart-pos)" stopOpacity={0.9} />
+                                                <stop offset={splitOffset} stopColor="var(--chart-neg)" stopOpacity={0.9} />
                                             </linearGradient>
                                             <linearGradient id="splitFill" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset={splitOffset} stopColor="#10b981" stopOpacity={0.2} />
-                                                <stop offset={splitOffset} stopColor="#ef4444" stopOpacity={0.2} />
+                                                <stop offset={splitOffset} stopColor="var(--chart-pos)" stopOpacity={0.15} />
+                                                <stop offset={splitOffset} stopColor="var(--chart-neg)" stopOpacity={0.15} />
                                             </linearGradient>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} dy={10} minTickGap={30} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted-foreground)' }} dy={10} minTickGap={30} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--text-muted-foreground)' }} />
                                         <Tooltip
-                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                            labelStyle={{ color: '#6b7280', marginBottom: '0.25rem' }}
+                                            contentStyle={{ borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: '0 4px 12px rgb(35 22 26 / 0.08)', fontFamily: 'var(--font-geist-mono)' }}
+                                            labelStyle={{ color: 'var(--text-muted-foreground)', marginBottom: '0.25rem' }}
                                             labelFormatter={(label, payload) => payload?.[0]?.payload?.info || label}
                                             formatter={(value: any) => [`€${Number(value).toFixed(2)}`, 'Girokonto']}
                                         />
-                                        <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="3 3" opacity={0.6} />
+                                        <ReferenceLine y={0} stroke="var(--chart-neg)" strokeDasharray="3 3" opacity={0.5} />
                                         <Area
                                             type="monotone"
                                             dataKey="balance"

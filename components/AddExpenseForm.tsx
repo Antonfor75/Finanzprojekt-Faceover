@@ -8,7 +8,6 @@ import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Button } from '@/components/ui/button'
 
 export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?: Account[], onRefresh?: () => void }) {
     const formRef = useRef<HTMLFormElement>(null)
@@ -132,22 +131,40 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
         <form
             ref={formRef}
             onSubmit={handleSubmit}
-            className="w-full h-full flex flex-col justify-evenly gap-6 py-6"
+            className="w-full flex flex-col gap-4 pb-2"
         >
+            {/* Amount Input — the primary action, so it leads */}
+            <div className="surface flex flex-col items-center px-4 pt-6 pb-2 focus-within:border-primary/40 transition-[border-color] duration-200">
+                <input
+                    type="number"
+                    name="amount"
+                    step="0.01"
+                    inputMode="decimal"
+                    placeholder="0,00"
+                    required
+                    autoFocus
+                    aria-label="Betrag in Euro"
+                    className="amount w-full text-center bg-transparent border-none outline-none font-light text-foreground text-5xl [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-muted-foreground/30"
+                />
+                <span className="eyebrow mt-2 mb-2">Euro</span>
+            </div>
+
             {/* Date Picker */}
-            <div className="relative w-full text-center flex justify-center">
+            <div className="relative w-full flex">
                 <input type="hidden" name="date" value={date ? format(date, 'yyyy-MM-dd') : ''} required />
                 <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                     <PopoverTrigger asChild>
                         <button
                             type="button"
-                            className="w-full text-center border-none bg-transparent outline-none cursor-pointer font-bold text-primary flex justify-center"
-                            style={{ fontSize: '3.5vh' }}
+                            className="press flex-1 flex items-center justify-between px-4 py-3.5 rounded-xl bg-muted/60 border border-transparent transition-[background-color,border-color] duration-200 hover:bg-muted focus:bg-card focus:border-border"
                         >
-                            {date ? format(date, 'dd. MMMM yyyy', { locale: de }) : "Datum wählen"}
+                            <span className="text-xs font-medium text-muted-foreground">Datum</span>
+                            <span className="amount text-sm text-foreground">
+                                {date ? format(date, 'dd. MMMM yyyy', { locale: de }) : 'Datum wählen'}
+                            </span>
                         </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-4" align="center">
+                    <PopoverContent className="w-auto p-3 rounded-2xl border-border shadow-lg" align="center">
                         <Calendar
                             mode="single"
                             selected={date}
@@ -164,11 +181,12 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                 </Popover>
             </div>
 
-            <div className="w-full px-4">
+            {/* Category Select */}
+            <div className="relative flex items-center rounded-xl bg-muted/60 border border-transparent focus-within:bg-card focus-within:border-border transition-[background-color,border-color] duration-200">
+                <span className="absolute left-4 text-xs font-medium text-muted-foreground pointer-events-none">Kategorie</span>
                 <select
                     name="category"
-                    className="w-full text-center border-none shadow-sm rounded-2xl py-4 bg-primary/10 outline-none focus:ring-2 focus:ring-primary appearance-none font-bold text-foreground"
-                    style={{ fontSize: '2.5vh' }}
+                    className="w-full text-right bg-transparent border-none py-3.5 pl-24 pr-4 outline-none appearance-none font-medium text-foreground text-sm"
                     defaultValue="Essen"
                 >
                     <optgroup label="Kategorien">
@@ -195,29 +213,19 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
             {/* Hidden description */}
             <input type="hidden" name="description" value="" />
 
-            <div className="w-full px-4">
-                <input
-                    type="number"
-                    name="amount"
-                    step="0.01"
-                    inputMode="decimal"
-                    placeholder="€"
-                    required
-                    autoFocus
-                    className="w-full text-center border-none shadow-sm rounded-3xl py-4 bg-primary/10 outline-none focus:ring-2 focus:ring-primary placeholder-primary/50 font-bold text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    style={{ fontSize: '4.5vh' }}
-                />
-            </div>
-
-            <div className="w-full px-4">
-                <Button
+            {/* Submit Button */}
+            <div className="pt-2">
+                <button
                     type="submit"
                     disabled={loading}
-                    className="w-full font-bold text-center bg-primary text-primary-foreground rounded-2xl py-8 flex items-center justify-center hover:opacity-90 transition-all active:scale-95 shadow-md active:shadow-none disabled:opacity-50"
-                    style={{ fontSize: '3vh' }}
+                    className="press w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-4 rounded-xl font-semibold text-base disabled:opacity-60 transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)]"
                 >
-                    {loading ? <Loader2 className="animate-spin w-10 h-10" /> : 'Eintragen'}
-                </Button>
+                    {loading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                        'Ausgabe eintragen'
+                    )}
+                </button>
             </div>
         </form>
     )

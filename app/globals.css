@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  /* Dynamic Semantic Colors */
+  /* Dynamic Semantic Colors (driven by the active theme block below) */
   --color-background: var(--bg-background);
   --color-foreground: var(--text-foreground);
 
@@ -20,52 +20,69 @@
 
   --color-border: var(--color-border);
 
-  /* Semantic Viewport Fonts */
-  --text-2vh: 2vh;
-  --text-3vh: 3vh;
-  --text-4vh: 4vh;
-  --text-5vh: 5vh;
+  --color-positive: var(--chart-pos);
+  --color-negative: var(--chart-neg);
+
+  /* Typography — wired to next/font variables set in app/layout.tsx */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-manrope), var(--font-geist-sans), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+
+  /* Motion — strong custom curves (built-in CSS easings are too weak) */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @layer base {
   :root {
-    /* DEFAULT THEME: PINK ROSE (Apple Style default) */
-    --bg-background: #fff0f5; 
-    --text-foreground: #4a3a3e;
-    --color-primary: #d67b93;
-    --text-primary-foreground: #ffffff;
-    --bg-muted: #fae8ed;
-    --text-muted-foreground: #a6848e;
-    --color-border: #f2d8e0;
-    --bg-card: #ffffff;
-    --text-card-foreground: #4a3a3e;
-    --chart-pos: #a8caa6;
-    --chart-neg: #dea8aa;
-    --chart-neg-heavy: #c68585;
-    --chart-gray: #f3e5e5;
-    --blob-color-1: #e0f2fe; /* sky-100 */
-    --blob-color-2: #f0f9ff; /* sky-50 */
-    --blob-color-3: #ffffff;
+    /* ============================================
+       THEME: "ROSÉ LEDGER" (Default)
+       Warm porcelain canvas, plum ink, one deep
+       raspberry accent. Desaturated chart colors.
+       ============================================ */
+    --bg-background: #FAF5F3;        /* warm porcelain with a rose cast */
+    --text-foreground: #23161A;      /* plum ink */
+    --color-primary: #C13D5D;        /* deep raspberry (desaturated) */
+    --text-primary-foreground: #FFF7F8;
+    --bg-muted: #F2E8E6;             /* warm rose-gray surface */
+    --text-muted-foreground: #937379;/* rosy gray */
+    --color-border: #E9DCD9;         /* hairline */
+    --bg-card: #FFFFFF;
+    --text-card-foreground: #23161A;
+
+    /* Charts (desaturated, same lightness family) */
+    --chart-pos: #4E9B7D;
+    --chart-neg: #C96F80;
+    --chart-neg-heavy: #A93B54;
+    --chart-gray: #EBDFDD;
+
+    /* Ambient wash (very subtle, replaces the old blobs) */
+    --ambient-1: #F6DBDF;
+    --ambient-2: #F8E9DC;
   }
 
-  /* BLUE PREMIUM THEME (Unified Elegant Blue) */
   :root[data-theme='blue'] {
-    --bg-background: #f2f6fc;
-    --text-foreground: #1e3246;
-    --color-primary: #4a8bcf;
-    --text-primary-foreground: #ffffff;
-    --bg-muted: #e3ebf6;
-    --text-muted-foreground: #6b849c;
-    --color-border: #d1e0f0;
-    --bg-card: #ffffff;
-    --text-card-foreground: #1e3246;
-    --chart-pos: #6ee7b7;
-    --chart-neg: #fca5a5;
-    --chart-neg-heavy: #ef4444;
-    --chart-gray: #cbd5e1;
-    --blob-color-1: #dbeafe;
-    --blob-color-2: #bfdbfe;
-    --blob-color-3: #ffffff;
+    /* ============================================
+       THEME: "NORDLICHT" (Blue)
+       ============================================ */
+    --bg-background: #F3F6F8;
+    --text-foreground: #17222B;
+    --color-primary: #33618F;
+    --text-primary-foreground: #F5F9FC;
+    --bg-muted: #E7EDF2;
+    --text-muted-foreground: #6C8194;
+    --color-border: #DBE4EB;
+    --bg-card: #FFFFFF;
+    --text-card-foreground: #17222B;
+
+    --chart-pos: #45907E;
+    --chart-neg: #C56F6F;
+    --chart-neg-heavy: #A34848;
+    --chart-gray: #DFE7ED;
+
+    --ambient-1: #DAE6F0;
+    --ambient-2: #E5EDF4;
   }
 
   body {
@@ -75,7 +92,7 @@
     overscroll-behavior: none;
     background-color: var(--bg-background);
     color: var(--text-foreground);
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: background-color 300ms var(--ease-out-strong), color 300ms var(--ease-out-strong);
     @apply bg-background text-foreground;
   }
   * {
@@ -94,11 +111,112 @@
   input[type='number'] {
     -moz-appearance: textfield; /* Firefox */
   }
+
+  /* Visible keyboard focus (quality floor) */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* ---- Ledger typography -------------------------------------- */
+  /* Amounts: tabular mono figures — the visual signature of the app */
+  .amount {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums lining-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* Eyebrow labels: small caps, wide tracking, mono */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-weight: 500;
+    color: var(--text-muted-foreground);
+  }
+
+  /* ---- Surfaces ------------------------------------------------ */
+  /* Flat card: white surface + hairline, no heavy shadow */
+  .surface {
+    background: var(--bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: 1.25rem;
+    box-shadow: 0 1px 2px rgb(35 22 26 / 0.03);
+  }
+
+  /* Ledger row: list item separated by hairlines instead of floating cards */
+  .ledger-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 0.25rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  /* ---- Motion -------------------------------------------------- */
+  /* Press feedback: every tappable element should feel physical */
+  .press {
+    transition: transform 120ms var(--ease-out-strong);
+  }
+  .press:active {
+    transform: scale(0.97);
+  }
+
+  /* View entrance: gentle fade-up, fast enough to never feel slow */
+  .view-enter {
+    animation: view-enter 300ms var(--ease-out-strong) both;
+  }
+  @keyframes view-enter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Staggered list entrance (30-60ms steps, decorative only) */
+  .stagger-children > * {
+    animation: view-enter 260ms var(--ease-out-strong) both;
+  }
+  .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-children > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger-children > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger-children > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger-children > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger-children > *:nth-child(n+6) { animation-delay: 200ms; }
+
+  /* Ambient background wash — two soft radial tints, no blur filters */
+  .ambient-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(60% 45% at 15% -10%, var(--ambient-1) 0%, transparent 70%),
+      radial-gradient(55% 40% at 95% 110%, var(--ambient-2) 0%, transparent 70%);
+    opacity: 0.55;
+  }
+}
+
+/* Reduced motion: keep opacity transitions, remove movement */
+@media (prefers-reduced-motion: reduce) {
+  .view-enter,
+  .stagger-children > * {
+    animation-duration: 1ms;
+  }
+  .press:active {
+    transform: none;
+  }
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: var(--font-sans);
+  --font-heading: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -154,7 +272,7 @@
   --muted-foreground: var(--text-muted-foreground);
   --accent: var(--bg-muted);
   --accent-foreground: var(--color-primary);
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: var(--chart-neg-heavy);
   --border: var(--color-border);
   --input: var(--color-border);
   --ring: var(--color-primary);

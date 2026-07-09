@@ -42,7 +42,7 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
                 <Button variant="ghost" size="icon" onClick={prevMonth} className="rounded-full hover:bg-muted/80 w-10 h-10 active:scale-95 transition-transform">
                     <ChevronLeft className="w-5 h-5 text-muted-foreground" />
                 </Button>
-                <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+                <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
                     {format(currentMonth, 'MMMM yyyy', { locale: de })}
                 </h2>
                 <Button variant="ghost" size="icon" onClick={nextMonth} className="rounded-full hover:bg-muted/80 w-10 h-10 active:scale-95 transition-transform">
@@ -71,17 +71,17 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
                             key={idx}
                             onClick={() => onDayClick(day)}
                             className={cn(
-                                "relative rounded-2xl flex flex-col items-center justify-between p-1.5 h-24 sm:h-28 hover:scale-[1.02] transition-all cursor-pointer overflow-hidden",
-                                isCurrentMonth ? "bg-white/60 dark:bg-black/20 backdrop-blur-xl shadow-[0_2px_10px_rgb(0,0,0,0.02)] border border-white/40 dark:border-white/10" : "bg-transparent opacity-30",
-                                hasExpenses && isOverBudget && isCurrentMonth ? "bg-red-50/50 dark:bg-red-950/20 border-red-100 dark:border-red-900/30" : ""
+                                "press relative rounded-xl flex flex-col items-center justify-between p-1.5 h-24 sm:h-28 transition-colors duration-200 cursor-pointer overflow-hidden",
+                                isCurrentMonth ? "bg-card border border-border hover:bg-muted/40" : "bg-transparent opacity-30",
+                                hasExpenses && isOverBudget && isCurrentMonth ? "bg-[var(--chart-neg)]/8 border-[var(--chart-neg)]/25" : ""
                             )}
                         >
                             {/* Date Number Top Left */}
                             <div className="w-full flex justify-start">
                                 <span className={cn(
-                                    "flex items-center justify-center text-[13px] font-medium w-6 h-6 rounded-full transition-colors",
-                                    isToday ? "bg-primary text-primary-foreground font-bold shadow-md" : (isCurrentMonth ? "text-foreground" : "text-muted-foreground"),
-                                    hasExpenses && isOverBudget && !isToday ? "text-red-600 dark:text-red-400" : ""
+                                    "amount flex items-center justify-center text-[13px] w-6 h-6 rounded-full transition-colors duration-200",
+                                    isToday ? "bg-primary text-primary-foreground font-semibold" : (isCurrentMonth ? "text-foreground" : "text-muted-foreground"),
+                                    hasExpenses && isOverBudget && !isToday ? "text-[var(--chart-neg-heavy)]" : ""
                                 )}>
                                     {format(day, 'd')}
                                 </span>
@@ -92,13 +92,13 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
                                 <div className="w-full flex justify-center mt-auto pb-1">
                                     <span
                                         className={cn(
-                                            "text-[11px] sm:text-xs font-bold tracking-tight px-1.5 py-0.5 rounded-lg w-full text-center truncate",
-                                            isOverBudget 
-                                                ? "text-red-600 bg-red-100/50 dark:bg-red-900/30 dark:text-red-400" 
-                                                : "text-foreground/80 bg-muted/50"
+                                            "amount text-[11px] sm:text-xs px-1.5 py-0.5 rounded-md w-full text-center truncate",
+                                            isOverBudget
+                                                ? "text-[var(--chart-neg-heavy)] bg-[var(--chart-neg)]/12"
+                                                : "text-foreground/80 bg-muted/60"
                                         )}
                                     >
-                                        -€{dailyTotal.toFixed(0)}
+                                        −€{dailyTotal.toFixed(0)}
                                     </span>
                                 </div>
                             )}
@@ -108,8 +108,8 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
             </div>
 
             <div className="mt-8 text-center pb-2">
-                <span className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/50 bg-muted/40 px-4 py-2 rounded-full border border-border/30">
-                    Tagesbudget: €{dailyBudget.toFixed(2)}
+                <span className="eyebrow bg-muted/50 px-4 py-2 rounded-full border border-border">
+                    Tagesbudget €{dailyBudget.toFixed(2)}
                 </span>
             </div>
         </div>

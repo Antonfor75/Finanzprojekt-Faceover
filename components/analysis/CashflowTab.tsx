@@ -80,13 +80,13 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
         <div className="space-y-6">
 
             {/* TIME RANGE SWITCHER */}
-            <div className="flex bg-primary/10 p-1 rounded-xl">
+            <div className="flex bg-muted/70 p-1 rounded-xl">
                 {['daily', 'weekly', 'monthly', 'yearly'].map((r) => (
                     <button
                         key={r}
                         onClick={() => setRange(r as any)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${range === r
-                            ? 'bg-card shadow-sm text-primary'
+                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 ${range === r
+                            ? 'bg-card shadow-sm text-foreground'
                             : 'text-muted-foreground hover:text-foreground'
                             }`}
                     >
@@ -99,15 +99,15 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
             </div>
 
             {/* DYNAMIC TREND CHART (SPLIT LAYOUT) */}
-            <div className="bg-card p-4 rounded-2xl shadow-sm border border-border relative">
+            <div className="surface p-4 relative">
                 <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                            <TrendingUp className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-muted rounded-lg text-muted-foreground">
+                            <TrendingUp className="w-4.5 h-4.5" strokeWidth={1.75} />
                         </div>
                         <div>
-                            <h3 className="font-bold text-gray-800">Verlauf</h3>
-                            <p className="text-xs text-gray-400">{title}</p>
+                            <h3 className="font-semibold text-sm text-foreground">Verlauf</h3>
+                            <p className="text-xs text-muted-foreground">{title}</p>
                         </div>
                     </div>
 
@@ -115,15 +115,15 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
                     <div className="flex gap-1">
                         <button
                             onClick={() => scroll('left')}
-                            className="p-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary/10 active:scale-95 transition-all"
+                            className="press p-1.5 rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors duration-200"
                         >
-                            <ChevronLeft className="w-5 h-5" />
+                            <ChevronLeft className="w-5 h-5" strokeWidth={1.75} />
                         </button>
                         <button
                             onClick={() => scroll('right')}
-                            className="p-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-primary/10 active:scale-95 transition-all"
+                            className="press p-1.5 rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors duration-200"
                         >
-                            <ChevronRight className="w-5 h-5" />
+                            <ChevronRight className="w-5 h-5" strokeWidth={1.75} />
                         </button>
                     </div>
                 </div>
@@ -136,7 +136,7 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
                                 <YAxis
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fontSize: 10, fill: '#6B7280', fontWeight: '500' }} // Increased contrast
+                                    tick={{ fontSize: 10, fill: 'var(--text-muted-foreground)', fontWeight: '500' }}
                                     domain={[0, maxValue]}
                                     width={60}
                                     tickFormatter={(value) => `${value >= 1000 ? (value / 1000).toFixed(1) + 'k' : value}`}
@@ -165,12 +165,12 @@ export default function CashflowTab({ data12M, dataWeekly, dataYearly, dataDaily
                                             <stop offset="95%" stopColor="var(--chart-neg)" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                    <XAxis dataKey={xDataKey} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9CA3AF' }} dy={10} minTickGap={30} />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+                                    <XAxis dataKey={xDataKey} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted-foreground)' }} dy={10} minTickGap={30} />
                                     {/* Hiden YAxis to maintain grid alignment structure if needed, but we use domain sync */}
                                     <YAxis hide domain={[0, maxValue]} />
                                     <Tooltip
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        contentStyle={{ borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: '0 4px 12px rgb(35 22 26 / 0.08)', fontFamily: 'var(--font-geist-mono)' }}
                                         formatter={(value: any) => [`€${Number(value).toFixed(2)}`, '']}
                                     />
                                     <Area type="monotone" dataKey="income" stroke="var(--chart-pos)" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" name="Einnahmen" />

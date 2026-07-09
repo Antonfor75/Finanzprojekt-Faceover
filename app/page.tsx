@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
 import MobileDashboard from '@/components/MobileDashboard'
 import LoginScreen from '@/components/LoginScreen'
-import { Loader2, AlertCircle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Loader2 } from 'lucide-react'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
 
 export default function Home() {
@@ -170,22 +169,15 @@ export default function Home() {
   // LOADING STATE (Auth or Initial Data)
   const isLoading = authLoading || (session && dataLoading && !data)
 
-  const AnimatedBackground = () => (
-    <>
-        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-[var(--blob-color-1)] rounded-full mix-blend-multiply filter blur-3xl opacity-20 pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-[var(--blob-color-2)] rounded-full mix-blend-multiply filter blur-3xl opacity-30 pointer-events-none"></div>
-        <div className="absolute top-[20%] right-[10%] w-[30vw] h-[30vw] bg-[var(--blob-color-3)] rounded-full mix-blend-overlay filter blur-2xl opacity-50 pointer-events-none"></div>
-    </>
-  )
+  const AnimatedBackground = () => <div className="ambient-bg" />
 
   if (isLoading && !error) {
     return (
-      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-background relative overflow-hidden gap-6">
+      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-background relative overflow-hidden gap-6 view-enter">
         <AnimatedBackground />
-        <div className="z-10 bg-white/50 p-6 rounded-[2rem] backdrop-blur-md shadow-sm border border-white/60">
-            <Loader2 className="w-10 h-10 animate-spin text-primary" />
-        </div>
-        <p className="z-10 text-foreground uppercase tracking-widest font-light text-sm animate-pulse">Lade Finanzen...</p>
+
+        <Loader2 className="z-10 w-7 h-7 animate-spin text-primary" strokeWidth={1.75} />
+        <p className="z-10 eyebrow">Lade Finanzen</p>
       </div>
     )
   }
@@ -193,30 +185,32 @@ export default function Home() {
   // ERROR STATE
   if (error) {
     return (
-      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-background relative overflow-hidden p-6 text-center">
+      <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-background relative overflow-hidden p-6 view-enter">
         <AnimatedBackground />
-        
-        <div className="z-10 flex flex-col items-center max-w-sm">
-            <div className="bg-white/50 p-6 rounded-[2rem] backdrop-blur-md shadow-sm border border-white/60 mb-6">
-                <AlertCircle className="w-12 h-12 text-red-500" />
+
+        <div className="z-10 flex flex-col w-full max-w-sm">
+
+            <p className="eyebrow mb-3">Fehler</p>
+            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground mb-4">
+                Daten konnten nicht geladen werden
+            </h2>
+
+            <div className="surface p-5 mb-8">
+                <p className="text-sm text-muted-foreground leading-relaxed">{error}</p>
             </div>
-            <h2 className="text-2xl font-light tracking-widest uppercase text-foreground mb-4">Fehler</h2>
-            <p className="text-muted-foreground bg-white/70 backdrop-blur-xl p-6 rounded-[2rem] border border-white/60 shadow-sm mb-8">
-            {error}
-            </p>
-            <Button
+
+            <button
                 onClick={() => window.location.reload()}
-                className="w-full bg-primary text-primary-foreground p-6 rounded-full font-bold text-lg hover:opacity-90 active:scale-[0.98] transition-transform duration-300 active:duration-75 ease-out shadow-md mb-4"
+                className="press w-full bg-primary text-primary-foreground py-4 rounded-xl font-semibold text-base mb-3"
             >
                 Erneut versuchen
-            </Button>
-            <Button
-                variant="ghost"
+            </button>
+            <button
                 onClick={() => { supabase.auth.signOut(); window.location.reload() }}
-                className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200 ease-out rounded-full"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 py-2"
             >
-                Ausloggen
-            </Button>
+                Abmelden
+            </button>
         </div>
       </div>
     )
@@ -227,7 +221,7 @@ export default function Home() {
     return (
       <div className="h-[100dvh] w-full flex items-center justify-center bg-background relative overflow-hidden">
         <AnimatedBackground />
-        <Loader2 className="w-10 h-10 animate-spin text-primary z-10" />
+        <Loader2 className="w-7 h-7 animate-spin text-primary z-10" strokeWidth={1.75} />
       </div>
     )
   }

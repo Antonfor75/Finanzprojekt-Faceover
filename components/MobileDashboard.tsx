@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { loadTheme } from '@/utils/theme'
 import { processWeeklySavings } from '@/app/actions/savings'
-import { Wallet, ChevronRight, ArrowLeft, Settings, Trash2, List, Pencil, X, Home, PiggyBank, Download } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Settings, Trash2, List, Pencil, Home, Download } from 'lucide-react'
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
@@ -17,7 +17,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import AnalysisView from './AnalysisView'
-import WeeklyBarChart from './WeeklyBarChart'
 import GirokontoView from './GirokontoView'
 // import DashboardHealth from './DashboardHealth' // REMOVED
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
@@ -27,7 +26,7 @@ import autoTable from 'jspdf-autotable'
 
 import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource } from '@/app/types'
 
-type MainView = 'entry' | 'history'
+type MainView = 'entry' | 'history' | 'settings'
 
 export default function MobileDashboard({
     expenses,
@@ -48,7 +47,6 @@ export default function MobileDashboard({
 }) {
     // --- APP STATE ---
     const [view, setView] = useState<MainView>('entry')
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const [showGirokonto, setShowGirokonto] = useState(false)
     const [viewLevel, setViewLevel] = useState<'weeks' | 'days' | 'transactions'>('weeks')
     const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null)
@@ -376,20 +374,7 @@ export default function MobileDashboard({
 
 
 
-    if (isSettingsOpen) {
-        return (
-            <SettingsOverlay
-                onBack={() => setIsSettingsOpen(false)}
-                settings={initialSettings}
-                fixedCosts={initialFixedCosts}
-                accounts={initialAccounts}
-                incomeSources={initialIncomeSources}
-                onLogout={handleLogout}
-                onUpdate={onUpdate}
-                expenses={expenses}
-            />
-        )
-    }
+
 
     if (showGirokonto) {
         return (
@@ -409,51 +394,56 @@ export default function MobileDashboard({
 
             {/* === ENTRY VIEW === */}
             {view === 'entry' && (
-                <div className="w-full h-full overflow-y-auto overflow-x-hidden relative scroll-smooth">
-                    <div className="w-full max-w-lg mx-auto px-4 flex flex-col gap-6 pt-10 pb-32 min-h-full">
+                <div className="w-full h-full overflow-y-auto overflow-x-hidden relative scroll-smooth view-enter">
+                    <div className="w-full max-w-lg mx-auto px-6 flex flex-col pt-14 pb-36 min-h-full">
 
-                        {/* BEREICH 1: Verfügbares Budget (Top Center) */}
-                        <div className="flex flex-col items-center justify-center pt-2 mb-4">
-                            <h2 className="font-light uppercase tracking-widest text-center text-xs text-muted-foreground mb-2">
-                                Verfügbar (Woche)
-                            </h2>
-                            <div className={`font-light tracking-tight leading-none text-center text-6xl ${isPositive ? 'text-foreground' : 'text-primary'}`}>
-                                €{Math.floor(currentBalance)}<span className="text-3xl text-muted-foreground/60">.{(currentBalance % 1).toFixed(2).split('.')[1] || '00'}</span>
+                        {/* HERO: Verfügbares Wochenbudget */}
+                        <header className="flex flex-col items-start mb-10">
+                            <p className="eyebrow mb-4">Verfügbar diese Woche</p>
+                            <div className={`amount font-light leading-none text-[3.75rem] ${isPositive ? 'text-foreground' : 'text-[var(--chart-neg-heavy)]'}`}>
+                                €{Math.trunc(currentBalance)}
+                                <span className="text-3xl text-muted-foreground">,{Math.abs(currentBalance % 1).toFixed(2).split('.')[1]}</span>
                             </div>
-                        </div>
 
-                        {/* BEREICH 2: Girokonto (Frosted Glass Card) */}
-                        <div className="w-full">
-                            <div
-                                onClick={() => setShowGirokonto(true)}
-                                className="bg-card/70 backdrop-blur-2xl border border-border/60 rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer active:scale-95"
-                            >
-                                <div className="flex items-center justify-between z-10 relative">
-                                    <div className="flex items-center gap-5">
-                                        <div className="p-4 bg-card rounded-2xl text-primary shadow-sm">
-                                            <PiggyBank className="w-8 h-8" strokeWidth={1.5} />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-light uppercase tracking-widest text-muted-foreground mb-1">Girokonto</p>
-                                            <p className={`text-2xl font-light ${currentGiroBalance < 0 ? 'text-red-500' : 'text-foreground'}`}>
-                                                €{currentGiroBalance.toFixed(2)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="h-full flex flex-col justify-center items-end">
-                                        <ChevronRight className="text-primary/40 w-6 h-6" />
-                                    </div>
+                            {/* Budget-Meter */}
+                            <div className="w-full mt-7">
+                                <div className="h-1 w-full bg-muted rounded-full overflow-hidden" role="presentation">
+                                    <div
+                                        className={`h-full rounded-full transition-[width] duration-500 ease-[var(--ease-out-strong)] ${totalSpentThisWeek > weeklyBudget ? 'bg-[var(--chart-neg-heavy)]' : 'bg-primary'}`}
+                                        style={{ width: `${weeklyBudget > 0 ? Math.min(100, (totalSpentThisWeek / weeklyBudget) * 100) : 0}%` }}
+                                    />
+                                </div>
+                                <div className="flex justify-between mt-2.5 text-xs text-muted-foreground font-medium">
+                                    <span>Ausgegeben <span className="amount text-foreground">€{totalSpentThisWeek.toFixed(2)}</span></span>
+                                    <span>Budget <span className="amount text-foreground">€{weeklyBudget.toFixed(2)}</span></span>
                                 </div>
                             </div>
-                            <p className="text-[10px] text-center text-muted-foreground/50 font-medium mt-3 uppercase tracking-wider">
-                                Dynamisch berechnet
-                            </p>
-                        </div>
+                        </header>
 
-                        {/* BEREICH 3: Eingabe-Panel (Frosted Glass Container) */}
-                        <div className="bg-card/70 backdrop-blur-2xl border border-border/60 rounded-[2rem] p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] z-10 overflow-hidden mt-2">
+                        {/* Girokonto — Ledger-Zeile */}
+                        <button
+                            onClick={() => setShowGirokonto(true)}
+                            className="press group w-full text-left border-t border-b border-border py-5 mb-10 flex items-center justify-between"
+                        >
+                            <div className="flex flex-col">
+                                <p className="eyebrow mb-2">Girokonto</p>
+                                <p className={`amount text-3xl font-light ${currentGiroBalance < 0 ? 'text-[var(--chart-neg-heavy)]' : 'text-foreground'}`}>
+                                    €{currentGiroBalance.toFixed(2)}
+                                </p>
+                            </div>
+                            <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted-foreground transition-colors duration-200 group-hover:text-primary group-hover:border-primary/40">
+                                <ArrowUpRight className="w-4.5 h-4.5" strokeWidth={1.75} />
+                            </div>
+                        </button>
+
+                        {/* Neue Ausgabe */}
+                        <section>
+                            <h2 className="flex items-center gap-4 mb-7">
+                                <span className="font-display text-xl font-semibold tracking-tight text-foreground">Neue Ausgabe</span>
+                                <span className="h-px flex-1 bg-border" aria-hidden="true"></span>
+                            </h2>
                             <AddExpenseForm accounts={initialAccounts} onRefresh={onUpdate} />
-                        </div>
+                        </section>
 
                     </div>
                 </div>
@@ -461,15 +451,14 @@ export default function MobileDashboard({
 
             {/* === HISTORY VIEW === */}
             {view === 'history' && (
-                <div className="w-full h-full flex flex-col pt-[env(safe-area-inset-top)] px-4 pb-0 max-w-xl mx-auto">
+                <div className="w-full h-full flex flex-col pt-[env(safe-area-inset-top)] px-4 pb-0 max-w-xl mx-auto view-enter">
                     {/* Header & Tabs */}
-                    <div className="flex flex-col gap-1 mb-1 shrink-0 mt-1">
-                        {/* Tabs - Spread out and moved up */}
+                    <div className="flex flex-col gap-2 mb-1 shrink-0 mt-3">
                         <Tabs value={historyMode} onValueChange={(val: any) => setHistoryMode(val)} className="w-full">
-                            <TabsList className="flex w-full rounded-2xl p-1 h-auto bg-muted/50">
-                                <TabsTrigger value="calendar" className="flex-1 py-2.5 rounded-xl text-sm font-bold data-[state=active]:text-primary data-[state=active]:bg-card">Kalender</TabsTrigger>
-                                <TabsTrigger value="list" className="flex-1 py-2.5 rounded-xl text-sm font-bold data-[state=active]:text-primary data-[state=active]:bg-card">Liste</TabsTrigger>
-                                <TabsTrigger value="analysis" className="flex-1 py-2.5 rounded-xl text-sm font-bold data-[state=active]:text-primary data-[state=active]:bg-card">Analyse</TabsTrigger>
+                            <TabsList className="flex w-full rounded-xl p-1 h-auto bg-muted/70">
+                                <TabsTrigger value="calendar" className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 data-[state=active]:text-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm">Kalender</TabsTrigger>
+                                <TabsTrigger value="list" className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 data-[state=active]:text-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm">Liste</TabsTrigger>
+                                <TabsTrigger value="analysis" className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 data-[state=active]:text-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm">Analyse</TabsTrigger>
                             </TabsList>
                         </Tabs>
 
@@ -477,22 +466,22 @@ export default function MobileDashboard({
                         <div className={`flex items-center justify-start ${viewLevel === 'weeks' ? 'hidden' : 'block'}`}>
                             <button
                                 onClick={() => viewLevel !== 'weeks' && handleBackHistory()}
-                                className="flex items-center gap-2 text-primary hover:opacity-70"
+                                className="press flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors duration-200 py-1"
                             >
-                                <ArrowLeft className="w-6 h-6" />
-                                <span className="text-sm font-bold">Zurück</span>
+                                <ArrowLeft className="w-4 h-4" strokeWidth={2} />
+                                <span className="text-sm font-medium">Zurück</span>
                             </button>
                         </div>
                     </div>
 
                     {/* Content Area */}
-                    <div className="flex-1 p-4 pb-32 overflow-y-auto relative border-border/5">
+                    <div className="flex-1 p-4 pb-32 overflow-y-auto relative">
                         {historyMode === 'list' && (
                             <button
                                 onClick={generatePDF}
-                                className="absolute right-4 top-4 text-primary/70 hover:text-primary text-xs flex items-center gap-1 z-10 bg-muted px-2 py-1 rounded-lg"
+                                className="press absolute right-4 top-4 text-muted-foreground hover:text-foreground text-xs font-medium flex items-center gap-1.5 z-10 bg-card border border-border px-2.5 py-1.5 rounded-lg transition-colors duration-200"
                             >
-                                <Download className="w-3 h-3" /> PDF
+                                <Download className="w-3.5 h-3.5" strokeWidth={1.75} /> PDF
                             </button>
                         )}
 
@@ -512,44 +501,44 @@ export default function MobileDashboard({
                                 onDayClick={handleCalendarDayClick}
                             />
                         ) : (
-                            <div className="space-y-2">
+                            <div className="stagger-children">
                                 {viewLevel === 'weeks' && (
                                     getWeeklyGroups().map((group, idx) => (
-                                        <div key={idx} onClick={() => handleWeekClick(group.start)} className="flex justify-between items-center p-4 bg-card/50 rounded-2xl cursor-pointer hover:bg-card transition-colors border border-border/20">
+                                        <button key={idx} onClick={() => handleWeekClick(group.start)} className="ledger-row w-full text-left cursor-pointer group">
                                             <div>
-                                                <p className="text-lg font-bold text-foreground">KW {format(group.start, 'w', { locale: de })}</p>
-                                                <p className="text-xs text-muted-foreground">{format(group.start, 'dd.MM.')} - {format(endOfWeek(group.start, { weekStartsOn: 1 }), 'dd.MM.yyyy')}</p>
+                                                <p className="text-base font-semibold text-foreground">KW {format(group.start, 'w', { locale: de })}</p>
+                                                <p className="text-xs text-muted-foreground mt-0.5">{format(group.start, 'dd.MM.')} – {format(endOfWeek(group.start, { weekStartsOn: 1 }), 'dd.MM.yyyy')}</p>
                                             </div>
-                                            <div className="text-lg font-bold text-foreground">€{group.total.toFixed(2)}</div>
-                                        </div>
+                                            <div className="amount text-base text-foreground group-hover:text-primary transition-colors duration-200">€{group.total.toFixed(2)}</div>
+                                        </button>
                                     ))
                                 )}
                                 {viewLevel === 'days' && (
                                     getDailyGroups().map((group, idx) => (
-                                        <div key={idx} onClick={() => handleDayClick(group.date)} className="flex justify-between items-center p-4 bg-card/50 rounded-2xl cursor-pointer hover:bg-card transition-colors border border-border/20">
-                                            <div className="flex items-center gap-3">
-                                                <div className="text-lg font-bold text-primary/70">{format(group.date, 'dd.MM')}</div>
-                                                <div className="text-base font-bold text-foreground">{format(group.date, 'EEEE', { locale: de })}</div>
+                                        <button key={idx} onClick={() => handleDayClick(group.date)} className="ledger-row w-full text-left cursor-pointer group">
+                                            <div className="flex items-baseline gap-3">
+                                                <span className="amount text-sm text-muted-foreground">{format(group.date, 'dd.MM')}</span>
+                                                <span className="text-base font-semibold text-foreground">{format(group.date, 'EEEE', { locale: de })}</span>
                                             </div>
-                                            <div className="text-lg font-bold text-foreground">€{group.total.toFixed(2)}</div>
-                                        </div>
+                                            <div className="amount text-base text-foreground group-hover:text-primary transition-colors duration-200">€{group.total.toFixed(2)}</div>
+                                        </button>
                                     ))
                                 )}
                                 {viewLevel === 'transactions' && (
                                     getTransactions().map(expense => (
-                                        <div key={expense.id} className="flex justify-between items-center p-3 bg-card/40 border-b border-border">
+                                        <div key={expense.id} className="ledger-row">
                                             <div className="min-w-0 flex-1 mr-4">
-                                                <p className="font-bold text-foreground truncate">{expense.description}</p>
-                                                {expense.category && <span className="text-[10px] bg-muted text-primary px-2 py-0.5 rounded-full">{expense.category}</span>}
+                                                <p className="font-medium text-foreground truncate">{expense.description}</p>
+                                                {expense.category && <span className="eyebrow">{expense.category}</span>}
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <span className="font-bold text-primary">-€{expense.amount.toFixed(2)}</span>
+                                                <span className="amount text-base text-foreground">−€{expense.amount.toFixed(2)}</span>
                                                 <div className="flex gap-1">
-                                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="w-8 h-8 rounded-lg shadow-sm bg-card hover:bg-card hover:text-blue-500 text-muted-foreground border-none">
-                                                        <Pencil className="w-4 h-4" />
+                                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
+                                                        <Pencil className="w-4 h-4" strokeWidth={1.75} />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" onClick={async (e) => { e.stopPropagation(); if (confirm('Löschen?')) await deleteExpenseLocal(expense.id) }} className="w-8 h-8 rounded-lg shadow-sm bg-card hover:bg-card hover:text-red-500 text-muted-foreground border-none">
-                                                        <Trash2 className="w-4 h-4" />
+                                                    <Button variant="ghost" size="icon" onClick={async (e) => { e.stopPropagation(); if (confirm('Löschen?')) await deleteExpenseLocal(expense.id) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-[var(--chart-neg-heavy)] hover:bg-muted">
+                                                        <Trash2 className="w-4 h-4" strokeWidth={1.75} />
                                                     </Button>
                                                 </div>
                                             </div>
@@ -562,89 +551,107 @@ export default function MobileDashboard({
                 </div>
             )}
 
-            {/* === BOTTOM NAVIGATION BAR (Apple Floating Island) === */}
-            <div className="fixed bottom-6 left-0 w-full flex justify-center z-40 pointer-events-none pb-[env(safe-area-inset-bottom)] px-4">
-                <div className="w-full max-w-lg flex justify-between items-center bg-card/70 backdrop-blur-3xl border border-border/60 rounded-full p-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-                    
-                    {/* LEFT: History */}
-                    <button
-                        onClick={() => setView('history')}
-                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-colors duration-200 ease-out flex-1 flex justify-center items-center font-medium ${view === 'history'
-                            ? 'bg-primary text-primary-foreground shadow-md'
-                            : 'text-muted-foreground hover:bg-white/50'
-                            }`}
-                    >
-                        <List className="w-5 h-5 md:w-6 md:h-6" strokeWidth={view==='history'? 2 : 1.5} />
-                    </button>
+            {/* === SETTINGS VIEW === */}
+            {view === 'settings' && (
+                <div className="w-full h-full overflow-y-auto overflow-x-hidden relative scroll-smooth view-enter">
+                    <div className="w-full max-w-lg mx-auto px-6 pt-14 pb-36 min-h-full">
+                        <SettingsOverlay
+                            settings={initialSettings}
+                            fixedCosts={initialFixedCosts}
+                            accounts={initialAccounts}
+                            incomeSources={initialIncomeSources}
+                            onLogout={handleLogout}
+                            onUpdate={onUpdate}
+                            expenses={expenses}
+                            onBack={() => setView('entry')}
+                        />
+                    </div>
+                </div>
+            )}
 
-                    {/* CENTER: Home */}
-                    <button
-                        onClick={() => setView('entry')}
-                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-colors duration-200 ease-out flex-1 flex justify-center items-center font-medium mx-1 ${view === 'entry'
-                            ? 'bg-primary text-primary-foreground shadow-md'
-                            : 'text-muted-foreground hover:bg-white/50'
-                            }`}
-                    >
-                        <Home className="w-5 h-5 md:w-6 md:h-6" strokeWidth={view==='entry'? 2 : 1.5} />
-                    </button>
-
-                    {/* RIGHT: Settings */}
-                    <button
-                        onClick={() => setIsSettingsOpen(true)}
-                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-colors duration-200 ease-out flex-1 flex justify-center items-center font-medium ${isSettingsOpen
-                            ? 'bg-primary text-primary-foreground shadow-md'
-                            : 'text-muted-foreground hover:bg-white/50'
-                            }`}
-                    >
-                        <Settings className="w-5 h-5 md:w-6 md:h-6" strokeWidth={isSettingsOpen ? 2 : 1.5} />
-                    </button>
+            {/* === BOTTOM DOCK === */}
+            <div className="fixed bottom-6 left-0 w-full flex justify-center z-40 pointer-events-none pb-[env(safe-area-inset-bottom)] px-6">
+                <div className="flex items-center gap-2 pointer-events-auto justify-center">
+                    {([
+                        { key: 'history' as MainView, label: 'Historie', Icon: List },
+                        { key: 'entry' as MainView, label: 'Eingabe', Icon: Home },
+                        { key: 'settings' as MainView, label: 'Einstellungen', Icon: Settings },
+                    ]).map(({ key, label, Icon }) => {
+                        const isActive = view === key
+                        return (
+                            <button
+                                key={key}
+                                onClick={() => setView(key)}
+                                aria-current={isActive ? 'page' : undefined}
+                                className={`press relative flex items-center justify-center gap-2 h-13 rounded-full transition-[width,background-color,color,border-color] duration-250 ease-[var(--ease-out-strong)] overflow-hidden ${
+                                    isActive
+                                        ? 'bg-foreground text-background px-6 shadow-lg shadow-foreground/15'
+                                        : 'bg-card/90 backdrop-blur-md text-muted-foreground w-13 border border-border hover:text-foreground'
+                                }`}
+                            >
+                                <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
+                                {isActive && (
+                                    <span className="font-semibold text-sm whitespace-nowrap view-enter">
+                                        {label}
+                                    </span>
+                                )}
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
 
             {/* Edit Expense Dialog */}
             <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
-                <DialogContent className="sm:max-w-[425px] rounded-3xl p-8 bg-card border-none shadow-2xl mx-4 max-w-[calc(100%-2rem)]">
+                <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 bg-card border border-border shadow-xl mx-4 max-w-[calc(100%-2rem)]">
                     <DialogHeader>
-                        <DialogTitle className="text-4xl font-bold mb-8 text-center text-foreground">Eintrag bearbeiten</DialogTitle>
-                        <DialogDescription className="sr-only">Passen Sie die Details Ihrer Ausgabe an.</DialogDescription>
+                        <DialogTitle className="font-display text-xl font-semibold tracking-tight text-foreground text-left">Eintrag bearbeiten</DialogTitle>
+                        <DialogDescription className="sr-only">Passe die Details deiner Ausgabe an.</DialogDescription>
                     </DialogHeader>
-                    <form action={handleEditSave} className="space-y-6">
-                        <div className="space-y-2">
+                    <form action={handleEditSave} className="space-y-4 mt-2">
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-medium text-muted-foreground pl-1">Datum</label>
                             <input
                                 type="date"
                                 name="date"
                                 defaultValue={editingExpense?.expense_date ? new Date(editingExpense.expense_date).toISOString().split('T')[0] : (editingExpense?.created_at ? new Date(editingExpense.created_at).toISOString().split('T')[0] : '')}
                                 required
                                 onClick={(e) => e.currentTarget.showPicker()}
-                                className="w-full text-[35px] text-center border-none shadow-md rounded-2xl py-3 bg-muted outline-none focus:ring-2 focus:ring-primary cursor-pointer text-foreground"
+                                className="amount w-full text-base px-4 py-3 rounded-xl bg-muted/60 border border-transparent outline-none transition-[background-color,border-color] duration-200 focus:bg-card focus:border-border cursor-pointer text-foreground"
                             />
                         </div>
-                        <select
-                            name="category"
-                            defaultValue={editingExpense?.category || 'Sonstiges'}
-                            className="w-full text-[35px] text-center border-none shadow-md rounded-2xl py-3 bg-muted outline-none focus:ring-2 focus:ring-primary appearance-none text-foreground"
-                        >
-                            <option value="Essen">Essen 🍔</option>
-                            <option value="Schminki Schminki">Schminki Schminki 💄</option>
-                            <option value="Shoppi">Shoppi 🛍️</option>
-                            <option value="Freizeit">Freizeit 🎉</option>
-                            <option value="Sparen">Sparen 💰</option>
-                            <option value="Sonstiges">Sonstiges 📦</option>
-                        </select>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-medium text-muted-foreground pl-1">Kategorie</label>
+                            <select
+                                name="category"
+                                defaultValue={editingExpense?.category || 'Sonstiges'}
+                                className="w-full text-base font-medium px-4 py-3 rounded-xl bg-muted/60 border border-transparent outline-none transition-[background-color,border-color] duration-200 focus:bg-card focus:border-border appearance-none text-foreground"
+                            >
+                                <option value="Essen">Essen 🍔</option>
+                                <option value="Schminki Schminki">Schminki Schminki 💄</option>
+                                <option value="Shoppi">Shoppi 🛍️</option>
+                                <option value="Freizeit">Freizeit 🎉</option>
+                                <option value="Sparen">Sparen 💰</option>
+                                <option value="Sonstiges">Sonstiges 📦</option>
+                            </select>
+                        </div>
                         <input type="hidden" name="description" value="" />
-                        <Input
-                            type="number"
-                            name="amount"
-                            step="0.01"
-                            inputMode="decimal"
-                            defaultValue={editingExpense?.amount}
-                            placeholder="Betrag €"
-                            required
-                            className="w-full text-[35px] text-center border-none shadow-md rounded-2xl py-3 bg-muted outline-none focus:ring-2 focus:ring-primary placeholder-muted-foreground h-auto text-foreground"
-                        />
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-medium text-muted-foreground pl-1">Betrag</label>
+                            <Input
+                                type="number"
+                                name="amount"
+                                step="0.01"
+                                inputMode="decimal"
+                                defaultValue={editingExpense?.amount}
+                                placeholder="0,00"
+                                required
+                                className="amount w-full text-2xl text-center px-4 py-3 rounded-xl bg-muted/60 border border-transparent outline-none transition-[background-color,border-color] duration-200 focus:bg-card focus:border-border placeholder:text-muted-foreground/50 h-auto text-foreground shadow-none"
+                            />
+                        </div>
                         <Button
                             type="submit"
-                            className="w-full text-[35px] font-bold text-center bg-primary text-primary-foreground rounded-2xl py-8 block hover:opacity-90 transition-transform duration-300 active:duration-75 ease-out active:scale-[0.98] shadow-md h-auto"
+                            className="press w-full text-base font-semibold bg-primary text-primary-foreground rounded-xl py-6 hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)] transition-colors duration-200 h-auto shadow-none"
                         >
                             Speichern
                         </Button>

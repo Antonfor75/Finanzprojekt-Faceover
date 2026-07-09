@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { applyTheme, loadTheme } from '@/utils/theme'
-import { ArrowLeft, Trash2, LogOut, Wallet, Download, Upload, FileText, HelpCircle, ArrowDown } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Trash2, LogOut, Download, Upload, FileText, HelpCircle, ArrowDown } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import ImportWizard from '@/components/ImportWizard'
@@ -836,35 +836,35 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- ACCOUNTS SUB-VIEW ---
     if (showAccounts) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background/80 backdrop-blur-xl animate-in fade-in slide-in-from-right duration-300 flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none">
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background animate-in fade-in slide-in-from-right-8 duration-300 ease-[var(--ease-out-strong)] flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none">
                 <div className="w-full h-full md:max-w-2xl flex flex-col mx-auto">
-                    <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-transparent sticky top-0 z-20">
-                        <div className="flex items-center gap-4">
-                            <Button variant="ghost" size="icon" onClick={() => setShowAccounts(false)} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50">
-                                <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
+                    <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-background/90 backdrop-blur-sm sticky top-0 z-20">
+                        <div className="flex items-center gap-3">
+                            <Button variant="ghost" size="icon" onClick={() => setShowAccounts(false)} className="press rounded-full w-10 h-10 text-muted-foreground hover:text-foreground hover:bg-muted">
+                                <ArrowLeft className="w-5 h-5" strokeWidth={1.75} />
                             </Button>
-                            <h1 className="text-xl md:text-3xl font-light tracking-widest text-foreground">Konten</h1>
+                            <h1 className="font-display text-xl font-semibold tracking-tight text-foreground">Konten</h1>
                         </div>
                     </div>
 
                     <div className="p-4 md:p-8 space-y-8 flex-1 pb-20 max-w-[600px] mx-auto w-full">
                         {/* Add New Account */}
-                        <Card className="rounded-[2rem] border-primary/20 bg-primary/5 backdrop-blur-md shadow-sm">
+                        <Card className="rounded-2xl border-border bg-card shadow-none">
                             <CardHeader className="pb-4">
-                                <CardTitle className="text-lg">Neues Konto anlegen</CardTitle>
+                                <CardTitle className="font-display text-lg font-semibold tracking-tight">Neues Konto anlegen</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 {/* Type Selection */}
-                                <div className="flex bg-muted/50 rounded-2xl p-1 mb-4">
+                                <div className="flex bg-muted/70 rounded-xl p-1 mb-4">
                                     <button
                                         onClick={() => setNewAccountType('distribution')}
-                                        className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${newAccountType === 'distribution' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 ${newAccountType === 'distribution' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         Aufteilung
                                     </button>
                                     <button
                                         onClick={() => setNewAccountType('savings')}
-                                        className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${newAccountType === 'savings' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 ${newAccountType === 'savings' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         Sparkonto
                                     </button>
@@ -876,7 +876,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                             placeholder="Name des Kontos"
                                             value={newAccountName}
                                             onChange={(e) => setNewAccountName(e.target.value)}
-                                            className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                            className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
                                         />
                                     </Field>
                                     <div className="flex gap-2">
@@ -886,7 +886,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 placeholder="Aktueller Betrag (€)"
                                                 value={newAccountAmount}
                                                 onChange={(e) => setNewAccountAmount(e.target.value)}
-                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                                className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
                                             />
                                         </Field>
                                         {newAccountType === 'distribution' && (
@@ -896,7 +896,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                     placeholder="Monate"
                                                     value={newAccountMonths}
                                                     onChange={(e) => setNewAccountMonths(e.target.value)}
-                                                    className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                                    className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
                                                 />
                                             </Field>
                                         )}
@@ -906,7 +906,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 placeholder="Startdatum"
                                                 value={newAccountValidFrom}
                                                 onChange={(e) => setNewAccountValidFrom(e.target.value)}
-                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary text-sm"
+                                                className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary text-sm"
                                                 title="Startdatum (Optional)"
                                             />
                                         </Field>
@@ -922,7 +922,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                         placeholder="Ziel (€)"
                                                         value={newAccountTargetAmount}
                                                         onChange={(e) => setNewAccountTargetAmount(e.target.value)}
-                                                        className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                                        className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
                                                     />
                                                 </Field>
                                                 <Field className="flex-1">
@@ -931,15 +931,15 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                         type="date"
                                                         value={newAccountTargetDate}
                                                         onChange={(e) => setNewAccountTargetDate(e.target.value)}
-                                                        className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary text-sm"
+                                                        className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary text-sm"
                                                     />
                                                 </Field>
                                             </div>
 
                                             {calculatedWeeklyRate !== null && calculatedWeeklyRate > 0 && (
-                                                <div className="p-3 bg-green-50/80 text-green-700 rounded-2xl text-sm font-bold border border-green-100 flex justify-between items-center shadow-sm">
+                                                <div className="p-3 bg-[var(--chart-pos)]/10 text-[var(--chart-pos)] rounded-xl text-sm font-semibold border border-transparent flex justify-between items-center">
                                                     <span>Wöchentliche Sparrate:</span>
-                                                    <span>€{calculatedWeeklyRate.toFixed(2)}</span>
+                                                    <span className="amount">€{calculatedWeeklyRate.toFixed(2)}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -948,7 +948,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                     <Button
                                         onClick={handleAddAccount}
                                         disabled={!newAccountName || !newAccountAmount || (newAccountType === 'distribution' && !newAccountMonths)}
-                                        className="w-full h-12 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md"
+                                        className="press w-full h-12 rounded-xl bg-primary hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)] text-primary-foreground font-semibold shadow-none transition-colors duration-200"
                                     >
                                         Hinzufügen
                                     </Button>
@@ -958,7 +958,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                         {/* Accounts List */}
                         <div className="space-y-4">
-                            <h3 className="text-xl font-bold text-foreground">Deine Konten</h3>
+                            <h3 className="font-display text-lg font-semibold tracking-tight text-foreground">Deine Konten</h3>
                             {accounts.length === 0 ? (
                                 <p className="text-muted-foreground text-center py-8">Noch keine Konten angelegt.</p>
                             ) : (
@@ -968,7 +968,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                         if (isEditing) {
                                             return (
-                                                <Card key={acc.id} className="rounded-3xl border-2 border-primary shadow-lg bg-card/80 backdrop-blur-md">
+                                                <Card key={acc.id} className="rounded-2xl border-2 border-primary/60 shadow-md bg-card">
                                                     <CardContent className="p-4 space-y-3">
                                                         <Input
                                                             value={editAccountName}
@@ -1032,7 +1032,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         return (
                                             <div
                                                 key={acc.id}
-                                                className={`p-5 rounded-3xl shadow-sm border border-border/50 flex justify-between items-center group cursor-pointer hover:bg-muted/50 bg-card/80 backdrop-blur-md transition-all`}
+                                                className={`p-4 rounded-xl border border-border bg-card flex justify-between items-center group cursor-pointer hover:bg-muted/40 transition-colors duration-200`}
                                                 onClick={() => {
                                                     if (acc.type === 'savings') {
                                                         handleTransferFromSavings(acc)
@@ -1042,7 +1042,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <p className="font-bold text-foreground text-lg">{acc.name}</p>
-                                                        <Badge variant="secondary" className={`text-[10px] px-2 py-0 rounded-full font-bold uppercase ${acc.type === 'savings' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                        <Badge variant="secondary" className={`text-[10px] px-2 py-0 rounded-full font-bold uppercase ${acc.type === 'savings' ? 'bg-[var(--chart-pos)]/10 text-[var(--chart-pos)]' : 'bg-muted text-muted-foreground'}`}>
                                                             {acc.type === 'savings' ? 'Sparkonto' : 'Aufteilung'}
                                                         </Badge>
                                                     </div>
@@ -1052,14 +1052,14 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                             <>
                                                                 <Badge variant="outline" className="bg-muted px-2 py-0.5 rounded-lg border-transparent">{acc.months} Monate übrig</Badge>
                                                                 {acc.valid_from && (
-                                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg border-blue-100">
+                                                                    <Badge variant="outline" className="bg-muted px-2 py-0.5 rounded-lg border-transparent">
                                                                         Start: {new Date(acc.valid_from).toLocaleDateString()}
                                                                     </Badge>
                                                                 )}
                                                             </>
                                                         )}
                                                         {acc.type === 'savings' && acc.target_amount && (
-                                                            <Badge variant="outline" className="bg-green-50 text-green-700 px-2 py-0.5 rounded-lg border-green-100">
+                                                            <Badge variant="outline" className="bg-[var(--chart-pos)]/10 text-[var(--chart-pos)] px-2 py-0.5 rounded-lg border-transparent">
                                                                 Ziel: €{acc.target_amount} bis {acc.target_date ? new Date(acc.target_date).toLocaleDateString() : '?'}
                                                             </Badge>
                                                         )}
@@ -1068,17 +1068,17 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                     {acc.type === 'savings' && acc.target_amount && (
                                                         <div className="mt-3 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                                                             <div
-                                                                className="h-full bg-green-500 rounded-full transition-all"
+                                                                className="h-full bg-[var(--chart-pos)] rounded-full transition-[width] duration-500 ease-[var(--ease-out-strong)]"
                                                                 style={{ width: `${Math.min(100, (acc.amount / Number(acc.target_amount)) * 100)}%` }}
                                                             />
                                                         </div>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleStartEditAccount(acc)} className="text-muted-foreground hover:text-blue-500 hover:bg-blue-50 rounded-xl">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleStartEditAccount(acc)} className="press text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl">
                                                         <FileText className="w-5 h-5" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteAccount(acc.id)} className="text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-xl">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteAccount(acc.id)} className="press text-muted-foreground hover:text-[var(--chart-neg-heavy)] hover:bg-muted rounded-xl">
                                                         <Trash2 className="w-5 h-5" />
                                                     </Button>
                                                 </div>
@@ -1090,8 +1090,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </div>
 
                         {/* Info Box */}
-                        <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl">
-                            <p className="text-xs text-primary/80 leading-relaxed text-center">
+                        <div className="p-4 bg-muted/50 border border-border rounded-xl">
+                            <p className="text-xs text-muted-foreground leading-relaxed text-center">
                                 <b>Aufteilung:</b> Guthaben wird monatlich ausgezahlt.<br />
                                 <b>Sparkonto:</b> Setze ein Sparziel. Eine automatische Fixkoste wird erstellt, um das Ziel zu erreichen.
                             </p>
@@ -1106,22 +1106,22 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- FIXED COSTS SUB-VIEW ---
     if (showFixedCosts) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background/80 backdrop-blur-xl animate-in fade-in slide-in-from-right duration-300 flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none">
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background animate-in fade-in slide-in-from-right-8 duration-300 ease-[var(--ease-out-strong)] flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none">
                 <div className="w-full h-full md:max-w-2xl flex flex-col mx-auto">
-                    <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-transparent sticky top-0 z-20">
-                        <div className="flex items-center gap-4">
-                            <Button variant="ghost" size="icon" onClick={() => setShowFixedCosts(false)} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50">
-                                <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
+                    <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-background/90 backdrop-blur-sm sticky top-0 z-20">
+                        <div className="flex items-center gap-3">
+                            <Button variant="ghost" size="icon" onClick={() => setShowFixedCosts(false)} className="press rounded-full w-10 h-10 text-muted-foreground hover:text-foreground hover:bg-muted">
+                                <ArrowLeft className="w-5 h-5" strokeWidth={1.75} />
                             </Button>
-                            <h1 className="text-xl md:text-3xl font-light tracking-widest text-foreground">Fixkosten</h1>
+                            <h1 className="font-display text-xl font-semibold tracking-tight text-foreground">Fixkosten</h1>
                         </div>
                     </div>
 
                     <div className="p-4 md:p-8 space-y-8 flex-1 pb-20 max-w-[600px] mx-auto w-full">
                         {/* Add New Fixed Cost */}
-                        <Card className="rounded-[2rem] border-primary/20 bg-primary/5 backdrop-blur-md shadow-sm">
+                        <Card className="rounded-2xl border-border bg-card shadow-none">
                             <CardHeader className="pb-4">
-                                <CardTitle className="text-lg">Neue Fixkosten hinzufügen</CardTitle>
+                                <CardTitle className="font-display text-lg font-semibold tracking-tight">Neue Fixkosten hinzufügen</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <FieldGroup className="space-y-4">
@@ -1131,7 +1131,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 placeholder="Titel"
                                                 value={newCostTitle}
                                                 onChange={(e) => setNewCostTitle(e.target.value)}
-                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                                className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
                                             />
                                         </Field>
                                         <Field className="flex-1">
@@ -1140,7 +1140,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 placeholder="€ / Monat"
                                                 value={newCostAmount}
                                                 onChange={(e) => setNewCostAmount(e.target.value)}
-                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                                className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
                                             />
                                         </Field>
                                     </div>
@@ -1151,7 +1151,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                             <DatePicker
                                                 date={newCostValidFrom}
                                                 setDate={setNewCostValidFrom}
-                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary text-sm"
+                                                className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary text-sm"
                                             />
                                         </Field>
                                         <Field className="flex-1">
@@ -1160,7 +1160,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 date={newCostValidTo}
                                                 setDate={setNewCostValidTo}
                                                 placeholder="Optional"
-                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary text-sm"
+                                                className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary text-sm"
                                             />
                                         </Field>
                                     </div>
@@ -1168,7 +1168,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                     <Button
                                         onClick={handleAddCost}
                                         disabled={!newCostTitle || !newCostAmount}
-                                        className="w-full h-12 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md"
+                                        className="press w-full h-12 rounded-xl bg-primary hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)] text-primary-foreground font-semibold shadow-none transition-colors duration-200"
                                     >
                                         Hinzufügen
                                     </Button>
@@ -1179,8 +1179,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         {/* Fixed Costs List */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-xl font-bold text-foreground">Deine Fixkosten</h3>
-                                <Badge variant="secondary" className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
+                                <h3 className="font-display text-lg font-semibold tracking-tight text-foreground">Deine Fixkosten</h3>
+                                <Badge variant="secondary" className="amount text-xs font-semibold text-foreground bg-muted px-3 py-1 rounded-full">
                                     Summe: €{totalFixed.toFixed(2)}
                                 </Badge>
                             </div>
@@ -1211,7 +1211,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                         if (isEditing) {
                                             return (
-                                                <Card key={cost.id} className="rounded-3xl border-2 border-primary shadow-lg bg-card/80 backdrop-blur-md">
+                                                <Card key={cost.id} className="rounded-2xl border-2 border-primary/60 shadow-md bg-card">
                                                     <CardContent className="p-4 space-y-3">
                                                         <div className="flex gap-2">
                                                             <Input
@@ -1257,12 +1257,12 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         }
 
                                         return (
-                                            <div key={cost.id} className={`flex items-center justify-between p-5 rounded-3xl border shadow-sm group ${isExpired ? 'bg-muted/50 border-border/50 opacity-60' : isSavings ? 'border-green-200 bg-green-50/50 backdrop-blur-md' : 'border-border/50 bg-card/80 backdrop-blur-md'} transition-all`}>
+                                            <div key={cost.id} className={`flex items-center justify-between p-4 rounded-xl border group ${isExpired ? 'bg-muted/40 border-border opacity-60' : 'bg-card border-border'} transition-colors duration-200`}>
                                                 <div className="min-w-0 flex-1 mr-4">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <p className={`font-bold truncate text-lg ${isExpired ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{cost.title}</p>
                                                         {isSavings && (
-                                                            <Badge variant="secondary" className="text-[10px] bg-green-100 text-green-700 px-2 py-0 rounded-full font-bold">
+                                                            <Badge variant="secondary" className="text-[10px] bg-[var(--chart-pos)]/10 text-[var(--chart-pos)] px-2 py-0 rounded-full font-semibold">
                                                                 SPAREN
                                                             </Badge>
                                                         )}
@@ -1272,17 +1272,17 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    <p className={`text-sm font-bold ${isExpired ? 'text-muted-foreground' : 'text-primary'}`}>-€{cost.amount.toFixed(2)}</p>
+                                                    <p className={`amount text-sm ${isExpired ? 'text-muted-foreground' : 'text-foreground'}`}>−€{cost.amount.toFixed(2)}</p>
                                                     <div className="text-[10px] text-muted-foreground mt-1">
                                                         {cost.valid_from && `Ab: ${new Date(cost.valid_from).toLocaleDateString()} `}
                                                         {cost.valid_to && `- Bis: ${new Date(cost.valid_to).toLocaleDateString()}`}
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-1">
-                                                    <Button variant="ghost" size="icon" onClick={() => handleStartEditCost(cost)} className="text-muted-foreground hover:text-blue-500 hover:bg-blue-50 rounded-xl">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleStartEditCost(cost)} className="press text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl">
                                                         <FileText className="w-5 h-5" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteCost(cost.id)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteCost(cost.id)} className="press text-muted-foreground hover:text-[var(--chart-neg-heavy)] hover:bg-muted rounded-xl">
                                                         <Trash2 className="w-5 h-5" />
                                                     </Button>
                                                 </div>
@@ -1294,8 +1294,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </div>
 
                         {/* Info Box */}
-                        <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl">
-                            <p className="text-xs text-primary/80 leading-relaxed text-center">
+                        <div className="p-4 bg-muted/50 border border-border rounded-xl">
+                            <p className="text-xs text-muted-foreground leading-relaxed text-center">
                                 Diese Kosten werden automatisch von deinem monatlichen Budget abgezogen.
                             </p>
                         </div>
@@ -1308,22 +1308,22 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- INCOME SUB-VIEW ---
     if (showIncome) {
         return (
-            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background/80 backdrop-blur-xl overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right duration-300 flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background overflow-y-auto overflow-x-hidden overscroll-none animate-in fade-in slide-in-from-right-8 duration-300 ease-[var(--ease-out-strong)] flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
                 <div className="w-full h-full md:max-w-2xl flex flex-col mx-auto">
-                    <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-transparent sticky top-0 z-20">
-                        <div className="flex items-center gap-4">
-                            <Button variant="ghost" size="icon" onClick={() => setShowIncome(false)} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50">
-                                <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
+                    <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-background/90 backdrop-blur-sm sticky top-0 z-20">
+                        <div className="flex items-center gap-3">
+                            <Button variant="ghost" size="icon" onClick={() => setShowIncome(false)} className="press rounded-full w-10 h-10 text-muted-foreground hover:text-foreground hover:bg-muted">
+                                <ArrowLeft className="w-5 h-5" strokeWidth={1.75} />
                             </Button>
-                            <h1 className="text-xl md:text-3xl font-light tracking-widest text-foreground">Einnahmen</h1>
+                            <h1 className="font-display text-xl font-semibold tracking-tight text-foreground">Einnahmen</h1>
                         </div>
                     </div>
 
                     <div className="p-4 md:p-8 space-y-8 flex-1 pb-20 max-w-[600px] mx-auto w-full">
                         {/* Add New Income */}
-                        <Card className="rounded-[2rem] border-green-500/20 bg-green-50/30 backdrop-blur-md shadow-sm">
+                        <Card className="rounded-2xl border-border bg-card shadow-none">
                             <CardHeader className="pb-4">
-                                <CardTitle className="text-lg">Neue Einnahme hinzufügen</CardTitle>
+                                <CardTitle className="font-display text-lg font-semibold tracking-tight">Neue Einnahme hinzufügen</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <FieldGroup className="space-y-4">
@@ -1332,7 +1332,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                             placeholder="Quelle (z.B. Gehalt)"
                                             value={newIncomeTitle}
                                             onChange={(e) => setNewIncomeTitle(e.target.value)}
-                                            className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-green-500"
+                                            className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
                                         />
                                     </Field>
                                     <div className="flex gap-2">
@@ -1342,12 +1342,12 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 placeholder="€ / Betrag"
                                                 value={newIncomeAmount}
                                                 onChange={(e) => setNewIncomeAmount(e.target.value)}
-                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-green-500"
+                                                className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
                                             />
                                         </Field>
                                         <Field className="flex-1">
                                             <Select value={newIncomeFrequency} onValueChange={(val: any) => setNewIncomeFrequency(val)}>
-                                                <SelectTrigger className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus:ring-green-500 w-full">
+                                                <SelectTrigger className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus:ring-primary w-full">
                                                     <SelectValue placeholder="Intervall" />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-2xl">
@@ -1365,7 +1365,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                             <DatePicker
                                                 date={newIncomeValidFrom}
                                                 setDate={setNewIncomeValidFrom}
-                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-green-500 text-sm"
+                                                className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary text-sm"
                                             />
                                         </Field>
                                         <Field className="flex-1">
@@ -1374,14 +1374,14 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 date={newIncomeValidTo}
                                                 setDate={setNewIncomeValidTo}
                                                 placeholder="Optional"
-                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-green-500 text-sm"
+                                                className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary text-sm"
                                             />
                                         </Field>
                                     </div>
                                     <Button
                                         onClick={handleAddIncome}
                                         disabled={!newIncomeTitle || !newIncomeAmount}
-                                        className="w-full h-12 rounded-2xl bg-green-600 hover:bg-green-700 text-white font-bold shadow-md"
+                                        className="press w-full h-12 rounded-xl bg-primary hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)] text-primary-foreground font-semibold shadow-none transition-colors duration-200"
                                     >
                                         Hinzufügen
                                     </Button>
@@ -1392,8 +1392,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         {/* Income List */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-xl font-bold text-foreground">Deine Einnahmen</h3>
-                                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 px-3 py-1 rounded-full font-bold">
+                                <h3 className="font-display text-lg font-semibold tracking-tight text-foreground">Deine Einnahmen</h3>
+                                <Badge className="amount bg-[var(--chart-pos)]/10 text-[var(--chart-pos)] hover:bg-[var(--chart-pos)]/10 px-3 py-1 rounded-full font-semibold">
                                     Summe: €{Number(budget).toFixed(2)}
                                 </Badge>
                             </div>
@@ -1416,13 +1416,13 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                         if (isEditing) {
                                             return (
-                                                <Card key={src.id} className="rounded-3xl border-2 border-green-500 shadow-lg bg-card/80 backdrop-blur-md">
+                                                <Card key={src.id} className="rounded-2xl border-2 border-primary/60 shadow-md bg-card">
                                                     <CardContent className="p-4 space-y-3">
                                                         <div className="space-y-2">
                                                             <Input
                                                                 value={editIncomeTitle}
                                                                 onChange={e => setEditIncomeTitle(e.target.value)}
-                                                                className="w-full rounded-xl bg-muted border-transparent focus-visible:ring-green-500 text-sm"
+                                                                className="w-full rounded-xl bg-muted border-transparent focus-visible:ring-primary text-sm"
                                                                 placeholder="Titel"
                                                             />
                                                             <div className="flex gap-2">
@@ -1430,11 +1430,11 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                                     type="number"
                                                                     value={editIncomeAmount}
                                                                     onChange={e => setEditIncomeAmount(e.target.value)}
-                                                                    className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-green-500 text-sm"
+                                                                    className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-primary text-sm"
                                                                     placeholder="Betrag"
                                                                 />
                                                                 <Select value={editIncomeFrequency} onValueChange={(val: any) => setEditIncomeFrequency(val)}>
-                                                                    <SelectTrigger className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-green-500 text-sm">
+                                                                    <SelectTrigger className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-primary text-sm">
                                                                         <SelectValue />
                                                                     </SelectTrigger>
                                                                     <SelectContent className="rounded-xl">
@@ -1450,18 +1450,18 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                             <DatePicker
                                                                 date={editIncomeValidFrom}
                                                                 setDate={setEditIncomeValidFrom}
-                                                                className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-green-500 text-xs"
+                                                                className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-primary text-xs"
                                                             />
                                                             <DatePicker
                                                                 date={editIncomeValidTo}
                                                                 setDate={setEditIncomeValidTo}
                                                                 placeholder="Optional"
-                                                                className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-green-500 text-xs"
+                                                                className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-primary text-xs"
                                                             />
                                                         </div>
                                                         <div className="flex justify-end gap-2 pt-2">
                                                             <Button variant="ghost" size="sm" onClick={() => setEditingIncomeId(null)} className="rounded-xl">Abbrechen</Button>
-                                                            <Button size="sm" onClick={handleSaveEditIncome} className="rounded-xl bg-green-600 hover:bg-green-700 text-white">Speichern</Button>
+                                                            <Button size="sm" onClick={handleSaveEditIncome} className="press rounded-lg bg-primary hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)] text-primary-foreground transition-colors duration-200">Speichern</Button>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -1469,16 +1469,16 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         }
 
                                         return (
-                                            <div key={src.id} className={`flex flex-col p-5 rounded-3xl border shadow-sm group transition-all ${isActive ? 'bg-card/80 backdrop-blur-md border-border/50' : 'bg-muted/50 border-border/20 opacity-70'}`}>
+                                            <div key={src.id} className={`flex flex-col p-4 rounded-xl border group transition-colors duration-200 ${isActive ? 'bg-card border-border' : 'bg-muted/40 border-border opacity-70'}`}>
                                                 <div className="flex items-center justify-between">
                                                     <div className="min-w-0 flex-1 mr-4">
                                                         <div className="flex items-center gap-2 mb-1">
                                                             <p className="font-bold text-foreground truncate text-lg">{src.title}</p>
                                                             {!isActive && <Badge variant="secondary" className="bg-muted text-muted-foreground px-2 py-0 rounded-full text-[10px]">Inaktiv</Badge>}
-                                                            {!src.valid_to && <Badge variant="secondary" className="bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0 rounded-full text-[10px]">Unbegrenzt</Badge>}
+                                                            {!src.valid_to && <Badge variant="secondary" className="bg-muted text-muted-foreground border border-transparent px-2 py-0 rounded-full text-[10px]">Unbegrenzt</Badge>}
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <p className="text-sm text-green-600 font-bold">
+                                                            <p className="amount text-sm text-[var(--chart-pos)]">
                                                                 +€{Number(src.amount).toFixed(2)}
                                                                 <span className="text-[10px] text-muted-foreground font-normal ml-1">
                                                                     ({src.frequency === 'daily' ? 'Tgl.' : src.frequency === 'weekly' ? 'Wöch.' : src.frequency === 'yearly' ? 'Jährl.' : 'Mtl.'})
@@ -1499,16 +1499,16 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                                     className="absolute inset-0 opacity-0 cursor-pointer w-8"
                                                                     onChange={(e) => handleQuickEndDate(src.id, e.target.value)}
                                                                 />
-                                                                <Button variant="ghost" size="icon" className="text-blue-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl" title="Enddatum setzen">
+                                                                <Button variant="ghost" size="icon" className="press text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl" title="Enddatum setzen">
                                                                     <ArrowDown className="w-5 h-5 rotate-[-90deg]" />
                                                                 </Button>
                                                             </div>
                                                         )}
 
-                                                        <Button variant="ghost" size="icon" onClick={() => handleStartEditIncome(src)} className="text-muted-foreground hover:text-blue-500 hover:bg-blue-50 rounded-xl">
+                                                        <Button variant="ghost" size="icon" onClick={() => handleStartEditIncome(src)} className="press text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl">
                                                             <FileText className="w-5 h-5" />
                                                         </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteIncome(src.id)} className="text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-xl">
+                                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteIncome(src.id)} className="press text-muted-foreground hover:text-[var(--chart-neg-heavy)] hover:bg-muted rounded-xl">
                                                             <Trash2 className="w-5 h-5" />
                                                         </Button>
                                                     </div>
@@ -1521,8 +1521,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </div>
 
                         {/* Info Box */}
-                        <div className="p-4 bg-green-50/50 border border-green-100 rounded-2xl">
-                            <p className="text-xs text-green-700 leading-relaxed text-center">
+                        <div className="p-4 bg-muted/50 border border-border rounded-xl">
+                            <p className="text-xs text-muted-foreground leading-relaxed text-center">
                                 Diese Einnahmen bilden dein monatliches Grundbudget.
                             </p>
                         </div>
@@ -1534,157 +1534,120 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
     // --- MAIN SETTINGS VIEW ---
     return (
-        <div className="fixed inset-0 z-50 h-dvh w-screen bg-background/80 backdrop-blur-xl animate-in fade-in slide-in-from-right duration-300 flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none">
-            <div className="w-full min-h-full md:max-w-2xl flex flex-col transition-colors duration-300">
-                {/* Header */}
-                <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-transparent sticky top-0 z-20">
-                    <div className="flex items-center gap-2 md:gap-4">
-                        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50">
-                            <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
-                        </Button>
-                        {/* Hide title on very small screens to make space for icons */}
-                        <h1 className="text-xl md:text-3xl font-light tracking-widest text-foreground hidden sm:block">Einstellungen</h1>
+        <div className="w-full flex flex-col">
+            {/* Header (Tools) */}
+            <div className="flex items-center justify-between shrink-0 bg-transparent sticky top-0 z-20 mb-10">
+                <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+                    Einstellungen
+                </h1>
+                <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => setShowHelp(true)} className="press rounded-full w-10 h-10 text-muted-foreground hover:text-foreground hover:bg-muted" title="Hilfe & Logik">
+                        <HelpCircle className="w-5 h-5" strokeWidth={1.75} />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => setShowImportWizard(true)} className="press rounded-full w-10 h-10 text-muted-foreground hover:text-foreground hover:bg-muted" title="Kontoauszug importieren">
+                        <FileText className="w-5 h-5" strokeWidth={1.75} />
+                    </Button>
+                    <label className="cursor-pointer" title="Backup wiederherstellen">
+                        <div className="press inline-flex items-center justify-center whitespace-nowrap rounded-full w-10 h-10 hover:bg-muted transition-colors duration-200">
+                            <Upload className="w-5 h-5 text-muted-foreground" strokeWidth={1.75} />
+                        </div>
+                        <input type="file" accept=".pdf" className="hidden" onChange={handleRestoreBackup} />
+                    </label>
+                    <Button variant="ghost" size="icon" onClick={handleDownloadFullReport} className="press rounded-full w-10 h-10 text-muted-foreground hover:text-foreground hover:bg-muted" title="PDF-Report & Backup laden">
+                        <Download className="w-5 h-5" strokeWidth={1.75} />
+                    </Button>
+                </div>
+            </div>
+
+
+            <div className="flex flex-col w-full pb-32">
+
+                {/* Summary (Typographic) */}
+                <div className="flex flex-col pb-8 mb-8 border-b border-border">
+                    <p className="eyebrow mb-3">Wochenbudget</p>
+                    <div className="amount font-light text-5xl text-foreground mb-4">
+                        €{(available / 4.33).toFixed(2)}
                     </div>
-                    <div className="flex gap-1 md:gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => setShowHelp(true)} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50" title="Hilfe & Logik">
-                            <HelpCircle className="w-6 h-6 md:w-8 md:h-8" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setShowImportWizard(true)} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50" title="Kontoauszug Importieren">
-                            <FileText className="w-6 h-6 md:w-8 md:h-8" />
-                        </Button>
-                        <label className="cursor-pointer" title="Backup wiederherstellen">
-                            <div className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50 hover:text-accent-foreground rounded-full w-10 h-10 md:w-12 md:h-12">
-                                <Upload className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground" />
-                            </div>
-                            <input
-                                type="file"
-                                accept=".pdf"
-                                className="hidden"
-                                onChange={handleRestoreBackup}
-                            />
-                        </label>
-                        <Button variant="ghost" size="icon" onClick={handleDownloadFullReport} className="rounded-full w-10 h-10 md:w-12 md:h-12 hover:bg-muted/50" title="PDF Report & Backup Laden">
-                            <Download className="w-6 h-6 md:w-8 md:h-8" />
-                        </Button>
+                    <div className="flex justify-between items-center text-sm font-medium text-muted-foreground">
+                        <span>Verfügbar nach Fixkosten (Monat)</span>
+                        <span className="amount text-foreground">€{available.toFixed(2)}</span>
                     </div>
                 </div>
 
+                {/* Finanzen — Ledger-Zeilen */}
+                <div className="flex flex-col mb-10">
+                    <p className="eyebrow mb-2">Finanzen</p>
 
-                <div className="p-4 md:p-8 space-y-6 flex-1 pb-32 max-w-[600px] mx-auto w-full">
-
-                    {/* Einnahmen & Konten Section */}
-                    <Card className="rounded-[2rem] shadow-lg border-border/50 bg-card/80 backdrop-blur-xl">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                            <CardTitle className="text-xl md:text-2xl font-bold">Vermögen & Einnahmen</CardTitle>
-                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs px-3 py-1 font-bold rounded-full">
-                                Summe: €{Number(budget).toFixed(2)}
-                            </Badge>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowIncome(true)}
-                                className="w-full h-16 bg-green-50/50 hover:bg-green-100 border-green-200 text-green-700 rounded-2xl flex items-center justify-between px-6 transition-all group"
-                            >
-                                <span className="flex items-center gap-3">
-                                    <Wallet className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                                    <span className="text-base md:text-lg font-bold">Einnahmen verwalten</span>
-                                </span>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-sm font-bold">€{Number(budget).toFixed(2)}</span>
-                                    <span className="text-[10px] opacity-70 font-normal">{incomeSources.length} Quellen</span>
-                                </div>
-                            </Button>
-
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowAccounts(true)}
-                                className="w-full h-16 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary rounded-2xl flex items-center justify-between px-6 transition-all group"
-                            >
-                                <span className="flex items-center gap-3">
-                                    <Wallet className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                                    <span className="text-base md:text-lg font-bold">Konten verwalten</span>
-                                </span>
-                                <Badge variant="secondary" className="bg-primary/10 text-primary px-3 py-1 rounded-full font-bold">
-                                    {accounts.length} Aktiv
-                                </Badge>
-                            </Button>
-                        </CardContent>
-                    </Card>
-
-                    {/* Fixed Costs Section */}
-                    <Card className="rounded-[2rem] shadow-lg border-border/50 bg-card/80 backdrop-blur-xl">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                            <CardTitle className="text-xl md:text-2xl font-bold">Fixkosten</CardTitle>
-                            <Badge variant="secondary" className="bg-red-100 text-red-700 hover:bg-red-100 px-3 py-1 rounded-full font-bold">
-                                Summe: €{totalFixed.toFixed(2)}
-                            </Badge>
-                        </CardHeader>
-                        <CardContent>
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowFixedCosts(true)}
-                                className="w-full h-16 bg-red-50/50 hover:bg-red-100 border-red-200 text-red-700 rounded-2xl flex items-center justify-between px-6 transition-all group"
-                            >
-                                <span className="flex items-center gap-3">
-                                    <Wallet className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                                    <span className="text-base md:text-lg font-bold">Fixkosten verwalten</span>
-                                </span>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-sm font-bold">€{totalFixed.toFixed(2)}</span>
-                                    <span className="text-[10px] opacity-70 font-normal">{fixedCosts.length} Posten</span>
-                                </div>
-                            </Button>
-                        </CardContent>
-                    </Card>
-
-                    {/* Design Section */}
-                    <Card className="rounded-[2rem] shadow-lg border-border/50 bg-card/80 backdrop-blur-xl">
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-xl md:text-2xl font-bold">Design</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button
-                                    onClick={() => handleThemeChange('pink')}
-                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme !== 'blue' ? 'border-primary bg-primary/5 text-primary shadow-sm' : 'border-border bg-transparent text-muted-foreground hover:bg-muted/50'}`}
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-[#fff0f5] border border-border shadow-sm"></div>
-                                    <span className="font-bold">Pink Premium</span>
-                                </button>
-                                <button
-                                    onClick={() => handleThemeChange('blue')}
-                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme === 'blue' ? 'border-blue-400 bg-blue-50 text-blue-600 shadow-sm' : 'border-border bg-transparent text-muted-foreground hover:bg-muted/50'}`}
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-[#f2f6fc] border border-border shadow-sm"></div>
-                                    <span className="font-bold">Blue Premium</span>
-                                </button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Summary */}
-                    <div className="p-6 bg-primary/5 border border-primary/10 rounded-[2rem] shadow-sm backdrop-blur-md">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-muted-foreground font-medium">Verfügbar nach Fixkosten</span>
-                            <span className="text-xl font-bold text-primary">€{available.toFixed(2)}</span>
-                        </div>
-                        <div className="h-px bg-primary/10 w-full my-2"></div>
-                        <div className="flex justify-between items-center mt-2">
-                            <span className="text-sm text-primary/80 font-bold uppercase tracking-wide">Wöchentliches Budget</span>
-                            <span className="text-2xl font-extrabold text-primary">€{(available / 4.33).toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    {/* Logout Button */}
-                    <Button
-                        variant="outline"
-                        onClick={onLogout}
-                        className="w-full border-2 border-red-500/50 text-red-500 font-bold py-6 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-all flex items-center justify-center gap-2 mb-8 bg-card"
+                    <button
+                        onClick={() => setShowIncome(true)}
+                        className="ledger-row w-full text-left group cursor-pointer"
                     >
-                        <LogOut className="w-6 h-6" />
+                        <div className="flex flex-col">
+                            <span className="text-base font-semibold text-foreground">Einnahmen</span>
+                            <span className="text-xs text-muted-foreground mt-0.5">{incomeSources.length} Quellen</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="amount text-base text-[var(--chart-pos)]">+€{Number(budget).toFixed(2)}</span>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => setShowAccounts(true)}
+                        className="ledger-row w-full text-left group cursor-pointer"
+                    >
+                        <div className="flex flex-col">
+                            <span className="text-base font-semibold text-foreground">Konten</span>
+                            <span className="text-xs text-muted-foreground mt-0.5">{accounts.length} aktiv</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
+                    </button>
+
+                    <button
+                        onClick={() => setShowFixedCosts(true)}
+                        className="ledger-row w-full text-left group cursor-pointer"
+                    >
+                        <div className="flex flex-col">
+                            <span className="text-base font-semibold text-foreground">Fixkosten</span>
+                            <span className="text-xs text-muted-foreground mt-0.5">{fixedCosts.length} Posten</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="amount text-base text-[var(--chart-neg-heavy)]">−€{totalFixed.toFixed(2)}</span>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
+                        </div>
+                    </button>
+                </div>
+
+                {/* Design */}
+                <div className="flex flex-col mb-10">
+                    <p className="eyebrow mb-4">Design</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={() => handleThemeChange('pink')}
+                            className={`press p-4 rounded-xl border text-left flex items-center gap-3 transition-colors duration-200 ${currentTheme !== 'blue' ? 'border-primary/50 bg-card' : 'border-border bg-transparent hover:bg-card'}`}
+                        >
+                            <span className="w-4 h-4 rounded-full shrink-0 border border-black/10" style={{ backgroundColor: '#C13D5D' }}></span>
+                            <span className={`font-semibold text-sm ${currentTheme !== 'blue' ? 'text-foreground' : 'text-muted-foreground'}`}>Rosé</span>
+                        </button>
+                        <button
+                            onClick={() => handleThemeChange('blue')}
+                            className={`press p-4 rounded-xl border text-left flex items-center gap-3 transition-colors duration-200 ${currentTheme === 'blue' ? 'border-primary/50 bg-card' : 'border-border bg-transparent hover:bg-card'}`}
+                        >
+                            <span className="w-4 h-4 rounded-full shrink-0 border border-black/10" style={{ backgroundColor: '#33618F' }}></span>
+                            <span className={`font-semibold text-sm ${currentTheme === 'blue' ? 'text-foreground' : 'text-muted-foreground'}`}>Nordlicht</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Logout Button */}
+                <div className="mt-6 flex justify-center">
+                    <button
+                        onClick={onLogout}
+                        className="press flex items-center gap-2 text-muted-foreground hover:text-[var(--chart-neg-heavy)] transition-colors duration-200 font-medium text-sm py-2 px-4"
+                    >
+                        <LogOut className="w-4 h-4" strokeWidth={1.75} />
                         Abmelden
-                    </Button>
+                    </button>
                 </div>
             </div>
         </div>

@@ -514,12 +514,12 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
 
             {/* --- HEADER WITH PDF BUTTON --- */}
             <div className="flex justify-between items-center pb-6 shrink-0">
-                <h2 className="text-2xl font-bold">Analyse</h2>
+                <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">Analyse</h2>
                 <button
                     onClick={generateAnalysisPDF}
-                    className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-gray-800 active:scale-95 transition-all"
+                    className="press flex items-center gap-1.5 bg-card border border-border text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200"
                 >
-                    <Download className="w-4 h-4" />
+                    <Download className="w-3.5 h-3.5" strokeWidth={1.75} />
                     PDF
                 </button>
             </div>
