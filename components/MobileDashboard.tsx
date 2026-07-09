@@ -426,11 +426,11 @@ export default function MobileDashboard({
                         <div className="w-full">
                             <div
                                 onClick={() => setShowGirokonto(true)}
-                                className="bg-white/70 backdrop-blur-2xl border border-white/60 rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer active:scale-95"
+                                className="bg-card/70 backdrop-blur-2xl border border-border/60 rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer active:scale-95"
                             >
                                 <div className="flex items-center justify-between z-10 relative">
                                     <div className="flex items-center gap-5">
-                                        <div className="p-4 bg-white rounded-2xl text-primary shadow-sm">
+                                        <div className="p-4 bg-card rounded-2xl text-primary shadow-sm">
                                             <PiggyBank className="w-8 h-8" strokeWidth={1.5} />
                                         </div>
                                         <div>
@@ -451,7 +451,7 @@ export default function MobileDashboard({
                         </div>
 
                         {/* BEREICH 3: Eingabe-Panel (Frosted Glass Container) */}
-                        <div className="bg-white/70 backdrop-blur-2xl border border-white/60 rounded-[2rem] p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] z-10 overflow-hidden mt-2">
+                        <div className="bg-card/70 backdrop-blur-2xl border border-border/60 rounded-[2rem] p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] z-10 overflow-hidden mt-2">
                             <AddExpenseForm accounts={initialAccounts} onRefresh={onUpdate} />
                         </div>
 
@@ -563,8 +563,8 @@ export default function MobileDashboard({
             )}
 
             {/* === BOTTOM NAVIGATION BAR (Apple Floating Island) === */}
-            <div className="fixed bottom-6 left-0 w-full flex justify-center z-40 pointer-events-none pb-[env(safe-area-inset-bottom)] px-6">
-                <div className="w-full max-w-sm flex justify-between items-center bg-white/70 backdrop-blur-3xl border border-white/60 rounded-full p-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+            <div className="fixed bottom-6 left-0 w-full flex justify-center z-40 pointer-events-none pb-[env(safe-area-inset-bottom)] px-4">
+                <div className="w-full max-w-lg flex justify-between items-center bg-card/70 backdrop-blur-3xl border border-border/60 rounded-full p-2 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
                     
                     {/* LEFT: History */}
                     <button

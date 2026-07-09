@@ -24,15 +24,15 @@ export const getThemeVariables = (themeName: string): ThemeColors => {
             border: '#fbcfe8'      // border pink
         }
     }
-    // Default: Paper
+    // Default: Blue Premium
     return {
-        background: '#f0f9ff', // sky-50
-        foreground: '#0f172a', // slate-900
-        primary: '#0ea5e9',    // sky-500
+        background: '#f2f6fc',
+        foreground: '#1e3246',
+        primary: '#4a8bcf',
         primaryForeground: '#ffffff',
-        muted: '#e0f2fe',      // sky-100
-        mutedForeground: '#64748b', // slate-500
-        border: '#bae6fd'      // sky-200
+        muted: '#e3ebf6',
+        mutedForeground: '#6b849c',
+        border: '#d1e0f0'
     }
 }
 

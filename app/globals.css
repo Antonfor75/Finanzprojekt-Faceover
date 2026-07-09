@@ -43,23 +43,29 @@
     --chart-neg: #dea8aa;
     --chart-neg-heavy: #c68585;
     --chart-gray: #f3e5e5;
+    --blob-color-1: #e0f2fe; /* sky-100 */
+    --blob-color-2: #f0f9ff; /* sky-50 */
+    --blob-color-3: #ffffff;
   }
 
-  /* BLUE PREMIUM THEME */
+  /* BLUE PREMIUM THEME (Unified Elegant Blue) */
   :root[data-theme='blue'] {
-    --bg-background: #f0f9ff; /* sky-50, a very bright clean blue */
-    --text-foreground: #0f172a; /* slate-900 */
-    --color-primary: #0ea5e9; /* sky-500, fresh and vibrant */
+    --bg-background: #f2f6fc;
+    --text-foreground: #1e3246;
+    --color-primary: #4a8bcf;
     --text-primary-foreground: #ffffff;
-    --bg-muted: #e0f2fe; /* sky-100 */
-    --text-muted-foreground: #64748b; /* slate-500 */
-    --color-border: #bae6fd; /* sky-200 */
+    --bg-muted: #e3ebf6;
+    --text-muted-foreground: #6b849c;
+    --color-border: #d1e0f0;
     --bg-card: #ffffff;
-    --text-card-foreground: #0f172a;
-    --chart-pos: #34d399; /* emerald-400 */
-    --chart-neg: #f87171; /* red-400 */
-    --chart-neg-heavy: #ef4444; /* red-500 */
-    --chart-gray: #e2e8f0; /* slate-200 */
+    --text-card-foreground: #1e3246;
+    --chart-pos: #6ee7b7;
+    --chart-neg: #fca5a5;
+    --chart-neg-heavy: #ef4444;
+    --chart-gray: #cbd5e1;
+    --blob-color-1: #dbeafe;
+    --blob-color-2: #bfdbfe;
+    --blob-color-3: #ffffff;
   }
 
   body {

@@ -172,9 +172,9 @@ export default function Home() {
 
   const AnimatedBackground = () => (
     <>
-        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-rose-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse pointer-events-none" style={{ animationDelay: '2s', animationDuration: '4s' }}></div>
-        <div className="absolute top-[20%] right-[10%] w-[30vw] h-[30vw] bg-white rounded-full mix-blend-overlay filter blur-2xl opacity-50 animate-pulse pointer-events-none" style={{ animationDelay: '1s', animationDuration: '5s' }}></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-[var(--blob-color-1)] rounded-full mix-blend-multiply filter blur-3xl opacity-20 pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-[var(--blob-color-2)] rounded-full mix-blend-multiply filter blur-3xl opacity-30 pointer-events-none"></div>
+        <div className="absolute top-[20%] right-[10%] w-[30vw] h-[30vw] bg-[var(--blob-color-3)] rounded-full mix-blend-overlay filter blur-2xl opacity-50 pointer-events-none"></div>
     </>
   )
 

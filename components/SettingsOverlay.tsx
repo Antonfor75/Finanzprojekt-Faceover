@@ -1654,9 +1654,9 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                 </button>
                                 <button
                                     onClick={() => handleThemeChange('blue')}
-                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme === 'blue' ? 'border-sky-500 bg-sky-50 text-sky-700 shadow-sm' : 'border-border bg-transparent text-muted-foreground hover:bg-muted/50'}`}
+                                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${currentTheme === 'blue' ? 'border-blue-400 bg-blue-50 text-blue-600 shadow-sm' : 'border-border bg-transparent text-muted-foreground hover:bg-muted/50'}`}
                                 >
-                                    <div className="w-8 h-8 rounded-full bg-[#f0f9ff] border border-border shadow-sm"></div>
+                                    <div className="w-8 h-8 rounded-full bg-[#f2f6fc] border border-border shadow-sm"></div>
                                     <span className="font-bold">Blue Premium</span>
                                 </button>
                             </div>
