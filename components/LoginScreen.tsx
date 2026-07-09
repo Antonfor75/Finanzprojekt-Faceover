@@ -79,7 +79,7 @@ export default function LoginScreen() {
                                         required
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="h-auto w-full pl-12 pr-4 py-4 bg-white/60 border border-transparent focus-visible:border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-primary rounded-2xl transition-all placeholder:text-muted-foreground font-medium text-lg text-foreground hover:bg-white/80"
+                                        className="h-auto w-full pl-12 pr-4 py-4 bg-white/60 border border-transparent focus-visible:border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-primary rounded-2xl transition-colors duration-200 ease-out placeholder:text-muted-foreground font-medium text-lg text-foreground hover:bg-white/80"
                                     />
                                 </div>
                             </Field>
@@ -95,7 +95,7 @@ export default function LoginScreen() {
                                         required
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="h-auto w-full pl-12 pr-4 py-4 bg-white/60 border border-transparent focus-visible:border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-primary rounded-2xl transition-all placeholder:text-muted-foreground font-medium text-lg text-foreground hover:bg-white/80"
+                                        className="h-auto w-full pl-12 pr-4 py-4 bg-white/60 border border-transparent focus-visible:border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-primary rounded-2xl transition-colors duration-200 ease-out placeholder:text-muted-foreground font-medium text-lg text-foreground hover:bg-white/80"
                                     />
                                 </div>
                             </Field>
@@ -104,7 +104,7 @@ export default function LoginScreen() {
                                 <Button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full h-auto bg-primary text-primary-foreground p-6 rounded-full font-bold text-lg hover:opacity-90 active:scale-[0.98] shadow-md transition-all"
+                                    className="w-full h-auto bg-primary text-primary-foreground p-6 rounded-full font-bold text-lg hover:opacity-90 active:scale-[0.98] shadow-md transition-transform duration-300 active:duration-75 ease-out"
                                 >
                                     {loading ? (
                                         <Loader2 className="animate-spin" data-icon="inline-start" />

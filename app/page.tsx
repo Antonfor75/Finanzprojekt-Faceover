@@ -206,14 +206,14 @@ export default function Home() {
             </p>
             <Button
                 onClick={() => window.location.reload()}
-                className="w-full bg-primary text-primary-foreground p-6 rounded-full font-bold text-lg hover:opacity-90 active:scale-95 transition-all shadow-md mb-4"
+                className="w-full bg-primary text-primary-foreground p-6 rounded-full font-bold text-lg hover:opacity-90 active:scale-[0.98] transition-transform duration-300 active:duration-75 ease-out shadow-md mb-4"
             >
                 Erneut versuchen
             </Button>
             <Button
                 variant="ghost"
                 onClick={() => { supabase.auth.signOut(); window.location.reload() }}
-                className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors rounded-full"
+                className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200 ease-out rounded-full"
             >
                 Ausloggen
             </Button>

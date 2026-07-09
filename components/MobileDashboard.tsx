@@ -569,7 +569,7 @@ export default function MobileDashboard({
                     {/* LEFT: History */}
                     <button
                         onClick={() => setView('history')}
-                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 flex-1 flex justify-center items-center font-medium ${view === 'history'
+                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-colors duration-200 ease-out flex-1 flex justify-center items-center font-medium ${view === 'history'
                             ? 'bg-primary text-primary-foreground shadow-md'
                             : 'text-muted-foreground hover:bg-white/50'
                             }`}
@@ -580,7 +580,7 @@ export default function MobileDashboard({
                     {/* CENTER: Home */}
                     <button
                         onClick={() => setView('entry')}
-                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 flex-1 flex justify-center items-center font-medium mx-1 ${view === 'entry'
+                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-colors duration-200 ease-out flex-1 flex justify-center items-center font-medium mx-1 ${view === 'entry'
                             ? 'bg-primary text-primary-foreground shadow-md'
                             : 'text-muted-foreground hover:bg-white/50'
                             }`}
@@ -591,7 +591,7 @@ export default function MobileDashboard({
                     {/* RIGHT: Settings */}
                     <button
                         onClick={() => setIsSettingsOpen(true)}
-                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-all duration-300 flex-1 flex justify-center items-center font-medium ${isSettingsOpen
+                        className={`p-3 md:p-4 rounded-full pointer-events-auto transition-colors duration-200 ease-out flex-1 flex justify-center items-center font-medium ${isSettingsOpen
                             ? 'bg-primary text-primary-foreground shadow-md'
                             : 'text-muted-foreground hover:bg-white/50'
                             }`}
@@ -644,7 +644,7 @@ export default function MobileDashboard({
                         />
                         <Button
                             type="submit"
-                            className="w-full text-[35px] font-bold text-center bg-primary text-primary-foreground rounded-2xl py-8 block hover:opacity-90 transition-all active:scale-95 shadow-md h-auto"
+                            className="w-full text-[35px] font-bold text-center bg-primary text-primary-foreground rounded-2xl py-8 block hover:opacity-90 transition-transform duration-300 active:duration-75 ease-out active:scale-[0.98] shadow-md h-auto"
                         >
                             Speichern
                         </Button>
