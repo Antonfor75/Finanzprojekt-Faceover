@@ -30,4 +30,10 @@ CREATE TABLE "rewe_receipts" (
 ALTER TABLE "email_connections" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "rewe_receipts" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE POLICY "email_connections_owner" ON "email_connections" FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);--> statement-breakpoint
-CREATE POLICY "rewe_receipts_owner" ON "rewe_receipts" FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "rewe_receipts_owner" ON "rewe_receipts" FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);--> statement-breakpoint
+-- Tabellen-Rechte für die Supabase-API-Rollen (RLS regelt danach den Zeilen-Zugriff).
+-- Nötig, weil bei Anlage über die Direktverbindung die Default-GRANTs nicht griffen.
+GRANT ALL ON TABLE "email_connections" TO anon, authenticated, service_role;--> statement-breakpoint
+GRANT ALL ON TABLE "rewe_receipts" TO anon, authenticated, service_role;--> statement-breakpoint
+GRANT USAGE, SELECT ON SEQUENCE "email_connections_id_seq" TO anon, authenticated, service_role;--> statement-breakpoint
+GRANT USAGE, SELECT ON SEQUENCE "rewe_receipts_id_seq" TO anon, authenticated, service_role;
