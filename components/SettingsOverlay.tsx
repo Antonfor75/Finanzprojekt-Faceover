@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Input } from '@/components/ui/input'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { DatePicker } from '@/components/ui/date-picker'
-import { saveEmailConnection, getEmailConnectionStatus, deleteEmailConnection, type ConnectionStatus } from '@/app/actions/emailConnection'
+import { saveEmailConnection, getEmailConnectionStatus, deleteEmailConnection, runReweSyncNow, type ConnectionStatus } from '@/app/actions/emailConnection'
 
 
 type SettingsOverlayProps = {
@@ -47,6 +47,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [reweMessage, setReweMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
     const [reweScope, setReweScope] = useState<'today' | 'all' | 'date'>('today')
     const [reweSinceDate, setReweSinceDate] = useState('')
+    const [reweSyncBusy, setReweSyncBusy] = useState(false)
 
     // Income Sources State
     const [showIncome, setShowIncome] = useState(false)
@@ -128,6 +129,26 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             try { setReweStatus(await getEmailConnectionStatus()) } catch { }
         } else {
             setReweMessage({ type: 'error', text: res.error || 'Verbindung fehlgeschlagen.' })
+        }
+    }
+
+    const handleSyncNowRewe = async () => {
+        setReweSyncBusy(true)
+        setReweMessage(null)
+        try {
+            const res = await runReweSyncNow()
+            if (res.success) {
+                const parts = [`${res.imported} importiert`, `${res.skipped} übersprungen`]
+                if (res.failed) parts.push(`${res.failed} fehlgeschlagen`)
+                setReweMessage({ type: 'success', text: `Abruf fertig: ${parts.join(', ')}.` })
+                // Ausgabenliste der App aktualisieren, damit neue Bons sofort sichtbar sind.
+                onUpdate?.()
+            } else {
+                setReweMessage({ type: 'error', text: res.error || 'Abruf fehlgeschlagen.' })
+            }
+            try { setReweStatus(await getEmailConnectionStatus()) } catch { }
+        } finally {
+            setReweSyncBusy(false)
         }
     }
 
@@ -1613,25 +1634,42 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         {/* Status */}
                         {isConnected && (
                             <Card className="rounded-2xl border-[var(--chart-pos)]/40 bg-[var(--chart-pos)]/5 shadow-none">
-                                <CardContent className="p-4 flex items-start gap-3">
-                                    <CheckCircle2 className="w-5 h-5 text-[var(--chart-pos)] shrink-0 mt-0.5" strokeWidth={2} />
-                                    <div className="min-w-0 flex-1">
-                                        <p className="font-semibold text-foreground text-sm">Verbunden</p>
-                                        <p className="text-xs text-muted-foreground truncate">{reweStatus?.email_address}</p>
-                                        <p className="text-[11px] text-muted-foreground mt-1">
-                                            {reweStatus?.last_sync_at
-                                                ? `Letzter Abruf: ${new Date(reweStatus.last_sync_at).toLocaleString('de-DE')}`
-                                                : 'Noch kein Abruf erfolgt.'}
-                                        </p>
-                                        <p className="text-[11px] text-muted-foreground">
-                                            Import ab: {reweStatus?.import_since ? new Date(reweStatus.import_since).toLocaleDateString('de-DE') : 'Alle Bons'}
-                                        </p>
-                                        {reweStatus?.status === 'error' && reweStatus?.last_error && (
-                                            <p className="text-[11px] text-[var(--chart-neg-heavy)] mt-1">Fehler: {reweStatus.last_error}</p>
-                                        )}
+                                <CardContent className="p-4 space-y-4">
+                                    <div className="flex items-start gap-3">
+                                        <CheckCircle2 className="w-5 h-5 text-[var(--chart-pos)] shrink-0 mt-0.5" strokeWidth={2} />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-semibold text-foreground text-sm">Verbunden</p>
+                                            <p className="text-xs text-muted-foreground truncate">{reweStatus?.email_address}</p>
+                                            <p className="text-[11px] text-muted-foreground mt-1">
+                                                {reweStatus?.last_sync_at
+                                                    ? `Letzter Abruf: ${new Date(reweStatus.last_sync_at).toLocaleString('de-DE')}`
+                                                    : 'Noch kein Abruf erfolgt.'}
+                                            </p>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Import ab: {reweStatus?.import_since ? new Date(reweStatus.import_since).toLocaleDateString('de-DE') : 'Alle Bons'}
+                                            </p>
+                                            {reweStatus?.status === 'error' && reweStatus?.last_error && (
+                                                <p className="text-[11px] text-[var(--chart-neg-heavy)] mt-1">Fehler: {reweStatus.last_error}</p>
+                                            )}
+                                        </div>
+                                        <Button variant="ghost" size="sm" onClick={handleDisconnectRewe} disabled={reweBusy || reweSyncBusy} className="press rounded-xl text-muted-foreground hover:text-[var(--chart-neg-heavy)] shrink-0">
+                                            Trennen
+                                        </Button>
                                     </div>
-                                    <Button variant="ghost" size="sm" onClick={handleDisconnectRewe} disabled={reweBusy} className="press rounded-xl text-muted-foreground hover:text-[var(--chart-neg-heavy)] shrink-0">
-                                        Trennen
+
+                                    {reweMessage && (
+                                        <div className={`flex items-start gap-2 text-sm rounded-xl p-3 ${reweMessage.type === 'success' ? 'bg-[var(--chart-pos)]/10 text-[var(--chart-pos)]' : 'bg-[var(--chart-neg-heavy)]/10 text-[var(--chart-neg-heavy)]'}`}>
+                                            {reweMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />}
+                                            <span>{reweMessage.text}</span>
+                                        </div>
+                                    )}
+
+                                    <Button
+                                        onClick={handleSyncNowRewe}
+                                        disabled={reweSyncBusy || reweBusy}
+                                        className="press w-full h-12 rounded-xl bg-primary hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)] text-primary-foreground font-semibold shadow-none transition-colors duration-200"
+                                    >
+                                        {reweSyncBusy ? 'Rufe Bons ab…' : 'Jetzt Bons abrufen'}
                                     </Button>
                                 </CardContent>
                             </Card>

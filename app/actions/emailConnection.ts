@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { encryptSecret } from '@/utils/crypto'
 import { verifyMailboxLogin } from '@/utils/mailbox'
+import { syncReweExpenses } from '@/lib/reweSync'
 
 /**
  * Server Actions für den "Gmail verbinden"-Flow in den Einstellungen.
@@ -110,6 +111,23 @@ export async function getEmailConnectionStatus(): Promise<ConnectionStatus> {
         last_error: data.last_error,
         import_since: data.import_since,
     }
+}
+
+/**
+ * Manueller Sofort-Abruf für den eingeloggten User ("Jetzt Bons abrufen"-Button).
+ * Gleicher Sync-Kern wie der Cron; Dedup über rewe_receipts.message_id macht
+ * beliebig häufiges Klicken gefahrlos.
+ */
+export async function runReweSyncNow() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false as const, error: 'Nicht eingeloggt.' }
+
+    const result = await syncReweExpenses(user.id)
+    if (result.error) {
+        return { success: false as const, error: result.error, ...result }
+    }
+    return { success: true as const, ...result }
 }
 
 export async function deleteEmailConnection() {
