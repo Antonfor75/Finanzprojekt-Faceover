@@ -138,9 +138,22 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         try {
             const res = await runReweSyncNow()
             if (res.success) {
-                const parts = [`${res.imported} importiert`, `${res.skipped} übersprungen`]
+                const parts = [`${res.imported} importiert`]
+                if (res.skippedKnown) parts.push(`${res.skippedKnown} schon bekannt`)
+                if (res.skippedUnrecognized) parts.push(`${res.skippedUnrecognized} nicht erkannt`)
                 if (res.failed) parts.push(`${res.failed} fehlgeschlagen`)
-                setReweMessage({ type: 'success', text: `Abruf fertig: ${parts.join(', ')}.` })
+
+                if (res.skippedUnrecognized) {
+                    // Kein Betrag erkannt = Parser-Problem, nicht "schon importiert" — das ist ein
+                    // Fehlerfall und wird deshalb rot markiert, mit den betroffenen Betreffzeilen.
+                    const subjects = res.unrecognizedSubjects?.slice(0, 3).map((s) => `„${s}"`).join(', ')
+                    setReweMessage({
+                        type: 'error',
+                        text: `Abruf fertig: ${parts.join(', ')}. Bei nicht erkannten Mails konnte kein Betrag gefunden werden${subjects ? ` (${subjects})` : ''} — bitte melden.`,
+                    })
+                } else {
+                    setReweMessage({ type: 'success', text: `Abruf fertig: ${parts.join(', ')}.` })
+                }
                 // Ausgabenliste der App aktualisieren, damit neue Bons sofort sichtbar sind.
                 onUpdate?.()
             } else {

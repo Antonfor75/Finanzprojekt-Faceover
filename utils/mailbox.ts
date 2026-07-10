@@ -74,7 +74,27 @@ export async function verifyMailboxLogin(creds: MailboxCredentials): Promise<voi
 }
 
 /**
- * Öffnet die INBOX und liefert alle (mutmaßlichen) REWE-eBon-Mails ab `since`.
+ * Ermittelt den "Alle Nachrichten"/"All Mail"-Ordner über das IMAP-Sonderflag \All
+ * statt über den (sprachabhängigen) Namen — funktioniert damit unabhängig von der
+ * Gmail-Sprache. Fällt auf INBOX zurück, falls kein solcher Ordner existiert
+ * (z. B. bei Nicht-Gmail-IMAP-Servern).
+ *
+ * Wichtig: Gmail-Filter können Mails "am Posteingang vorbei" direkt in ein Label
+ * einsortieren (Regel "Posteingang überspringen"). Solche Mails fehlen in INBOX
+ * komplett, tauchen aber immer in "Alle Nachrichten" auf.
+ */
+async function resolveSearchMailbox(client: ImapFlow): Promise<string> {
+    try {
+        const boxes = await client.list()
+        const allMail = boxes.find((b) => b.specialUse === '\\All')
+        return allMail?.path || 'INBOX'
+    } catch {
+        return 'INBOX'
+    }
+}
+
+/**
+ * Durchsucht "Alle Nachrichten" (Fallback: INBOX) nach REWE-eBon-Mails seit `since`.
  * Deduplizierung/Parsing passiert im Aufrufer (lib/reweSync.ts).
  */
 export async function fetchReweMessages(
@@ -85,7 +105,8 @@ export async function fetchReweMessages(
     const results: ReweMailMessage[] = []
 
     await client.connect()
-    const lock = await client.getMailboxLock('INBOX')
+    const mailbox = await resolveSearchMailbox(client)
+    const lock = await client.getMailboxLock(mailbox)
     try {
         // Kriterium: (Absender enthält eines der FROM_HINTS) ODER (Betreff enthält eines der SUBJECT_HINTS),
         // optional eingeschränkt auf Mails seit `since`.

@@ -18,16 +18,30 @@ const REWE_DESCRIPTION = 'REWE Einkauf'
 
 export type SyncResult = {
     imported: number
+    /** Mail war bereits importiert (message_id bekannt) — normaler Fall bei erneutem Abruf. */
+    skippedKnown: number
+    /** Mail matched die Suche, aber es wurde kein Gesamtbetrag erkannt — Parser-Problem/Format. */
+    skippedUnrecognized: number
+    /** @deprecated Summe aus skippedKnown + skippedUnrecognized, für Abwärtskompatibilität. */
     skipped: number
     failed: number
     error?: string
+    /** Betreffzeilen der nicht erkannten Mails, zum Debuggen im Parser. */
+    unrecognizedSubjects?: string[]
 }
 
 /**
  * Importiert neue REWE-Bons für einen einzelnen User in dessen Ausgaben.
  */
 export async function syncReweExpenses(userId: string): Promise<SyncResult> {
-    const result: SyncResult = { imported: 0, skipped: 0, failed: 0 }
+    const result: SyncResult = {
+        imported: 0,
+        skippedKnown: 0,
+        skippedUnrecognized: 0,
+        skipped: 0,
+        failed: 0,
+        unrecognizedSubjects: [],
+    }
 
     // 1. Verbundenes Postfach laden.
     const { data: connection, error: connError } = await supabaseAdmin
@@ -79,7 +93,7 @@ export async function syncReweExpenses(userId: string): Promise<SyncResult> {
     // 6. Jede neue Mail verarbeiten.
     for (const msg of messages) {
         if (known.has(msg.messageId)) {
-            result.skipped++
+            result.skippedKnown++
             continue
         }
 
@@ -94,7 +108,9 @@ export async function syncReweExpenses(userId: string): Promise<SyncResult> {
 
         if (!parsed) {
             // Kein Gesamtbetrag erkennbar → keine REWE-Bon-Mail oder unbekanntes Format.
-            result.skipped++
+            console.warn('[reweSync] Kein Betrag erkannt in Mail:', msg.subject, '| Message-ID:', msg.messageId)
+            result.skippedUnrecognized++
+            result.unrecognizedSubjects?.push(msg.subject)
             continue
         }
 
@@ -115,7 +131,7 @@ export async function syncReweExpenses(userId: string): Promise<SyncResult> {
         if (receiptError) {
             // 23505 = unique_violation → parallel bereits importiert, kein Fehler.
             if (receiptError.code === '23505') {
-                result.skipped++
+                result.skippedKnown++
             } else {
                 console.error('[reweSync] Receipt-Insert-Fehler:', receiptError)
                 result.failed++
@@ -160,6 +176,7 @@ export async function syncReweExpenses(userId: string): Promise<SyncResult> {
         .update({ last_sync_at: new Date().toISOString(), status: 'connected', last_error: null })
         .eq('user_id', userId)
 
+    result.skipped = result.skippedKnown + result.skippedUnrecognized
     return result
 }
 
