@@ -15,6 +15,13 @@
       "when": 1771244071847,
       "tag": "0001_demonic_shinobi_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783641600000,
+      "tag": "0002_rewe_email_import",
+      "breakpoints": true
     }
   ]
 }

@@ -70,4 +70,31 @@ export const budgetLogsTable = pgTable('budget_logs', {
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 
+// Verbundene E-Mail-Postfächer für den automatischen REWE-Import (ein Postfach pro User).
+// Das Secret (App-Passwort bzw. später OAuth-Refresh-Token) wird AES-256-GCM-verschlüsselt gespeichert.
+export const emailConnectionsTable = pgTable('email_connections', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull().unique(),
+    provider: text('provider').notNull().default('imap'), // 'imap' jetzt, 'oauth' später
+    email_address: text('email_address').notNull(),
+    secret_encrypted: text('secret_encrypted').notNull(), // verschlüsseltes App-Passwort / Refresh-Token
+    status: text('status').notNull().default('connected'), // 'connected' | 'error'
+    last_sync_at: timestamp('last_sync_at', { withTimezone: true }),
+    last_error: text('last_error'),
+});
+
+// Dedup + Audit für importierte REWE-eBon-Mails. message_id (RFC822) ist der Idempotenz-Schlüssel.
+export const reweReceiptsTable = pgTable('rewe_receipts', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
+    message_id: text('message_id').notNull().unique(), // Idempotenz-Schlüssel gegen Doppel-Import
+    receipt_date: text('receipt_date'), // ISO-String des Bon-Datums
+    total_amount: numeric('total_amount'),
+    expense_id: integer('expense_id'), // Verweis auf die erzeugte Ausgabe
+    raw_subject: text('raw_subject'),
+    imported_at: timestamp('imported_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 // public.users table removed. Using auth.users instead.

@@ -56,3 +56,27 @@ export type IncomeSource = {
     frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly'
     user_id?: string
 }
+
+export type EmailConnection = {
+    id: number
+    created_at?: string
+    user_id?: string
+    provider: 'imap' | 'oauth'
+    email_address: string
+    // secret_encrypted wird NIE ans Frontend gegeben
+    status: 'connected' | 'error'
+    last_sync_at?: string | null
+    last_error?: string | null
+}
+
+export type ReweReceipt = {
+    id: number
+    created_at?: string
+    user_id?: string
+    message_id: string
+    receipt_date?: string | null
+    total_amount?: number | null
+    expense_id?: number | null
+    raw_subject?: string | null
+    imported_at?: string
+}

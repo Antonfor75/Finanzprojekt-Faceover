@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { applyTheme, loadTheme } from '@/utils/theme'
-import { ArrowLeft, ChevronRight, Trash2, LogOut, Download, Upload, FileText, HelpCircle, ArrowDown } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Trash2, LogOut, Download, Upload, FileText, HelpCircle, ArrowDown, ShoppingBag, CheckCircle2, AlertCircle } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import ImportWizard from '@/components/ImportWizard'
@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Input } from '@/components/ui/input'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { DatePicker } from '@/components/ui/date-picker'
+import { saveEmailConnection, getEmailConnectionStatus, deleteEmailConnection, type ConnectionStatus } from '@/app/actions/emailConnection'
 
 
 type SettingsOverlayProps = {
@@ -36,6 +37,14 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [showImportWizard, setShowImportWizard] = useState(false)
     const [showHelp, setShowHelp] = useState(false)
     const [showFixedCosts, setShowFixedCosts] = useState(false)
+
+    // REWE / Gmail-Verbindung
+    const [showReweConnect, setShowReweConnect] = useState(false)
+    const [reweStatus, setReweStatus] = useState<ConnectionStatus | null>(null)
+    const [reweEmail, setReweEmail] = useState('')
+    const [reweAppPassword, setReweAppPassword] = useState('')
+    const [reweBusy, setReweBusy] = useState(false)
+    const [reweMessage, setReweMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
     // Income Sources State
     const [showIncome, setShowIncome] = useState(false)
@@ -77,6 +86,40 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const handleThemeChange = (theme: string) => {
         setCurrentTheme(theme)
         applyTheme(theme)
+    }
+
+    // --- REWE / Gmail-Verbindung ---
+    useEffect(() => {
+        getEmailConnectionStatus()
+            .then((s) => {
+                setReweStatus(s)
+                if (s.email_address) setReweEmail(s.email_address)
+            })
+            .catch(() => { })
+    }, [])
+
+    const handleConnectRewe = async () => {
+        setReweBusy(true)
+        setReweMessage(null)
+        const res = await saveEmailConnection({ email: reweEmail, appPassword: reweAppPassword })
+        setReweBusy(false)
+        if (res.success) {
+            setReweMessage({ type: 'success', text: 'Postfach erfolgreich verbunden!' })
+            setReweAppPassword('')
+            try { setReweStatus(await getEmailConnectionStatus()) } catch { }
+        } else {
+            setReweMessage({ type: 'error', text: res.error || 'Verbindung fehlgeschlagen.' })
+        }
+    }
+
+    const handleDisconnectRewe = async () => {
+        if (!confirm('Verbindung zum Postfach wirklich trennen? Bereits importierte Ausgaben bleiben erhalten.')) return
+        setReweBusy(true)
+        await deleteEmailConnection()
+        setReweBusy(false)
+        setReweStatus({ connected: false })
+        setReweAppPassword('')
+        setReweMessage(null)
     }
 
     // Derived Weekly Rate for Savings (Display Only during creation)
@@ -1532,6 +1575,114 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         )
     }
 
+    // --- REWE / GMAIL CONNECT SUB-VIEW ---
+    if (showReweConnect) {
+        const isConnected = reweStatus?.connected
+        return (
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background animate-in fade-in slide-in-from-right-8 duration-300 ease-[var(--ease-out-strong)] flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none">
+                <div className="w-full h-full md:max-w-2xl flex flex-col mx-auto">
+                    <div className="p-4 md:p-8 flex items-center justify-between shrink-0 bg-background/90 backdrop-blur-sm sticky top-0 z-20">
+                        <div className="flex items-center gap-3">
+                            <Button variant="ghost" size="icon" onClick={() => setShowReweConnect(false)} className="press rounded-full w-10 h-10 text-muted-foreground hover:text-foreground hover:bg-muted">
+                                <ArrowLeft className="w-5 h-5" strokeWidth={1.75} />
+                            </Button>
+                            <h1 className="font-display text-xl font-semibold tracking-tight text-foreground">REWE Import</h1>
+                        </div>
+                    </div>
+
+                    <div className="p-4 md:p-8 space-y-6 flex-1 pb-20 max-w-[600px] mx-auto w-full">
+                        {/* Status */}
+                        {isConnected && (
+                            <Card className="rounded-2xl border-[var(--chart-pos)]/40 bg-[var(--chart-pos)]/5 shadow-none">
+                                <CardContent className="p-4 flex items-start gap-3">
+                                    <CheckCircle2 className="w-5 h-5 text-[var(--chart-pos)] shrink-0 mt-0.5" strokeWidth={2} />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-semibold text-foreground text-sm">Verbunden</p>
+                                        <p className="text-xs text-muted-foreground truncate">{reweStatus?.email_address}</p>
+                                        <p className="text-[11px] text-muted-foreground mt-1">
+                                            {reweStatus?.last_sync_at
+                                                ? `Letzter Abruf: ${new Date(reweStatus.last_sync_at).toLocaleString('de-DE')}`
+                                                : 'Noch kein Abruf erfolgt.'}
+                                        </p>
+                                        {reweStatus?.status === 'error' && reweStatus?.last_error && (
+                                            <p className="text-[11px] text-[var(--chart-neg-heavy)] mt-1">Fehler: {reweStatus.last_error}</p>
+                                        )}
+                                    </div>
+                                    <Button variant="ghost" size="sm" onClick={handleDisconnectRewe} disabled={reweBusy} className="press rounded-xl text-muted-foreground hover:text-[var(--chart-neg-heavy)] shrink-0">
+                                        Trennen
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Verbinden / Aktualisieren */}
+                        <Card className="rounded-2xl border-border bg-card shadow-none">
+                            <CardHeader className="pb-4">
+                                <CardTitle className="font-display text-lg font-semibold tracking-tight">
+                                    {isConnected ? 'Zugangsdaten aktualisieren' : 'Gmail-Postfach verbinden'}
+                                </CardTitle>
+                                <CardDescription className="text-xs leading-relaxed">
+                                    Deine REWE-eBon-Mails werden automatisch als Ausgaben (Kategorie „Essen“) übernommen.
+                                    Nötig sind deine Gmail-Adresse und ein <b>Google-App-Passwort</b> (nicht dein normales Passwort).
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <FieldGroup className="space-y-4">
+                                    <Field>
+                                        <FieldLabel className="text-xs text-muted-foreground ml-2">Gmail-Adresse</FieldLabel>
+                                        <Input
+                                            type="email"
+                                            placeholder="deine.adresse@gmail.com"
+                                            value={reweEmail}
+                                            onChange={(e) => setReweEmail(e.target.value)}
+                                            className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
+                                        />
+                                    </Field>
+                                    <Field>
+                                        <FieldLabel className="text-xs text-muted-foreground ml-2">App-Passwort (16 Zeichen)</FieldLabel>
+                                        <Input
+                                            type="password"
+                                            placeholder="xxxx xxxx xxxx xxxx"
+                                            value={reweAppPassword}
+                                            onChange={(e) => setReweAppPassword(e.target.value)}
+                                            autoComplete="off"
+                                            className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
+                                        />
+                                    </Field>
+
+                                    {reweMessage && (
+                                        <div className={`flex items-start gap-2 text-sm rounded-xl p-3 ${reweMessage.type === 'success' ? 'bg-[var(--chart-pos)]/10 text-[var(--chart-pos)]' : 'bg-[var(--chart-neg-heavy)]/10 text-[var(--chart-neg-heavy)]'}`}>
+                                            {reweMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />}
+                                            <span>{reweMessage.text}</span>
+                                        </div>
+                                    )}
+
+                                    <Button
+                                        onClick={handleConnectRewe}
+                                        disabled={!reweEmail || !reweAppPassword || reweBusy}
+                                        className="press w-full h-12 rounded-xl bg-primary hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)] text-primary-foreground font-semibold shadow-none transition-colors duration-200"
+                                    >
+                                        {reweBusy ? 'Prüfe Verbindung…' : isConnected ? 'Aktualisieren' : 'Verbinden'}
+                                    </Button>
+                                </FieldGroup>
+                            </CardContent>
+                        </Card>
+
+                        {/* Anleitung */}
+                        <div className="p-4 bg-muted/50 border border-border rounded-xl space-y-2">
+                            <p className="text-xs font-semibold text-foreground">So richtest du es ein:</p>
+                            <ol className="text-xs text-muted-foreground leading-relaxed list-decimal ml-4 space-y-1">
+                                <li>In deinem Google-Konto die <b>2-Faktor-Authentifizierung</b> aktivieren.</li>
+                                <li>Ein <b>App-Passwort</b> erstellen unter <span className="break-all">myaccount.google.com/apppasswords</span> und oben eintragen.</li>
+                                <li>In der REWE-App den <b>digitalen Kassenbon (eBon) per E-Mail</b> aktivieren – sonst kommen keine Mails an.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     // --- MAIN SETTINGS VIEW ---
     return (
         <div className="w-full flex flex-col">
@@ -1613,6 +1764,32 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="amount text-base text-[var(--chart-neg-heavy)]">−€{totalFixed.toFixed(2)}</span>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
+                        </div>
+                    </button>
+                </div>
+
+                {/* Automatik */}
+                <div className="flex flex-col mb-10">
+                    <p className="eyebrow mb-2">Automatik</p>
+
+                    <button
+                        onClick={() => setShowReweConnect(true)}
+                        className="ledger-row w-full text-left group cursor-pointer"
+                    >
+                        <div className="flex items-center gap-3">
+                            <ShoppingBag className="w-5 h-5 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                            <div className="flex flex-col">
+                                <span className="text-base font-semibold text-foreground">REWE Import</span>
+                                <span className="text-xs text-muted-foreground mt-0.5">
+                                    {reweStatus?.connected ? `Verbunden · ${reweStatus.email_address}` : 'Postfach verbinden'}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {reweStatus?.connected && (
+                                <span className={`w-2 h-2 rounded-full ${reweStatus.status === 'error' ? 'bg-[var(--chart-neg-heavy)]' : 'bg-[var(--chart-pos)]'}`} />
+                            )}
                             <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
                         </div>
                     </button>
