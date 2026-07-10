@@ -54,7 +54,10 @@ Betrag + Datum. Falls „NICHT ERKANNT" erscheint, die Regex-Muster bzw. Absende
 in `utils/parseReweEmail.ts` / `utils/mailbox.ts` an das echte REWE-Format anpassen.
 
 ### 4. Postfach verbinden (App)
-In der App: **Einstellungen → REWE Import** → Gmail-Adresse + App-Passwort → **Verbinden**.
+In der App: **Einstellungen → REWE Import** → Gmail-Adresse + App-Passwort → **Import-Zeitraum wählen**
+(*Ab heute* / *Alle* / *Ab Datum*) → **Verbinden**. Der Zeitraum steuert nur den **ersten** Abruf
+(`email_connections.import_since`); danach werden fortlaufend nur neue Bons geholt. Beim erneuten Verbinden
+wird `last_sync_at` zurückgesetzt, sodass ein geänderter Zeitraum wieder greift (Dedup verhindert Doubletten).
 Voraussetzungen im Google-Konto:
 1. 2-Faktor-Authentifizierung aktiv.
 2. App-Passwort erstellt unter `myaccount.google.com/apppasswords`.

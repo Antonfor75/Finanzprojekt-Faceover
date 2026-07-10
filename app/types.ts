@@ -67,6 +67,7 @@ export type EmailConnection = {
     status: 'connected' | 'error'
     last_sync_at?: string | null
     last_error?: string | null
+    import_since?: string | null // null = alle Bons, sonst Startdatum
 }
 
 export type ReweReceipt = {

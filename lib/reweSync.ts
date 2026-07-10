@@ -12,10 +12,6 @@ import { parseReweEmail } from '@/utils/parseReweEmail'
  * app/actions/savings.ts und scripts/import_expenses_melina.ts.
  */
 
-// Beim ersten Sync (noch kein last_sync_at) nur so weit zurückschauen, damit nicht
-// die gesamte Postfach-Historie importiert wird.
-const FIRST_RUN_LOOKBACK_DAYS = 60
-
 // Kategorie für REWE-Ausgaben — konsistent mit den Essen-Ausgaben der App.
 const REWE_CATEGORY = 'Essen'
 const REWE_DESCRIPTION = 'REWE Einkauf'
@@ -53,10 +49,15 @@ export async function syncReweExpenses(userId: string): Promise<SyncResult> {
         return { ...result, error: 'Zugangsdaten konnten nicht entschlüsselt werden.' }
     }
 
-    // 3. Zeitfenster bestimmen.
+    // 3. Zeitfenster bestimmen:
+    //    - nach dem ersten Lauf: ab letztem Sync.
+    //    - beim ersten Lauf: ab dem beim Verbinden gewählten Startdatum (import_since).
+    //    - import_since = NULL → kein Filter, d. h. alle Bons im Postfach.
     const since = connection.last_sync_at
         ? new Date(connection.last_sync_at)
-        : new Date(Date.now() - FIRST_RUN_LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
+        : connection.import_since
+            ? new Date(connection.import_since)
+            : undefined
 
     // 4. Mails abrufen.
     let messages

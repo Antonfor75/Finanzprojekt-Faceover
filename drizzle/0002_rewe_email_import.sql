@@ -8,6 +8,7 @@ CREATE TABLE "email_connections" (
 	"status" text DEFAULT 'connected' NOT NULL,
 	"last_sync_at" timestamp with time zone,
 	"last_error" text,
+	"import_since" timestamp with time zone,
 	CONSTRAINT "email_connections_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint

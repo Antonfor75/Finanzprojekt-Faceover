@@ -441,6 +441,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "import_since": {
+          "name": "import_since",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},

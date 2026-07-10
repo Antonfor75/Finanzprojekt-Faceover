@@ -82,6 +82,8 @@ export const emailConnectionsTable = pgTable('email_connections', {
     status: text('status').notNull().default('connected'), // 'connected' | 'error'
     last_sync_at: timestamp('last_sync_at', { withTimezone: true }),
     last_error: text('last_error'),
+    // Startdatum für den Import: NULL = alle Bons, sonst nur Bons ab diesem Datum.
+    import_since: timestamp('import_since', { withTimezone: true }),
 });
 
 // Dedup + Audit für importierte REWE-eBon-Mails. message_id (RFC822) ist der Idempotenz-Schlüssel.

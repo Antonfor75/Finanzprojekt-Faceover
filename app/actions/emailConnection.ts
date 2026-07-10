@@ -15,6 +15,8 @@ import { verifyMailboxLogin } from '@/utils/mailbox'
 export type SaveConnectionInput = {
     email: string
     appPassword: string
+    /** ISO-Startdatum für den Import; null = alle Bons. */
+    importSince?: string | null
 }
 
 export type ConnectionStatus = {
@@ -23,6 +25,7 @@ export type ConnectionStatus = {
     status?: 'connected' | 'error'
     last_sync_at?: string | null
     last_error?: string | null
+    import_since?: string | null
 }
 
 export async function saveEmailConnection(input: SaveConnectionInput) {
@@ -71,6 +74,10 @@ export async function saveEmailConnection(input: SaveConnectionInput) {
                 secret_encrypted,
                 status: 'connected',
                 last_error: null,
+                import_since: input.importSince ?? null,
+                // Zurücksetzen, damit der gewählte Import-Zeitraum beim nächsten Sync
+                // greift (Dedup über message_id verhindert doppelte Ausgaben).
+                last_sync_at: null,
             },
             { onConflict: 'user_id' },
         )
@@ -90,7 +97,7 @@ export async function getEmailConnectionStatus(): Promise<ConnectionStatus> {
     // Bewusst OHNE secret_encrypted selektieren.
     const { data } = await supabase
         .from('email_connections')
-        .select('email_address, status, last_sync_at, last_error')
+        .select('email_address, status, last_sync_at, last_error, import_since')
         .eq('user_id', user.id)
         .maybeSingle()
 
@@ -101,6 +108,7 @@ export async function getEmailConnectionStatus(): Promise<ConnectionStatus> {
         status: data.status,
         last_sync_at: data.last_sync_at,
         last_error: data.last_error,
+        import_since: data.import_since,
     }
 }
 

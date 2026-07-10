@@ -45,6 +45,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [reweAppPassword, setReweAppPassword] = useState('')
     const [reweBusy, setReweBusy] = useState(false)
     const [reweMessage, setReweMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
+    const [reweScope, setReweScope] = useState<'today' | 'all' | 'date'>('today')
+    const [reweSinceDate, setReweSinceDate] = useState('')
 
     // Income Sources State
     const [showIncome, setShowIncome] = useState(false)
@@ -94,14 +96,31 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             .then((s) => {
                 setReweStatus(s)
                 if (s.email_address) setReweEmail(s.email_address)
+                if (s.connected) {
+                    if (s.import_since) {
+                        setReweScope('date')
+                        setReweSinceDate(new Date(s.import_since).toISOString().split('T')[0])
+                    } else {
+                        setReweScope('all')
+                    }
+                }
             })
             .catch(() => { })
     }, [])
 
+    // Ermittelt das Import-Startdatum aus der Auswahl (null = alle Bons).
+    const computeReweImportSince = (): string | null => {
+        if (reweScope === 'all') return null
+        if (reweScope === 'date') return reweSinceDate ? new Date(reweSinceDate).toISOString() : null
+        const t = new Date()
+        t.setHours(0, 0, 0, 0)
+        return t.toISOString()
+    }
+
     const handleConnectRewe = async () => {
         setReweBusy(true)
         setReweMessage(null)
-        const res = await saveEmailConnection({ email: reweEmail, appPassword: reweAppPassword })
+        const res = await saveEmailConnection({ email: reweEmail, appPassword: reweAppPassword, importSince: computeReweImportSince() })
         setReweBusy(false)
         if (res.success) {
             setReweMessage({ type: 'success', text: 'Postfach erfolgreich verbunden!' })
@@ -1604,6 +1623,9 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 ? `Letzter Abruf: ${new Date(reweStatus.last_sync_at).toLocaleString('de-DE')}`
                                                 : 'Noch kein Abruf erfolgt.'}
                                         </p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Import ab: {reweStatus?.import_since ? new Date(reweStatus.import_since).toLocaleDateString('de-DE') : 'Alle Bons'}
+                                        </p>
                                         {reweStatus?.status === 'error' && reweStatus?.last_error && (
                                             <p className="text-[11px] text-[var(--chart-neg-heavy)] mt-1">Fehler: {reweStatus.last_error}</p>
                                         )}
@@ -1650,6 +1672,44 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                         />
                                     </Field>
 
+                                    {/* Import-Zeitraum wählen */}
+                                    <Field>
+                                        <FieldLabel className="text-xs text-muted-foreground ml-2 mb-1 block">Welche Bons importieren?</FieldLabel>
+                                        <div className="flex bg-muted/70 rounded-xl p-1 gap-1">
+                                            {([
+                                                { key: 'today', label: 'Ab heute' },
+                                                { key: 'all', label: 'Alle' },
+                                                { key: 'date', label: 'Ab Datum' },
+                                            ] as const).map((opt) => (
+                                                <button
+                                                    key={opt.key}
+                                                    type="button"
+                                                    onClick={() => setReweScope(opt.key)}
+                                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 ${reweScope === opt.key ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {reweScope === 'date' && (
+                                            <div className="mt-3">
+                                                <DatePicker
+                                                    date={reweSinceDate}
+                                                    setDate={setReweSinceDate}
+                                                    placeholder="Startdatum wählen"
+                                                    className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary text-sm"
+                                                />
+                                            </div>
+                                        )}
+                                        <p className="text-[11px] text-muted-foreground mt-2 ml-1">
+                                            {reweScope === 'today'
+                                                ? 'Nur Einkäufe ab heute werden übernommen.'
+                                                : reweScope === 'all'
+                                                    ? 'Alle vorhandenen REWE-Bons im Postfach werden übernommen.'
+                                                    : 'Nur Bons ab dem gewählten Datum werden übernommen.'}
+                                        </p>
+                                    </Field>
+
                                     {reweMessage && (
                                         <div className={`flex items-start gap-2 text-sm rounded-xl p-3 ${reweMessage.type === 'success' ? 'bg-[var(--chart-pos)]/10 text-[var(--chart-pos)]' : 'bg-[var(--chart-neg-heavy)]/10 text-[var(--chart-neg-heavy)]'}`}>
                                             {reweMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />}
@@ -1659,7 +1719,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                                     <Button
                                         onClick={handleConnectRewe}
-                                        disabled={!reweEmail || !reweAppPassword || reweBusy}
+                                        disabled={!reweEmail || !reweAppPassword || reweBusy || (reweScope === 'date' && !reweSinceDate)}
                                         className="press w-full h-12 rounded-xl bg-primary hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)] text-primary-foreground font-semibold shadow-none transition-colors duration-200"
                                     >
                                         {reweBusy ? 'Prüfe Verbindung…' : isConnected ? 'Aktualisieren' : 'Verbinden'}
