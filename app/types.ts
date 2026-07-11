@@ -70,6 +70,28 @@ export type EmailConnection = {
     import_since?: string | null // null = alle Bons, sonst Startdatum
 }
 
+export type ReceiptItem = {
+    id: number
+    created_at?: string
+    user_id?: string
+    expense_id: number
+    product_id?: number | null
+    name_raw: string
+    quantity: number // numeric → kommt als String zurück, Number(...) beim Konsumieren
+    unit?: 'stk' | 'kg' | null
+    unit_price?: number | null
+    total_price: number
+    source: 'rewe' | 'manual'
+}
+
+export type Product = {
+    id: number
+    created_at?: string
+    user_id?: string
+    name: string
+    category?: string | null
+}
+
 export type ReweReceipt = {
     id: number
     created_at?: string

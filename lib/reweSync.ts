@@ -1,7 +1,8 @@
 import { supabaseAdmin } from '@/utils/supabase/admin'
 import { decryptSecret } from '@/utils/crypto'
 import { fetchReweMessages } from '@/utils/mailbox'
-import { parseReweEmail } from '@/utils/parseReweEmail'
+import { parseReweEmail, type ParsedReweItem } from '@/utils/parseReweEmail'
+import { createProductMatcher } from '@/lib/productMatching'
 
 /**
  * Sync-Kern für den automatischen REWE-Import.
@@ -18,6 +19,8 @@ const REWE_DESCRIPTION = 'REWE Einkauf'
 
 export type SyncResult = {
     imported: number
+    /** Anzahl der zusätzlich gespeicherten Einzelartikel (Zusatzinfo zu den Ausgaben). */
+    itemsImported: number
     /** Mail war bereits importiert (message_id bekannt) — normaler Fall bei erneutem Abruf. */
     skippedKnown: number
     /** Mail matched die Suche, aber es wurde kein Gesamtbetrag erkannt — Parser-Problem/Format. */
@@ -36,6 +39,7 @@ export type SyncResult = {
 export async function syncReweExpenses(userId: string): Promise<SyncResult> {
     const result: SyncResult = {
         imported: 0,
+        itemsImported: 0,
         skippedKnown: 0,
         skippedUnrecognized: 0,
         skipped: 0,
@@ -89,6 +93,9 @@ export async function syncReweExpenses(userId: string): Promise<SyncResult> {
         .select('message_id')
         .eq('user_id', userId)
     const known = new Set((existing || []).map((r) => r.message_id))
+
+    // Produkt-Matcher einmal pro Lauf (lädt Aliasse/Produkte lazy und cached in-memory).
+    const productMatcher = createProductMatcher(userId)
 
     // 6. Jede neue Mail verarbeiten.
     for (const msg of messages) {
@@ -166,6 +173,11 @@ export async function syncReweExpenses(userId: string): Promise<SyncResult> {
             .update({ expense_id: expense.id })
             .eq('id', receipt.id)
 
+        // 6d. Einzelartikel als Zusatzinfo speichern — best-effort, bricht nichts ab.
+        if (parsed.items?.length) {
+            result.itemsImported += await saveReceiptItems(userId, expense.id, parsed.totalAmount, parsed.items, productMatcher)
+        }
+
         known.add(msg.messageId)
         result.imported++
     }
@@ -198,6 +210,53 @@ export async function syncAllConnections(): Promise<Record<string, SyncResult>> 
     }
 
     return summary
+}
+
+/**
+ * Speichert die Einzelartikel eines Bons als Zusatzinfo zur Ausgabe.
+ * Best-effort: jeder Fehler wird nur geloggt — die Ausgabe selbst bleibt gültig
+ * (Artikel sind laut Anforderung optionale Zusatzinformation).
+ */
+async function saveReceiptItems(
+    userId: string,
+    expenseId: number,
+    totalAmount: number,
+    items: ParsedReweItem[],
+    matcher: ReturnType<typeof createProductMatcher>,
+): Promise<number> {
+    try {
+        const itemSum = items.reduce((s, it) => s + it.totalPrice, 0)
+        if (Math.abs(itemSum - totalAmount) > 0.01) {
+            console.warn(
+                `[reweSync] Artikelsumme ${itemSum.toFixed(2)} ≠ Bon-Total ${totalAmount.toFixed(2)} (expense ${expenseId}) — speichere trotzdem.`,
+            )
+        }
+
+        const rows = []
+        for (const it of items) {
+            rows.push({
+                user_id: userId,
+                expense_id: expenseId,
+                product_id: await matcher.match(it.nameRaw),
+                name_raw: it.nameRaw,
+                quantity: it.quantity,
+                unit: it.unit,
+                unit_price: it.unitPrice,
+                total_price: it.totalPrice,
+                source: 'rewe',
+            })
+        }
+
+        const { error } = await supabaseAdmin.from('receipt_items').insert(rows)
+        if (error) {
+            console.warn('[reweSync] Artikel-Insert fehlgeschlagen:', error.message)
+            return 0
+        }
+        return rows.length
+    } catch (err) {
+        console.warn('[reweSync] Artikel speichern fehlgeschlagen (Ausgabe bleibt gültig):', err)
+        return 0
+    }
 }
 
 async function markConnectionError(userId: string, message: string): Promise<void> {

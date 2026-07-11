@@ -83,7 +83,34 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/rewe-sync
 **vor** dem Anlegen der Ausgabe geschrieben → dieselbe Mail kann nie doppelt gebucht werden,
 auch nicht bei parallelen Läufen.
 
+## Einzelartikel (Phase 2, umgesetzt)
+
+Jeder importierte Bon speichert zusätzlich seine **Artikelzeilen** aus dem eBon-PDF —
+als optionale Zusatzinfo zur Ausgabe (`expenses` bleibt die Quelle der Wahrheit; Fehler
+beim Artikel-Parsing brechen den Import nicht ab).
+
+- **Tabellen** (Migration `drizzle/0003_receipt_items.sql`):
+  - `receipt_items` — Artikel je Ausgabe (`expense_id`, `name_raw`, `quantity`, `unit`,
+    `unit_price`, `total_price`, `source: 'rewe' | 'manual'`). Negativ = Pfand/Rabatt.
+  - `products` — kanonische, store-übergreifende Produkte (Aggregations-Anker;
+    `category`-Spalte für spätere Kategorisierung vorbereitet).
+  - `product_aliases` — Lerntabelle: normalisierter Bon-Text → Produkt (UNIQUE je User).
+- **Parsing** (`utils/parseReweEmail.ts`): `extractPdfLines` rekonstruiert die Bon-Zeilen über
+  die Y-Koordinaten der PDF-Textfragmente; `parseReweItems` parst Artikel-, Mengen-
+  (`2 Stk x 0,49`, `0,326 kg x 2,99 EUR/kg`) und Pfand-Zeilen. Kalibriert gegen 15 echte Bons
+  (Artikelsumme = Bon-Summe bei 15/15). Dry-Run: `npx tsx scripts/rewe-items-test.ts [--lines]`.
+- **Matching** (`utils/productNormalize.ts` + `lib/productMatching.ts`): Rohname → normalisieren
+  (Eigenmarken strippen, Mengen raus, Synonyme wie sauce→sosse falten) → Alias-Exact-Match →
+  Fuzzy (Bigramm-Dice ≥ 0.85, lernt neuen Alias) → sonst neues Produkt. So zeigen
+  „JA! TOMATENSOSSE" (REWE) und „TOMATENSAUCE" (später Lidl) auf dasselbe Produkt.
+- **UI**: Ausgaben mit Artikeln sind in der Transaktionsliste aufklappbar (read-only).
+  Löschen einer Ausgabe löscht ihre Artikel mit.
+- **Kein Backfill**: Bons, die vor Phase 2 importiert wurden, bleiben ohne Artikel.
+
 ## Später (vorbereitet)
-- **Einzelartikel** statt nur Gesamtbetrag: Tabelle `rewe_receipt_items` + erweitertes Parsing.
+- **Produkt-Kategorisierung** (Spalte `products.category` liegt bereit) + Analyse-Tab
+  „Produkte" (Aggregation über `product_id`: „100× Tomatensoße für 100 €").
+- **Manuelle Artikel-Pflege** (`source: 'manual'` liegt bereit).
+- **Weitere Stores** (Lidl & Co.): eigener Mail-Parser, gleiche Tabellen.
 - **OAuth-Button** („Mit Google verbinden"): `provider='oauth'` in `email_connections`,
   OAuth-Branch in `utils/mailbox.ts`, Callback-Route. Rest bleibt unverändert.

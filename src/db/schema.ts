@@ -1,4 +1,4 @@
-import { integer, pgTable, serial, text, numeric, timestamp, boolean, uuid } from 'drizzle-orm/pg-core';
+import { integer, pgTable, serial, text, numeric, timestamp, boolean, uuid, unique, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const expensesTable = pgTable('expenses', {
@@ -98,5 +98,46 @@ export const reweReceiptsTable = pgTable('rewe_receipts', {
     raw_subject: text('raw_subject'),
     imported_at: timestamp('imported_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+// Artikelzeilen zu einer Ausgabe — optionale Zusatzinfo (aus Bon-Import oder später manuell).
+// Hängt bewusst an expense_id (nicht an rewe_receipts), damit manuelle Artikel und
+// künftige Stores dieselbe Struktur nutzen. Keine FK-Constraints (Projekt-Konvention).
+export const receiptItemsTable = pgTable('receipt_items', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
+    expense_id: integer('expense_id').notNull(),
+    product_id: integer('product_id'), // Verweis auf kanonisches Produkt, nullable
+    name_raw: text('name_raw').notNull(), // Originaltext vom Bon ("JA! TOMATENSOSSE")
+    quantity: numeric('quantity').default('1'),
+    unit: text('unit'), // 'stk' | 'kg' | null
+    unit_price: numeric('unit_price'),
+    total_price: numeric('total_price').notNull(), // negativ erlaubt (Pfand-Rückgabe/Rabatt)
+    source: text('source').notNull().default('rewe'), // 'rewe' | 'manual' | später 'lidl' …
+}, (t) => [
+    index('receipt_items_user_expense_idx').on(t.user_id, t.expense_id),
+]);
+
+// Kanonische, store-übergreifende Produkte — der Aggregations-Anker für die Analyse
+// ("100× Tomatensoße"), egal ob der Artikel von REWE, Lidl oder manuell kam.
+export const productsTable = pgTable('products', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
+    name: text('name').notNull(), // z. B. "Tomatensoße"
+    category: text('category'), // vorbereitet für spätere Kategorisierung, bleibt vorerst leer
+});
+
+// Lerntabelle des Matchings: normalisierter Bon-Text → Produkt. Jede neue Schreibweise,
+// die (fuzzy) zugeordnet wurde, landet hier und matcht künftig exakt.
+export const productAliasesTable = pgTable('product_aliases', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
+    alias_normalized: text('alias_normalized').notNull(),
+    product_id: integer('product_id').notNull(),
+}, (t) => [
+    unique('product_aliases_user_alias_unique').on(t.user_id, t.alias_normalized),
+]);
 
 // public.users table removed. Using auth.users instead.

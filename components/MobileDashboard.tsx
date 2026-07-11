@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { loadTheme } from '@/utils/theme'
 import { processWeeklySavings } from '@/app/actions/savings'
-import { ArrowLeft, ArrowUpRight, Settings, Trash2, List, Pencil, Home, Download } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Settings, Trash2, List, Pencil, Home, Download, ChevronDown } from 'lucide-react'
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
@@ -24,7 +24,7 @@ import { calculateGirokontoTimeline } from '@/utils/girokonto'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
-import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource } from '@/app/types'
+import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource, ReceiptItem } from '@/app/types'
 
 type MainView = 'entry' | 'history' | 'settings'
 
@@ -35,6 +35,7 @@ export default function MobileDashboard({
     initialSettings,
     initialAccounts,
     initialIncomeSources,
+    receiptItems = [],
     onUpdate
 }: {
     expenses: Expense[],
@@ -43,6 +44,7 @@ export default function MobileDashboard({
     initialSettings: SettingsType,
     initialAccounts: Account[],
     initialIncomeSources: IncomeSource[],
+    receiptItems?: ReceiptItem[],
     onUpdate?: () => void
 }) {
     // --- APP STATE ---
@@ -53,6 +55,18 @@ export default function MobileDashboard({
     const [selectedDay, setSelectedDay] = useState<Date | null>(null)
     const [historyMode, setHistoryMode] = useState<'calendar' | 'list' | 'analysis'>('calendar')
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+    const [expandedExpenseId, setExpandedExpenseId] = useState<number | null>(null)
+
+    // Artikel (Bon-Positionen) nach Ausgabe gruppiert — optionale Zusatzinfo.
+    const itemsByExpense = useMemo(() => {
+        const map = new Map<number, ReceiptItem[]>()
+        for (const item of receiptItems) {
+            const list = map.get(item.expense_id)
+            if (list) list.push(item)
+            else map.set(item.expense_id, [item])
+        }
+        return map
+    }, [receiptItems])
 
     // --- EFFECT: PROCESS SAVINGS & DISTRIBUTION ON MOUNT ---
     useEffect(() => {
@@ -157,7 +171,10 @@ export default function MobileDashboard({
             }
         }
 
-        // 4. Delete the expense
+        // 4. Delete attached receipt items (optionale Zusatzinfo, sonst Waisen)
+        await supabase.from('receipt_items').delete().eq('expense_id', id)
+
+        // 5. Delete the expense
         await supabase.from('expenses').delete().eq('id', id)
         onUpdate?.()
     }
@@ -525,25 +542,58 @@ export default function MobileDashboard({
                                     ))
                                 )}
                                 {viewLevel === 'transactions' && (
-                                    getTransactions().map(expense => (
-                                        <div key={expense.id} className="ledger-row">
-                                            <div className="min-w-0 flex-1 mr-4">
-                                                <p className="font-medium text-foreground truncate">{expense.description}</p>
-                                                {expense.category && <span className="eyebrow">{expense.category}</span>}
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="amount text-base text-foreground">−€{expense.amount.toFixed(2)}</span>
-                                                <div className="flex gap-1">
-                                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
-                                                        <Pencil className="w-4 h-4" strokeWidth={1.75} />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" onClick={async (e) => { e.stopPropagation(); if (confirm('Löschen?')) await deleteExpenseLocal(expense.id) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-[var(--chart-neg-heavy)] hover:bg-muted">
-                                                        <Trash2 className="w-4 h-4" strokeWidth={1.75} />
-                                                    </Button>
+                                    getTransactions().map(expense => {
+                                        const items = itemsByExpense.get(expense.id)
+                                        const isExpanded = expandedExpenseId === expense.id
+                                        return (
+                                            <div key={expense.id}>
+                                                <div
+                                                    className={`ledger-row ${items ? 'cursor-pointer' : ''}`}
+                                                    onClick={() => { if (items) setExpandedExpenseId(isExpanded ? null : expense.id) }}
+                                                >
+                                                    <div className="min-w-0 flex-1 mr-4">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <p className="font-medium text-foreground truncate">{expense.description}</p>
+                                                            {items && (
+                                                                <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} strokeWidth={2} />
+                                                            )}
+                                                        </div>
+                                                        {expense.category && <span className="eyebrow">{expense.category}</span>}
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="amount text-base text-foreground">−€{expense.amount.toFixed(2)}</span>
+                                                        <div className="flex gap-1">
+                                                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
+                                                                <Pencil className="w-4 h-4" strokeWidth={1.75} />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" onClick={async (e) => { e.stopPropagation(); if (confirm('Löschen?')) await deleteExpenseLocal(expense.id) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-[var(--chart-neg-heavy)] hover:bg-muted">
+                                                                <Trash2 className="w-4 h-4" strokeWidth={1.75} />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
                                                 </div>
+                                                {items && isExpanded && (
+                                                    <div className="pl-4 pr-2 pb-3 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                        {items.map(item => (
+                                                            <div key={item.id} className="flex items-center justify-between text-sm">
+                                                                <span className="text-muted-foreground truncate mr-3">
+                                                                    {item.name_raw}
+                                                                    {item.unit && (
+                                                                        <span className="text-xs ml-1.5 opacity-70">
+                                                                            {Number(item.quantity)} {item.unit === 'kg' ? 'kg' : '×'}{item.unit_price ? ` à €${Number(item.unit_price).toFixed(2)}` : ''}
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                                <span className={`amount text-xs shrink-0 ${Number(item.total_price) < 0 ? 'text-[var(--chart-pos)]' : 'text-muted-foreground'}`}>
+                                                                    €{Number(item.total_price).toFixed(2)}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
-                                    ))
+                                        )
+                                    })
                                 )}
                             </div>
                         )}

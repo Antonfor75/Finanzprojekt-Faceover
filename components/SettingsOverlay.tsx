@@ -139,6 +139,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             const res = await runReweSyncNow()
             if (res.success) {
                 const parts = [`${res.imported} importiert`]
+                if (res.itemsImported) parts.push(`${res.itemsImported} Artikel`)
                 if (res.skippedKnown) parts.push(`${res.skippedKnown} schon bekannt`)
                 if (res.skippedUnrecognized) parts.push(`${res.skippedUnrecognized} nicht erkannt`)
                 if (res.failed) parts.push(`${res.failed} fehlgeschlagen`)

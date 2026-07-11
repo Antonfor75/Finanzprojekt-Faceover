@@ -92,6 +92,13 @@ export async function updateExpense(id: number, formData: FormData) {
 }
 
 export async function deleteExpense(id: number) {
+    // Angehängte Artikel (optionale Zusatzinfo) mitlöschen, sonst bleiben Waisen zurück.
+    const { error: itemsError } = await supabase
+        .from('receipt_items')
+        .delete()
+        .eq('expense_id', id)
+    if (itemsError) console.error('Error deleting receipt items:', itemsError)
+
     const { error } = await supabase
         .from('expenses')
         .delete()
