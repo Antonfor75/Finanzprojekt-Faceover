@@ -24,7 +24,7 @@ import { calculateGirokontoTimeline } from '@/utils/girokonto'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
-import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource, ReceiptItem } from '@/app/types'
+import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 
 type MainView = 'entry' | 'history' | 'settings'
 
@@ -36,6 +36,7 @@ export default function MobileDashboard({
     initialAccounts,
     initialIncomeSources,
     receiptItems = [],
+    products = [],
     onUpdate
 }: {
     expenses: Expense[],
@@ -45,6 +46,7 @@ export default function MobileDashboard({
     initialAccounts: Account[],
     initialIncomeSources: IncomeSource[],
     receiptItems?: ReceiptItem[],
+    products?: Product[],
     onUpdate?: () => void
 }) {
     // --- APP STATE ---
@@ -510,6 +512,8 @@ export default function MobileDashboard({
                                 accounts={initialAccounts}
                                 incomeSources={initialIncomeSources}
                                 currentGiroBalance={currentGiroBalance}
+                                receiptItems={receiptItems}
+                                products={products}
                             />
                         ) : historyMode === 'calendar' ? (
                             <CalendarHistory

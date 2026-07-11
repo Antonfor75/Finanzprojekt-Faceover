@@ -7,10 +7,11 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
 import CashflowTab from './analysis/CashflowTab'
+import PurchasesTab from './analysis/PurchasesTab'
 import { startOfWeek, endOfWeek, isWithinInterval, eachDayOfInterval, format, isSameDay, getDay, subWeeks, getISOWeek, subDays, subYears, getYear, startOfYear, endOfYear, getISOWeekYear, startOfMonth, endOfMonth, addDays, addWeeks, addMonths, addYears } from 'date-fns'
 import { de } from 'date-fns/locale'
 
-import { Expense, FixedCost, Account, IncomeSource } from '@/app/types'
+import { Expense, FixedCost, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
 
 type Props = {
@@ -20,6 +21,8 @@ type Props = {
     accounts: Account[]
     incomeSources: IncomeSource[]
     currentGiroBalance: number
+    receiptItems?: ReceiptItem[]
+    products?: Product[]
 }
 
 const COLORS = ['#FF8042', '#0088FE', '#00C49F', '#FFBB28', '#8884d8', '#ffc658', '#82ca9d']
@@ -38,7 +41,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 // Helper for wealth calculation
 const getMonthKey = (date: Date) => format(date, 'yyyy-MM')
 
-export default function AnalysisView({ expenses, budget, fixedCosts, accounts, incomeSources, currentGiroBalance }: Props) {
+export default function AnalysisView({ expenses, budget, fixedCosts, accounts, incomeSources, currentGiroBalance, receiptItems = [], products = [] }: Props) {
+    const [analysisTab, setAnalysisTab] = useState<'cashflow' | 'purchases'>('cashflow')
     // Lifted state from CashflowTab
     const [cashflowRange, setCashflowRange] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly')
     const [customStartDate, setCustomStartDate] = useState<Date | null>(null)
@@ -512,16 +516,32 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
     return (
         <div className="flex flex-col h-full w-full">
 
-            {/* --- HEADER WITH PDF BUTTON --- */}
+            {/* --- HEADER WITH TABS + PDF BUTTON --- */}
             <div className="flex justify-between items-center pb-6 shrink-0">
                 <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">Analyse</h2>
-                <button
-                    onClick={generateAnalysisPDF}
-                    className="press flex items-center gap-1.5 bg-card border border-border text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200"
-                >
-                    <Download className="w-3.5 h-3.5" strokeWidth={1.75} />
-                    PDF
-                </button>
+                <div className="flex items-center gap-2">
+                    <div className="flex bg-muted/70 rounded-xl p-1 gap-1">
+                        <button
+                            onClick={() => setAnalysisTab('cashflow')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 ${analysisTab === 'cashflow' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Cashflow
+                        </button>
+                        <button
+                            onClick={() => setAnalysisTab('purchases')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 ${analysisTab === 'purchases' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Einkäufe
+                        </button>
+                    </div>
+                    <button
+                        onClick={generateAnalysisPDF}
+                        className="press flex items-center gap-1.5 bg-card border border-border text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200"
+                    >
+                        <Download className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        PDF
+                    </button>
+                </div>
             </div>
 
             {/* --- SCROLLABLE CONTENT --- */}
@@ -533,12 +553,20 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
                 So yes, we should just let the content flow. 
             */}
             <div className="flex-1 space-y-8">
-                <CashflowTab
-                    data12M={cashflowData12M}
-                    dataWeekly={cashflowDataWeekly}
-                    dataYearly={cashflowDataYearly}
-                    dataDaily={cashflowDataDaily90}
-                />
+                {analysisTab === 'cashflow' ? (
+                    <CashflowTab
+                        data12M={cashflowData12M}
+                        dataWeekly={cashflowDataWeekly}
+                        dataYearly={cashflowDataYearly}
+                        dataDaily={cashflowDataDaily90}
+                    />
+                ) : (
+                    <PurchasesTab
+                        expenses={expenses}
+                        receiptItems={receiptItems}
+                        products={products}
+                    />
+                )}
             </div>
         </div>
     )

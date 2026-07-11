@@ -6,7 +6,7 @@ import { supabase } from '@/utils/supabase'
 import MobileDashboard from '@/components/MobileDashboard'
 import LoginScreen from '@/components/LoginScreen'
 import { Loader2 } from 'lucide-react'
-import { Expense, FixedCost, Settings, Account, IncomeSource, ReceiptItem } from '@/app/types'
+import { Expense, FixedCost, Settings, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 
 export default function Home() {
   const router = useRouter()
@@ -18,7 +18,8 @@ export default function Home() {
     settings: Settings,
     accounts: Account[],
     incomeSources: IncomeSource[],
-    receiptItems: ReceiptItem[]
+    receiptItems: ReceiptItem[],
+    products: Product[]
   } | null>(null)
 
   const [authLoading, setAuthLoading] = useState(true)
@@ -88,13 +89,14 @@ export default function Home() {
       // Explicitly checking for user to satisfy Typescript if needed, though session implies it
       if (!user) throw new Error("No user found in session")
 
-      const [expensesRes, fixedCostsRes, accountsRes, settingsRes, incomeSourcesRes, receiptItemsRes] = await Promise.all([
+      const [expensesRes, fixedCostsRes, accountsRes, settingsRes, incomeSourcesRes, receiptItemsRes, productsRes] = await Promise.all([
         supabase.from('expenses').select('*').order('created_at', { ascending: false }),
         supabase.from('fixed_costs').select('*'),
         supabase.from('accounts').select('*'),
         supabase.from('settings').select('*').single(),
         supabase.from('income_sources').select('*'),
-        supabase.from('receipt_items').select('*')
+        supabase.from('receipt_items').select('*'),
+        supabase.from('products').select('*')
       ])
 
       if (expensesRes.error) throw new Error("Expenses: " + expensesRes.error.message)
@@ -109,6 +111,8 @@ export default function Home() {
       // nicht angewendet) darf die App nicht blockieren.
       if (receiptItemsRes.error) console.warn('Receipt Items:', receiptItemsRes.error.message)
       const receiptItemsList = receiptItemsRes.data || []
+      if (productsRes.error) console.warn('Products:', productsRes.error.message)
+      const productsList = productsRes.data || []
 
       // Create default settings if missing
       let finalSettings = settingsObj
@@ -156,7 +160,8 @@ export default function Home() {
         settings: finalSettings,
         accounts: accountsList,
         incomeSources: incomeSourcesList,
-        receiptItems: receiptItemsList
+        receiptItems: receiptItemsList,
+        products: productsList
       })
     } catch (err: any) {
       console.error("Failed to load data", err)
@@ -251,6 +256,7 @@ export default function Home() {
             initialAccounts={data?.accounts || []}
             initialIncomeSources={data?.incomeSources || []}
             receiptItems={data?.receiptItems || []}
+            products={data?.products || []}
             onUpdate={fetchData}
           />
       </div>
