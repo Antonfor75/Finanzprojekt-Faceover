@@ -45,10 +45,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} antialiased`}
-      >
+    <html lang="de" className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable}`}>
+      <body className="antialiased">
         <SWRegister />
         {children}
       </body>

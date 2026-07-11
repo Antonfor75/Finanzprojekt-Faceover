@@ -533,6 +533,53 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
                 So yes, we should just let the content flow. 
             */}
             <div className="flex-1 space-y-8">
+
+                {/* Wochen-Heatstrip: Farbintensität = Tagesausgaben relativ zum Tagesbudget */}
+                {(() => {
+                    const today = new Date()
+                    const wStart = startOfWeek(today, { weekStartsOn: 1 })
+                    const wEnd = endOfWeek(today, { weekStartsOn: 1 })
+                    const days = eachDayOfInterval({ start: wStart, end: wEnd })
+                    const dailyBudget = budget / 7
+                    let weekSpent = 0
+                    const cells = days.map(day => {
+                        const spent = expenses.filter(e => {
+                            const d = new Date(e.expense_date || e.created_at)
+                            return isSameDay(d, day) && !e.category?.startsWith('Konto:')
+                        }).reduce((s, e) => s + Number(e.amount), 0)
+                        weekSpent += spent
+                        const isFuture = day > today && !isSameDay(day, today)
+                        const ratio = dailyBudget > 0 ? spent / dailyBudget : 0
+                        let bg = 'var(--bg-muted)'
+                        if (!isFuture && spent > 0) {
+                            if (ratio > 1.25) bg = 'var(--chart-neg-heavy)'
+                            else if (ratio > 0.75) bg = 'var(--color-primary)'
+                            else if (ratio > 0.35) bg = 'color-mix(in srgb, var(--color-primary) 55%, transparent)'
+                            else bg = 'color-mix(in srgb, var(--color-primary) 25%, transparent)'
+                        }
+                        return { day, isFuture, bg }
+                    })
+                    return (
+                        <div className="surface p-4">
+                            <div className="flex justify-between items-baseline mb-3">
+                                <p className="text-sm font-semibold text-foreground">Diese Woche</p>
+                                <p className="amount text-xs text-muted-foreground">€{weekSpent.toFixed(0)} / €{budget.toFixed(0)}</p>
+                            </div>
+                            <div className="flex gap-1.5">
+                                {cells.map(({ day, isFuture, bg }, i) => (
+                                    <div key={i} className="flex-1 text-center min-w-0">
+                                        <div
+                                            className="h-8 rounded-lg"
+                                            style={isFuture ? { border: '1px dashed var(--color-border)' } : { backgroundColor: bg }}
+                                        />
+                                        <p className="text-[10px] text-muted-foreground mt-1">{format(day, 'EEEEEE', { locale: de })}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )
+                })()}
+
                 <CashflowTab
                     data12M={cashflowData12M}
                     dataWeekly={cashflowDataWeekly}
