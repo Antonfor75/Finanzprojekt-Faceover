@@ -1,5 +1,6 @@
 import { addDays, format, getDaysInMonth, getDaysInYear } from 'date-fns'
 import { Expense, IncomeSource, FixedCost } from '@/app/types'
+import { isBudgetRelevantExpense } from './funAccount'
 
 export interface TimelineEntry {
     date: Date;
@@ -52,7 +53,9 @@ export function calculateGirokontoTimeline(
     const timeline: TimelineEntry[] = []
 
     const expensesByDay: Record<string, number> = {}
-    expenses.forEach(e => {
+    // Account-paid expenses (savings/fun) are budget-neutral: the money already
+    // left the budget via the linked fixed cost, so counting them here would double-count.
+    expenses.filter(isBudgetRelevantExpense).forEach(e => {
         const key = format(new Date(e.expense_date || e.created_at), 'yyyy-MM-dd')
         expensesByDay[key] = (expensesByDay[key] || 0) + Number(e.amount)
     })

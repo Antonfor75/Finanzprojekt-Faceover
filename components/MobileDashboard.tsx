@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { loadTheme } from '@/utils/theme'
 import { processWeeklySavings } from '@/app/actions/savings'
-import { Wallet, ChevronRight, ArrowLeft, Settings, Trash2, List, Pencil, X, Home, PiggyBank, Download } from 'lucide-react'
+import { processFunAccountFeeds } from '@/app/actions/funAccount'
+import { Wallet, ChevronRight, ArrowLeft, Settings, Trash2, List, Pencil, X, Home, PiggyBank, Download, Sparkles } from 'lucide-react'
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
@@ -19,8 +20,10 @@ import { Input } from "@/components/ui/input"
 import AnalysisView from './AnalysisView'
 import WeeklyBarChart from './WeeklyBarChart'
 import GirokontoView from './GirokontoView'
+import FunAccountView from './FunAccountView'
 // import DashboardHealth from './DashboardHealth' // REMOVED
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
+import { isBudgetRelevantExpense } from '@/utils/funAccount'
 
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -50,6 +53,7 @@ export default function MobileDashboard({
     const [view, setView] = useState<MainView>('entry')
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const [showGirokonto, setShowGirokonto] = useState(false)
+    const [openFunAccountId, setOpenFunAccountId] = useState<number | null>(null)
     const [viewLevel, setViewLevel] = useState<'weeks' | 'days' | 'transactions'>('weeks')
     const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null)
     const [selectedDay, setSelectedDay] = useState<Date | null>(null)
@@ -68,6 +72,10 @@ export default function MobileDashboard({
 
             // 1. Process Weekly Savings (The "Sunday Logic")
             await processWeeklySavings(user.id)
+
+            // 1b. Credit monthly feeds to fun accounts (lazy, idempotent)
+            const feedResult = await processFunAccountFeeds()
+            if (feedResult.credited > 0) onUpdate?.()
 
             // 2. Process Monthly Distributions (The existing logic)
             const { data: accounts } = await supabase.from('accounts').select('*')
@@ -237,10 +245,10 @@ export default function MobileDashboard({
     const weeklyIncome = calculateWeeklyIncome()
 
     // Expenses for CURRENT WEEK ONLY
-    // Filter out 'Konto:' expenses? Assuming yes.
+    // Account-paid expenses (savings/fun) are budget-neutral and excluded.
     const relevantExpensesThisWeek = expenses.filter(e => {
         const d = new Date(e.expense_date || e.created_at)
-        return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }) && !e.category?.startsWith('Konto:')
+        return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }) && isBudgetRelevantExpense(e)
     })
 
     const totalSpentThisWeek = relevantExpensesThisWeek.reduce((acc, curr) => acc + Number(curr.amount), 0)
@@ -391,6 +399,23 @@ export default function MobileDashboard({
         )
     }
 
+    const openFunAccount = openFunAccountId !== null
+        ? initialAccounts.find(a => a.id === openFunAccountId)
+        : null
+
+    if (openFunAccount) {
+        const feedCost = initialFixedCosts.find(fc => fc.linked_account_id === openFunAccount.id)
+        return (
+            <FunAccountView
+                account={openFunAccount}
+                monthlyFeed={feedCost ? Number(feedCost.amount) : null}
+                expenses={expenses}
+                onBack={() => setOpenFunAccountId(null)}
+                onUpdate={onUpdate}
+            />
+        )
+    }
+
     if (showGirokonto) {
         return (
             <GirokontoView
@@ -449,6 +474,41 @@ export default function MobileDashboard({
                                 Dynamisch berechnet
                             </p>
                         </div>
+
+                        {/* BEREICH 2b: Spaßkonten (Frosted Glass Cards) */}
+                        {initialAccounts.filter(a => a.type === 'fun').map(acc => {
+                            const feedCost = initialFixedCosts.find(fc => fc.linked_account_id === acc.id)
+                            return (
+                                <div key={acc.id} className="w-full -mt-2">
+                                    <div
+                                        onClick={() => setOpenFunAccountId(acc.id)}
+                                        className="bg-white/70 backdrop-blur-2xl border border-white/60 rounded-[2rem] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:scale-[1.02] transition-transform cursor-pointer active:scale-95"
+                                    >
+                                        <div className="flex items-center justify-between z-10 relative">
+                                            <div className="flex items-center gap-5">
+                                                <div className="p-4 bg-white rounded-2xl text-primary shadow-sm">
+                                                    <Sparkles className="w-8 h-8" strokeWidth={1.5} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-light uppercase tracking-widest text-muted-foreground mb-1">{acc.name}</p>
+                                                    <p className="text-2xl font-light text-foreground">
+                                                        €{Number(acc.amount).toFixed(2)}
+                                                    </p>
+                                                    {feedCost && Number(feedCost.amount) > 0 && (
+                                                        <p className="text-[10px] text-muted-foreground/70 font-medium mt-0.5">
+                                                            +€{Number(feedCost.amount).toFixed(2)} / Monat
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="h-full flex flex-col justify-center items-end">
+                                                <ChevronRight className="text-primary/40 w-6 h-6" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })}
 
                         {/* BEREICH 3: Eingabe-Panel (Frosted Glass Container) */}
                         <div className="bg-white/70 backdrop-blur-2xl border border-white/60 rounded-[2rem] p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] z-10 overflow-hidden mt-2">

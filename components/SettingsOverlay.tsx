@@ -10,6 +10,7 @@ import ImportWizard from '@/components/ImportWizard'
 import HelpModal from '@/components/HelpModal'
 // Set worker source for pdfjs
 import { supabase } from '@/utils/supabase'
+import { addFunAccount, setFunAccountFeed } from '@/app/actions/funAccount'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -61,7 +62,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [newAccountTargetAmount, setNewAccountTargetAmount] = useState('') // Target Amount
     const [newAccountTargetDate, setNewAccountTargetDate] = useState('') // Target Date
     const [newAccountMonths, setNewAccountMonths] = useState('') // For distribution
-    const [newAccountType, setNewAccountType] = useState<'distribution' | 'savings'>('distribution')
+    const [newAccountType, setNewAccountType] = useState<'distribution' | 'savings' | 'fun'>('distribution')
+    const [newAccountFeed, setNewAccountFeed] = useState('') // Monthly feed for fun accounts
     const [newAccountValidFrom, setNewAccountValidFrom] = useState(new Date().toISOString().split('T')[0]) // Start Date for distribution
 
     const [currentTheme, setCurrentTheme] = useState('paper')
@@ -303,6 +305,23 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { alert('Nicht eingeloggt'); return }
 
+        if (newAccountType === 'fun') {
+            const result = await addFunAccount(
+                newAccountName,
+                Number(newAccountAmount),
+                newAccountFeed ? Number(newAccountFeed) : null
+            )
+            if (!result.success) {
+                alert(result.error || 'Fehler beim Anlegen')
+                return
+            }
+            onUpdate?.()
+            setNewAccountName('')
+            setNewAccountAmount('')
+            setNewAccountFeed('')
+            return
+        }
+
         let months = 0
         let accountData: any = {
             name: newAccountName,
@@ -360,6 +379,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [editAccountTargetDate, setEditAccountTargetDate] = useState('')
     const [editAccountMonths, setEditAccountMonths] = useState('')
     const [editAccountValidFrom, setEditAccountValidFrom] = useState('')
+    const [editAccountFeed, setEditAccountFeed] = useState('') // Monthly feed for fun accounts
 
     const handleStartEditAccount = (acc: Account) => {
         setEditingAccountId(acc.id)
@@ -369,6 +389,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         setEditAccountTargetDate(acc.target_date ? new Date(acc.target_date).toISOString().split('T')[0] : '')
         setEditAccountMonths(acc.months ? acc.months.toString() : '')
         setEditAccountValidFrom(acc.valid_from ? new Date(acc.valid_from).toISOString().split('T')[0] : '')
+        const feedCost = fixedCosts.find(fc => fc.linked_account_id === acc.id)
+        setEditAccountFeed(acc.type === 'fun' && feedCost ? Number(feedCost.amount).toString() : '')
     }
 
     const handleSaveEditAccount = async () => {
@@ -388,7 +410,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
         if (currentAccount.type === 'distribution') {
             updates.months = Number(editAccountMonths)
-        } else {
+        } else if (currentAccount.type === 'savings') {
             updates.target_amount = editAccountTargetAmount ? Number(editAccountTargetAmount) : null
             updates.target_date = editAccountTargetDate ? new Date(editAccountTargetDate).toISOString() : null
         }
@@ -399,6 +421,12 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             console.error(error)
             alert('Fehler beim Speichern')
             return
+        }
+
+        // 2b. Sync monthly feed (if Fun Account)
+        if (currentAccount.type === 'fun') {
+            const result = await setFunAccountFeed(editingAccountId, editAccountFeed ? Number(editAccountFeed) : null)
+            if (!result.success) console.error('Error syncing fun account feed:', result.error)
         }
 
         // 2. Sync Linked Fixed Cost (if Savings)
@@ -480,6 +508,10 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
             // Also delete linked fixed costs
             const { error: fcError } = await supabase.from('fixed_costs').delete().eq('linked_account_id', id)
             if (fcError) console.error('Error deleting linked fixed cost', fcError)
+
+            // Also delete deposit history (fun accounts)
+            const { error: txError } = await supabase.from('account_transactions').delete().eq('account_id', id)
+            if (txError) console.error('Error deleting account transactions', txError)
 
             onUpdate?.()
         }
@@ -604,7 +636,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
         const accountsData = accounts.map(acc => [
             acc.name,
-            acc.type === 'savings' ? 'Sparkonto' : 'Aufteilung',
+            acc.type === 'savings' ? 'Sparkonto' : acc.type === 'fun' ? 'Spaßkonto' : 'Aufteilung',
             `€${acc.amount.toFixed(2)}`,
             acc.type === 'distribution' ? acc.months.toString() : '-',
             acc.valid_from ? new Date(acc.valid_from).toLocaleDateString('de-DE') : '-'
@@ -868,6 +900,12 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                     >
                                         Sparkonto
                                     </button>
+                                    <button
+                                        onClick={() => setNewAccountType('fun')}
+                                        className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${newAccountType === 'fun' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        Spaßkonto
+                                    </button>
                                 </div>
 
                                 <FieldGroup className="space-y-4">
@@ -889,6 +927,18 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
                                             />
                                         </Field>
+                                        {newAccountType === 'fun' && (
+                                            <Field className="flex-1">
+                                                <Input
+                                                    type="number"
+                                                    placeholder="€ / Monat (Optional)"
+                                                    value={newAccountFeed}
+                                                    onChange={(e) => setNewAccountFeed(e.target.value)}
+                                                    className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary"
+                                                    title="Monatliche automatische Einzahlung (Optional)"
+                                                />
+                                            </Field>
+                                        )}
                                         {newAccountType === 'distribution' && (
                                             <Field className="flex-1">
                                                 <Input
@@ -900,16 +950,18 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 />
                                             </Field>
                                         )}
-                                        <Field className="flex-1">
-                                            <Input
-                                                type="date"
-                                                placeholder="Startdatum"
-                                                value={newAccountValidFrom}
-                                                onChange={(e) => setNewAccountValidFrom(e.target.value)}
-                                                className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary text-sm"
-                                                title="Startdatum (Optional)"
-                                            />
-                                        </Field>
+                                        {newAccountType !== 'fun' && (
+                                            <Field className="flex-1">
+                                                <Input
+                                                    type="date"
+                                                    placeholder="Startdatum"
+                                                    value={newAccountValidFrom}
+                                                    onChange={(e) => setNewAccountValidFrom(e.target.value)}
+                                                    className="h-12 rounded-2xl bg-card border-transparent shadow-sm focus-visible:ring-primary text-sm"
+                                                    title="Startdatum (Optional)"
+                                                />
+                                            </Field>
+                                        )}
                                     </div>
 
                                     {newAccountType === 'savings' && (
@@ -1003,6 +1055,17 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                                 </>
                                                             )}
                                                         </div>
+                                                        {acc.type === 'fun' && (
+                                                            <div className="flex gap-2 items-center">
+                                                                <Input
+                                                                    type="number"
+                                                                    value={editAccountFeed}
+                                                                    onChange={e => setEditAccountFeed(e.target.value)}
+                                                                    className="flex-1 rounded-xl bg-muted border-transparent focus-visible:ring-primary"
+                                                                    placeholder="€ / Monat (leer = kein Feed)"
+                                                                />
+                                                            </div>
+                                                        )}
                                                         {acc.type === 'savings' && (
                                                             <div className="flex gap-2">
                                                                 <Input
@@ -1042,8 +1105,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <p className="font-bold text-foreground text-lg">{acc.name}</p>
-                                                        <Badge variant="secondary" className={`text-[10px] px-2 py-0 rounded-full font-bold uppercase ${acc.type === 'savings' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                            {acc.type === 'savings' ? 'Sparkonto' : 'Aufteilung'}
+                                                        <Badge variant="secondary" className={`text-[10px] px-2 py-0 rounded-full font-bold uppercase ${acc.type === 'savings' ? 'bg-green-100 text-green-700' : acc.type === 'fun' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                            {acc.type === 'savings' ? 'Sparkonto' : acc.type === 'fun' ? 'Spaßkonto' : 'Aufteilung'}
                                                         </Badge>
                                                     </div>
                                                     <div className="flex flex-wrap gap-2 text-xs text-muted-foreground font-medium mt-1">
@@ -1063,6 +1126,14 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                                                 Ziel: €{acc.target_amount} bis {acc.target_date ? new Date(acc.target_date).toLocaleDateString() : '?'}
                                                             </Badge>
                                                         )}
+                                                        {acc.type === 'fun' && (() => {
+                                                            const feed = fixedCosts.find(fc => fc.linked_account_id === acc.id)
+                                                            return feed ? (
+                                                                <Badge variant="outline" className="bg-pink-50 text-pink-700 px-2 py-0.5 rounded-lg border-pink-100">
+                                                                    +€{Number(feed.amount).toFixed(2)} / Monat
+                                                                </Badge>
+                                                            ) : null
+                                                        })()}
                                                     </div>
                                                     {/* Progress Bar for Savings */}
                                                     {acc.type === 'savings' && acc.target_amount && (
@@ -1093,7 +1164,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl">
                             <p className="text-xs text-primary/80 leading-relaxed text-center">
                                 <b>Aufteilung:</b> Guthaben wird monatlich ausgezahlt.<br />
-                                <b>Sparkonto:</b> Setze ein Sparziel. Eine automatische Fixkoste wird erstellt, um das Ziel zu erreichen.
+                                <b>Sparkonto:</b> Setze ein Sparziel. Eine automatische Fixkoste wird erstellt, um das Ziel zu erreichen.<br />
+                                <b>Spaßkonto:</b> Topf für Freizeit. Zahle manuell ein oder lass monatlich automatisch Geld einzahlen — Ausgaben davon belasten dein Budget nicht.
                             </p>
                         </div>
 

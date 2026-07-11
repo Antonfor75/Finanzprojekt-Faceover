@@ -2,8 +2,9 @@
 
 import { useRef, useState } from 'react'
 import { supabase } from '@/utils/supabase'
+import { addAccountExpense } from '@/app/actions/funAccount'
 import { Account } from '@/app/types'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { Calendar } from '@/components/ui/calendar'
@@ -17,6 +18,9 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
     const [isCalendarOpen, setIsCalendarOpen] = useState(false)
 
     const savingsAccounts = accounts.filter(a => a.type === 'savings')
+    const funAccounts = accounts.filter(a => a.type === 'fun')
+    // 'budget' = normal weekly budget, otherwise the fun account id
+    const [paymentSource, setPaymentSource] = useState<'budget' | number>('budget')
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -40,6 +44,21 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
         }
 
         try {
+            // PAY FROM FUN ACCOUNT: budget-neutral, keeps the real category
+            if (paymentSource !== 'budget') {
+                const result = await addAccountExpense(paymentSource, amount, category, description, expense_date)
+                if (!result.success) {
+                    alert(result.error || 'Fehler beim Speichern.')
+                } else {
+                    formRef.current?.reset()
+                    setDate(new Date())
+                    setPaymentSource('budget')
+                    onRefresh?.()
+                }
+                setLoading(false)
+                return
+            }
+
             let accountIdForExpense: number | null = null
 
             // CHECK IF CATEGORY IS A SAVINGS ACCOUNT
@@ -164,6 +183,37 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                 </Popover>
             </div>
 
+            {/* Zahlen von: Budget | Spaßkonto */}
+            {funAccounts.length > 0 && (
+                <div className="w-full px-4">
+                    <div className="flex bg-primary/10 rounded-2xl p-1 gap-1">
+                        <button
+                            type="button"
+                            onClick={() => setPaymentSource('budget')}
+                            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${paymentSource === 'budget' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
+                        >
+                            Budget
+                        </button>
+                        {funAccounts.map(acc => (
+                            <button
+                                key={acc.id}
+                                type="button"
+                                onClick={() => setPaymentSource(acc.id)}
+                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1 ${paymentSource === acc.id ? 'bg-card shadow-sm text-primary' : 'text-muted-foreground'}`}
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                <span className="truncate">{acc.name}</span>
+                            </button>
+                        ))}
+                    </div>
+                    {paymentSource !== 'budget' && (
+                        <p className="text-[10px] text-center text-muted-foreground/70 font-medium mt-2 uppercase tracking-wider">
+                            Guthaben: €{Number(funAccounts.find(a => a.id === paymentSource)?.amount ?? 0).toFixed(2)} · Budget bleibt unberührt
+                        </p>
+                    )}
+                </div>
+            )}
+
             <div className="w-full px-4">
                 <select
                     name="category"
@@ -180,7 +230,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                         <option value="Sonstiges">Sonstiges 📦</option>
                     </optgroup>
 
-                    {savingsAccounts.length > 0 && (
+                    {savingsAccounts.length > 0 && paymentSource === 'budget' && (
                         <optgroup label="Von Sparkonto zahlen">
                             {savingsAccounts.map(acc => (
                                 <option key={acc.id} value={`account:${acc.id}`}>
