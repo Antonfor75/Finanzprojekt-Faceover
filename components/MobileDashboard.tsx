@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { loadTheme } from '@/utils/theme'
 import { processWeeklySavings } from '@/app/actions/savings'
-import { ArrowLeft, ArrowUpRight, Settings, Trash2, List, Pencil, Plus, Home, Download, TrendingUp, TrendingDown, CalendarClock, Check, ChevronDown } from 'lucide-react'
+import { processFunAccountFeeds } from '@/app/actions/funAccount'
+import { ArrowLeft, ArrowUpRight, Settings, Trash2, List, Pencil, Plus, Home, Download, TrendingUp, TrendingDown, CalendarClock, Check, ChevronDown, Wallet, ChevronRight, X, PiggyBank, Sparkles } from 'lucide-react'
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, getDaysInMonth } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
@@ -18,8 +19,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import AnalysisView from './AnalysisView'
 import GirokontoView from './GirokontoView'
+import FunAccountView from './FunAccountView'
 // import DashboardHealth from './DashboardHealth' // REMOVED
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
+import { isBudgetRelevantExpense } from '@/utils/funAccount'
 
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -52,6 +55,7 @@ export default function MobileDashboard({
     // --- APP STATE ---
     const [view, setView] = useState<MainView>('entry')
     const [showGirokonto, setShowGirokonto] = useState(false)
+    const [openFunAccountId, setOpenFunAccountId] = useState<number | null>(null)
     const [viewLevel, setViewLevel] = useState<'weeks' | 'days' | 'transactions'>('weeks')
     const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null)
     const [selectedDay, setSelectedDay] = useState<Date | null>(null)
@@ -83,6 +87,10 @@ export default function MobileDashboard({
 
             // 1. Process Weekly Savings (The "Sunday Logic")
             await processWeeklySavings(user.id)
+
+            // 1b. Credit monthly feeds to fun accounts (lazy, idempotent)
+            const feedResult = await processFunAccountFeeds()
+            if (feedResult.credited > 0) onUpdate?.()
 
             // 2. Process Monthly Distributions (The existing logic)
             const { data: accounts } = await supabase.from('accounts').select('*')
@@ -256,10 +264,10 @@ export default function MobileDashboard({
     const weeklyIncome = calculateWeeklyIncome()
 
     // Expenses for CURRENT WEEK ONLY
-    // Filter out 'Konto:' expenses? Assuming yes.
+    // Account-paid expenses (savings/fun) are budget-neutral and excluded.
     const relevantExpensesThisWeek = expenses.filter(e => {
         const d = new Date(e.expense_date || e.created_at)
-        return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }) && !e.category?.startsWith('Konto:')
+        return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }) && isBudgetRelevantExpense(e)
     })
 
     const totalSpentThisWeek = relevantExpensesThisWeek.reduce((acc, curr) => acc + Number(curr.amount), 0)
@@ -452,6 +460,23 @@ export default function MobileDashboard({
         return { category: topCat, pct }
     })()
 
+    const openFunAccount = openFunAccountId !== null
+        ? initialAccounts.find(a => a.id === openFunAccountId)
+        : null
+
+    if (openFunAccount) {
+        const feedCost = initialFixedCosts.find(fc => fc.linked_account_id === openFunAccount.id)
+        return (
+            <FunAccountView
+                account={openFunAccount}
+                monthlyFeed={feedCost ? Number(feedCost.amount) : null}
+                expenses={expenses}
+                onBack={() => setOpenFunAccountId(null)}
+                onUpdate={onUpdate}
+            />
+        )
+    }
+
     if (showGirokonto) {
         return (
             <GirokontoView
@@ -556,6 +581,30 @@ export default function MobileDashboard({
                                         </svg>
                                     )}
                                 </button>
+
+                                {/* Spaßkonten — Logik aus dem Fun-Account-Branch, Optik ans neue Design angepasst */}
+                                {initialAccounts.filter(a => a.type === 'fun').map(acc => {
+                                    const feedCost = initialFixedCosts.find(fc => fc.linked_account_id === acc.id)
+                                    return (
+                                        <button key={acc.id} onClick={() => setOpenFunAccountId(acc.id)} className="surface press w-full p-4 text-left group">
+                                            <div className="flex items-center gap-3">
+                                                <span className="w-9 h-9 rounded-xl bg-[var(--color-primary)]/12 text-primary flex items-center justify-center shrink-0">
+                                                    <Sparkles className="w-4.5 h-4.5" strokeWidth={1.75} />
+                                                </span>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-sm font-semibold text-foreground truncate">{acc.name}</p>
+                                                    {feedCost && Number(feedCost.amount) > 0 && (
+                                                        <p className="text-xs text-muted-foreground mt-0.5"><span className="amount">+€{Number(feedCost.amount).toFixed(2)}</span> / Monat</p>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <p className="amount text-sm text-foreground">€{Number(acc.amount).toFixed(2)}</p>
+                                                    <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
+                                                </div>
+                                            </div>
+                                        </button>
+                                    )
+                                })}
 
                                 {nextFixedCost && (
                                     <div className="surface p-4 flex items-center gap-3">

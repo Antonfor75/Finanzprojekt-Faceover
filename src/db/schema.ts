@@ -46,7 +46,7 @@ export const accountsTable = pgTable('accounts', {
     target_amount: numeric('target_amount'),
     target_date: timestamp('target_date', { withTimezone: true }),
     months: integer('months').notNull(),
-    type: text('type'), // 'distribution' | 'savings'
+    type: text('type'), // 'distribution' | 'savings' | 'fun'
     processed_month: text('processed_month'),
     valid_from: timestamp('valid_from', { withTimezone: true }),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
@@ -60,6 +60,17 @@ export const incomeSourcesTable = pgTable('income_sources', {
     valid_from: timestamp('valid_from', { withTimezone: true }).defaultNow().notNull(),
     valid_to: timestamp('valid_to', { withTimezone: true }), // Nullable = Open End
     execution_day: integer('execution_day'),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
+});
+
+export const accountTransactionsTable = pgTable('account_transactions', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    account_id: integer('account_id').notNull(),
+    amount: numeric('amount').notNull(), // positive = deposit
+    type: text('type').notNull(), // 'manual_deposit' | 'auto_deposit'
+    note: text('note'),
+    transaction_date: timestamp('transaction_date', { withTimezone: true }).defaultNow().notNull(),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 

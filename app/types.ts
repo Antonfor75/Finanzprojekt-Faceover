@@ -28,7 +28,18 @@ export type Account = {
     months: number
     processed_month?: string
     valid_from?: string | null
-    type: 'distribution' | 'savings'
+    type: 'distribution' | 'savings' | 'fun'
+    user_id?: string
+}
+
+export type AccountTransaction = {
+    id: number
+    created_at: string
+    account_id: number
+    amount: number
+    type: 'manual_deposit' | 'auto_deposit'
+    note?: string | null
+    transaction_date: string
     user_id?: string
 }
 
