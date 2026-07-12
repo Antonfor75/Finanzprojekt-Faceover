@@ -58,7 +58,7 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
             </div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-2 flex-1 auto-rows-[1fr]">
+            <div className="grid grid-cols-7 gap-1.5">
                 {calendarDays.map((day, idx) => {
                     const dailyTotal = getDailyTotal(day)
                     const isOverBudget = dailyTotal > dailyBudget
@@ -71,7 +71,7 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
                             key={idx}
                             onClick={() => onDayClick(day)}
                             className={cn(
-                                "press relative rounded-xl flex flex-col items-center justify-between p-1.5 h-24 sm:h-28 transition-colors duration-200 cursor-pointer overflow-hidden",
+                                "press relative rounded-lg flex flex-col items-center justify-between p-1 h-16 sm:h-20 transition-colors duration-200 cursor-pointer overflow-hidden",
                                 isCurrentMonth ? "bg-card border border-border hover:bg-muted/40" : "bg-transparent opacity-30",
                                 hasExpenses && isOverBudget && isCurrentMonth ? "bg-[var(--chart-neg)]/8 border-[var(--chart-neg)]/25" : ""
                             )}
@@ -92,13 +92,13 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
                                 <div className="w-full flex justify-center mt-auto pb-1">
                                     <span
                                         className={cn(
-                                            "amount text-[11px] sm:text-xs px-1.5 py-0.5 rounded-md w-full text-center truncate",
+                                            "amount text-[10px] sm:text-xs px-0.5 py-0.5 rounded w-full text-center truncate",
                                             isOverBudget
                                                 ? "text-[var(--chart-neg-heavy)] bg-[var(--chart-neg)]/12"
                                                 : "text-foreground/80 bg-muted/60"
                                         )}
                                     >
-                                        −€{dailyTotal.toFixed(0)}
+                                        −{dailyTotal.toFixed(0)}
                                     </span>
                                 </div>
                             )}

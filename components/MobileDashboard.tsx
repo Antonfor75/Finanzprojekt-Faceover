@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { loadTheme } from '@/utils/theme'
 import { processWeeklySavings } from '@/app/actions/savings'
-import { ArrowLeft, ArrowUpRight, Settings, Trash2, List, Pencil, Home, Download, ChevronDown } from 'lucide-react'
-import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval } from 'date-fns'
+import { ArrowLeft, ArrowUpRight, Settings, Trash2, List, Pencil, Plus, Home, Download, TrendingUp, TrendingDown, CalendarClock, Check, ChevronDown } from 'lucide-react'
+import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, getDaysInMonth } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
 
@@ -58,6 +58,7 @@ export default function MobileDashboard({
     const [historyMode, setHistoryMode] = useState<'calendar' | 'list' | 'analysis'>('calendar')
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
     const [expandedExpenseId, setExpandedExpenseId] = useState<number | null>(null)
+    const [showAddSheet, setShowAddSheet] = useState(false)
 
     // Artikel (Bon-Positionen) nach Ausgabe gruppiert — optionale Zusatzinfo.
     const itemsByExpense = useMemo(() => {
@@ -130,11 +131,12 @@ export default function MobileDashboard({
     }, []) // Run ONCE on mount. onUpdate dependency caused infinite loop.
 
     // --- CALCULATE GIROKONTO BALANCE (Dynamic Net Cashflow) ---
-    const currentGiroBalance = useMemo(() => {
-        if (expenses.length === 0 && initialIncomeSources.length === 0) return 0
+    const giroData = useMemo(() => {
+        if (expenses.length === 0 && initialIncomeSources.length === 0) return { finalBalance: 0, timeline: [] as { date: Date; balance: number }[] }
         const result = calculateGirokontoTimeline(expenses, initialIncomeSources, initialFixedCosts)
-        return result.finalBalance
+        return { finalBalance: result.finalBalance, timeline: result.timeline }
     }, [expenses, initialFixedCosts, initialIncomeSources])
+    const currentGiroBalance = giroData.finalBalance
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
@@ -395,6 +397,61 @@ export default function MobileDashboard({
 
 
 
+    // --- FOKUS-RING & INSIGHTS (derived display data, no new logic) ---
+    const isoDay = ((now.getDay() + 6) % 7) + 1 // Mo=1 … So=7
+    const daysLeftInWeek = 8 - isoDay
+    const dailyAllowance = daysLeftInWeek > 0 ? currentBalance / daysLeftInWeek : currentBalance
+    const RING_R = 96
+    const RING_CIRC = 2 * Math.PI * RING_R
+    const ringProgress = !isPositive ? 1 : (weeklyBudget > 0 ? Math.min(1, Math.max(0, currentBalance / weeklyBudget)) : 0)
+
+    // Girokonto sparkline: letzte 30 Tage, normalisiert auf 100x36 viewBox
+    const sparkPoints = (() => {
+        const tl = giroData.timeline.slice(-30)
+        if (tl.length < 2) return ''
+        const vals = tl.map(t => t.balance)
+        const min = Math.min(...vals)
+        const range = (Math.max(...vals) - min) || 1
+        return tl.map((t, i) => `${((i / (tl.length - 1)) * 100).toFixed(1)},${(33 - ((t.balance - min) / range) * 30).toFixed(1)}`).join(' ')
+    })()
+
+    // Nächste Fixkosten-Abbuchung (nur wenn execution_day gepflegt ist)
+    const nextFixedCost = (() => {
+        const today = now.getDate()
+        const dim = getDaysInMonth(now)
+        let best: { title: string; amount: number; days: number } | null = null
+        for (const fc of activeFixedCostsForBudget) {
+            if (!fc.execution_day) continue
+            let d = fc.execution_day - today
+            if (d < 0) d += dim
+            if (best === null || d < best.days) best = { title: fc.title, amount: Number(fc.amount), days: d }
+        }
+        return best
+    })()
+
+    // Kategorie-Trend: größte Kategorie dieser Woche vs. Ø der 4 Vorwochen
+    const categoryInsight = (() => {
+        if (relevantExpensesThisWeek.length === 0) return null
+        const catTotals: Record<string, number> = {}
+        relevantExpensesThisWeek.forEach(e => {
+            const c = e.category || 'Sonstiges'
+            catTotals[c] = (catTotals[c] || 0) + Number(e.amount)
+        })
+        const [topCat, topAmt] = Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0]
+        const prevStart = new Date(currentWeekStart)
+        prevStart.setDate(prevStart.getDate() - 28)
+        const prevSpend = expenses.filter(e => {
+            const d = getDate(e)
+            return d >= prevStart && d < currentWeekStart && (e.category || 'Sonstiges') === topCat && !e.category?.startsWith('Konto:')
+        }).reduce((s, e) => s + Number(e.amount), 0)
+        const avgPrev = prevSpend / 4
+        if (avgPrev <= 0) return null
+        // Woche läuft noch: Vergleich auf anteiliges Wochenbudget hochrechnen
+        const projected = (topAmt / isoDay) * 7
+        const pct = Math.round(((projected - avgPrev) / avgPrev) * 100)
+        return { category: topCat, pct }
+    })()
+
     if (showGirokonto) {
         return (
             <GirokontoView
@@ -411,57 +468,108 @@ export default function MobileDashboard({
     return (
         <div id="dashboard-container" className="fixed inset-0 h-[100dvh] w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-foreground">
 
-            {/* === ENTRY VIEW === */}
+            {/* === ENTRY VIEW: FOKUS-RING (Konzept A) + INSIGHTS (Konzept B) === */}
             {view === 'entry' && (
                 <div className="w-full h-full overflow-y-auto overflow-x-hidden relative scroll-smooth view-enter">
-                    <div className="w-full max-w-lg mx-auto px-6 flex flex-col pt-14 pb-36 min-h-full">
+                    <div className="w-full max-w-lg mx-auto px-6 flex flex-col items-center pt-12 pb-40 min-h-full">
 
-                        {/* HERO: Verfügbares Wochenbudget */}
-                        <header className="flex flex-col items-start mb-10">
-                            <p className="eyebrow mb-4">Verfügbar diese Woche</p>
-                            <div className={`amount font-light leading-none text-[3.75rem] ${isPositive ? 'text-foreground' : 'text-[var(--chart-neg-heavy)]'}`}>
-                                €{Math.trunc(currentBalance)}
-                                <span className="text-3xl text-muted-foreground">,{Math.abs(currentBalance % 1).toFixed(2).split('.')[1]}</span>
-                            </div>
+                        <p className="eyebrow mb-7">Verfügbar diese Woche</p>
 
-                            {/* Budget-Meter */}
-                            <div className="w-full mt-7">
-                                <div className="h-1 w-full bg-muted rounded-full overflow-hidden" role="presentation">
-                                    <div
-                                        className={`h-full rounded-full transition-[width] duration-500 ease-[var(--ease-out-strong)] ${totalSpentThisWeek > weeklyBudget ? 'bg-[var(--chart-neg-heavy)]' : 'bg-primary'}`}
-                                        style={{ width: `${weeklyBudget > 0 ? Math.min(100, (totalSpentThisWeek / weeklyBudget) * 100) : 0}%` }}
-                                    />
-                                </div>
-                                <div className="flex justify-between mt-2.5 text-xs text-muted-foreground font-medium">
-                                    <span>Ausgegeben <span className="amount text-foreground">€{totalSpentThisWeek.toFixed(2)}</span></span>
-                                    <span>Budget <span className="amount text-foreground">€{weeklyBudget.toFixed(2)}</span></span>
-                                </div>
+                        {/* BUDGET-RING */}
+                        <div className="relative w-[220px] h-[220px]" role="img" aria-label={`Noch €${Math.round(currentBalance)} von €${Math.round(weeklyBudget)} Wochenbudget verfügbar`}>
+                            <svg viewBox="0 0 220 220" className="w-full h-full -rotate-90">
+                                <circle cx="110" cy="110" r={RING_R} fill="none" stroke="var(--bg-muted)" strokeWidth="14" />
+                                <circle
+                                    cx="110" cy="110" r={RING_R} fill="none"
+                                    stroke={isPositive ? 'var(--color-primary)' : 'var(--chart-neg-heavy)'}
+                                    strokeWidth="14" strokeLinecap="round"
+                                    strokeDasharray={`${(ringProgress * RING_CIRC).toFixed(1)} ${RING_CIRC.toFixed(1)}`}
+                                    className="transition-[stroke-dasharray] duration-700 ease-[var(--ease-out-strong)]"
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className={`amount text-5xl font-light ${isPositive ? 'text-foreground' : 'text-[var(--chart-neg-heavy)]'}`}>
+                                    €{Math.round(currentBalance)}
+                                </span>
+                                <span className="text-xs text-muted-foreground mt-1.5">von €{Math.round(weeklyBudget)} Budget</span>
                             </div>
-                        </header>
+                        </div>
 
-                        {/* Girokonto — Ledger-Zeile */}
-                        <button
-                            onClick={() => setShowGirokonto(true)}
-                            className="press group w-full text-left border-t border-b border-border py-5 mb-10 flex items-center justify-between"
-                        >
-                            <div className="flex flex-col">
-                                <p className="eyebrow mb-2">Girokonto</p>
-                                <p className={`amount text-3xl font-light ${currentGiroBalance < 0 ? 'text-[var(--chart-neg-heavy)]' : 'text-foreground'}`}>
-                                    €{currentGiroBalance.toFixed(2)}
-                                </p>
-                            </div>
-                            <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted-foreground transition-colors duration-200 group-hover:text-primary group-hover:border-primary/40">
-                                <ArrowUpRight className="w-4.5 h-4.5" strokeWidth={1.75} />
-                            </div>
-                        </button>
+                        <p className="text-sm text-muted-foreground mt-6">
+                            Noch {daysLeftInWeek} {daysLeftInWeek === 1 ? 'Tag' : 'Tage'} · <span className="amount font-medium text-primary">€{Math.max(0, dailyAllowance).toFixed(0)} / Tag</span>
+                        </p>
 
-                        {/* Neue Ausgabe */}
-                        <section>
-                            <h2 className="flex items-center gap-4 mb-7">
-                                <span className="font-display text-xl font-semibold tracking-tight text-foreground">Neue Ausgabe</span>
+                        {/* STATS */}
+                        <div className="w-full grid grid-cols-2 gap-2.5 mt-9">
+                            <div className="surface p-4">
+                                <p className="text-xs text-muted-foreground">Ausgegeben</p>
+                                <p className="amount text-lg text-foreground mt-1">€{totalSpentThisWeek.toFixed(2)}</p>
+                            </div>
+                            <div className="surface p-4">
+                                <p className="text-xs text-muted-foreground">Wochenbudget</p>
+                                <p className="amount text-lg text-foreground mt-1">€{weeklyBudget.toFixed(2)}</p>
+                            </div>
+                        </div>
+
+                        {/* INSIGHTS */}
+                        <section className="w-full mt-10">
+                            <h2 className="flex items-center gap-4 mb-4">
+                                <span className="eyebrow">Insights</span>
                                 <span className="h-px flex-1 bg-border" aria-hidden="true"></span>
                             </h2>
-                            <AddExpenseForm accounts={initialAccounts} onRefresh={onUpdate} />
+                            <div className="stagger-children flex flex-col gap-2.5">
+
+                                {categoryInsight && Math.abs(categoryInsight.pct) >= 10 && (
+                                    <div className="surface p-4 flex items-center gap-3">
+                                        <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${categoryInsight.pct < 0 ? 'bg-[var(--chart-pos)]/12 text-[var(--chart-pos)]' : 'bg-[var(--chart-neg)]/12 text-[var(--chart-neg-heavy)]'}`}>
+                                            {categoryInsight.pct < 0 ? <TrendingDown className="w-4.5 h-4.5" strokeWidth={1.75} /> : <TrendingUp className="w-4.5 h-4.5" strokeWidth={1.75} />}
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-semibold text-foreground">{categoryInsight.category} {categoryInsight.pct < 0 ? 'läuft gut' : 'läuft heiß'}</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">{Math.abs(categoryInsight.pct)} % {categoryInsight.pct < 0 ? 'unter' : 'über'} deinem 4-Wochen-Schnitt</p>
+                                        </div>
+                                    </div>
+                                )}
+                                {categoryInsight && Math.abs(categoryInsight.pct) < 10 && (
+                                    <div className="surface p-4 flex items-center gap-3">
+                                        <span className="w-9 h-9 rounded-xl bg-muted text-muted-foreground flex items-center justify-center shrink-0">
+                                            <Check className="w-4.5 h-4.5" strokeWidth={1.75} />
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-semibold text-foreground">{categoryInsight.category} im üblichen Rahmen</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">nahe an deinem 4-Wochen-Schnitt</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <button onClick={() => setShowGirokonto(true)} className="surface press w-full p-4 text-left group">
+                                    <div className="flex justify-between items-baseline">
+                                        <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                                            Girokonto
+                                            <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={1.75} />
+                                        </p>
+                                        <p className={`amount text-sm ${currentGiroBalance < 0 ? 'text-[var(--chart-neg-heavy)]' : 'text-foreground'}`}>€{currentGiroBalance.toFixed(2)}</p>
+                                    </div>
+                                    {sparkPoints && (
+                                        <svg viewBox="0 0 100 36" preserveAspectRatio="none" className="w-full h-9 mt-2" aria-hidden="true">
+                                            <polyline points={sparkPoints} fill="none" stroke="var(--color-primary)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                                        </svg>
+                                    )}
+                                </button>
+
+                                {nextFixedCost && (
+                                    <div className="surface p-4 flex items-center gap-3">
+                                        <span className="w-9 h-9 rounded-xl bg-muted text-muted-foreground flex items-center justify-center shrink-0">
+                                            <CalendarClock className="w-4.5 h-4.5" strokeWidth={1.75} />
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-semibold text-foreground truncate">{nextFixedCost.title} {nextFixedCost.days === 0 ? 'heute' : nextFixedCost.days === 1 ? 'morgen' : `in ${nextFixedCost.days} Tagen`}</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5"><span className="amount">−€{nextFixedCost.amount.toFixed(2)}</span> · ist im Budget eingeplant</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                            </div>
                         </section>
 
                     </div>
@@ -522,7 +630,7 @@ export default function MobileDashboard({
                                 onDayClick={handleCalendarDayClick}
                             />
                         ) : (
-                            <div className="stagger-children">
+                            <div className="stagger-children pt-8">
                                 {viewLevel === 'weeks' && (
                                     getWeeklyGroups().map((group, idx) => (
                                         <button key={idx} onClick={() => handleWeekClick(group.start)} className="ledger-row w-full text-left cursor-pointer group">
@@ -623,35 +731,43 @@ export default function MobileDashboard({
                 </div>
             )}
 
-            {/* === BOTTOM DOCK === */}
+            {/* === BOTTOM DOCK: Historie · [Center: + auf Startseite / Home sonst] · Einstellungen === */}
             <div className="fixed bottom-6 left-0 w-full flex justify-center z-40 pointer-events-none pb-[env(safe-area-inset-bottom)] px-6">
-                <div className="flex items-center gap-2 pointer-events-auto justify-center">
-                    {([
-                        { key: 'history' as MainView, label: 'Historie', Icon: List },
-                        { key: 'entry' as MainView, label: 'Eingabe', Icon: Home },
-                        { key: 'settings' as MainView, label: 'Einstellungen', Icon: Settings },
-                    ]).map(({ key, label, Icon }) => {
-                        const isActive = view === key
-                        return (
-                            <button
-                                key={key}
-                                onClick={() => setView(key)}
-                                aria-current={isActive ? 'page' : undefined}
-                                className={`press relative flex items-center justify-center gap-2 h-13 rounded-full transition-[width,background-color,color,border-color] duration-250 ease-[var(--ease-out-strong)] overflow-hidden ${
-                                    isActive
-                                        ? 'bg-foreground text-background px-6 shadow-lg shadow-foreground/15'
-                                        : 'bg-card/90 backdrop-blur-md text-muted-foreground w-13 border border-border hover:text-foreground'
-                                }`}
-                            >
-                                <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
-                                {isActive && (
-                                    <span className="font-semibold text-sm whitespace-nowrap view-enter">
-                                        {label}
-                                    </span>
-                                )}
-                            </button>
-                        )
-                    })}
+                <div className="flex items-center gap-2.5 pointer-events-auto justify-center bg-card/85 backdrop-blur-md border border-border rounded-full p-2 shadow-lg shadow-foreground/5">
+
+                    <button
+                        onClick={() => setView('history')}
+                        aria-label="Historie"
+                        aria-current={view === 'history' ? 'page' : undefined}
+                        className={`press w-12 h-12 rounded-full flex items-center justify-center transition-colors duration-250 ease-[var(--ease-out-strong)] ${
+                            view === 'history' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                        }`}
+                    >
+                        <List className="w-5 h-5" strokeWidth={1.75} />
+                    </button>
+
+                    {/* Center: auf der Startseite Ausgabe hinzufügen, sonst zurück zur Startseite */}
+                    <button
+                        onClick={() => view === 'entry' ? setShowAddSheet(true) : setView('entry')}
+                        aria-label={view === 'entry' ? 'Neue Ausgabe hinzufügen' : 'Zur Startseite'}
+                        className="press w-14 h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/25 transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)]"
+                    >
+                        {view === 'entry'
+                            ? <Plus className="w-6.5 h-6.5" strokeWidth={2} />
+                            : <Home className="w-6 h-6" strokeWidth={2} />}
+                    </button>
+
+                    <button
+                        onClick={() => setView('settings')}
+                        aria-label="Einstellungen"
+                        aria-current={view === 'settings' ? 'page' : undefined}
+                        className={`press w-12 h-12 rounded-full flex items-center justify-center transition-colors duration-250 ease-[var(--ease-out-strong)] ${
+                            view === 'settings' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                        }`}
+                    >
+                        <Settings className="w-5 h-5" strokeWidth={1.75} />
+                    </button>
+
                 </div>
             </div>
 
@@ -710,6 +826,22 @@ export default function MobileDashboard({
                             Speichern
                         </Button>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Neue Ausgabe — Bottom Sheet (FAB) */}
+            <Dialog open={showAddSheet} onOpenChange={setShowAddSheet}>
+                <DialogContent className="top-auto bottom-0 left-0 right-0 translate-x-0 translate-y-0 w-full max-w-full sm:max-w-full rounded-t-3xl rounded-b-none border-t border-x-0 border-b-0 border-border bg-card p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] shadow-2xl data-open:slide-in-from-bottom-10 data-closed:slide-out-to-bottom-10">
+                    <DialogHeader className="max-w-md mx-auto w-full">
+                        <DialogTitle className="font-display text-xl font-semibold tracking-tight text-foreground text-left">Neue Ausgabe</DialogTitle>
+                        <DialogDescription className="sr-only">Trage eine neue Ausgabe ein.</DialogDescription>
+                    </DialogHeader>
+                    <div className="max-w-md mx-auto w-full">
+                        <AddExpenseForm
+                            accounts={initialAccounts}
+                            onRefresh={() => { setShowAddSheet(false); onUpdate?.() }}
+                        />
+                    </div>
                 </DialogContent>
             </Dialog>
 

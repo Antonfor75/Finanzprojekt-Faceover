@@ -85,6 +85,121 @@
     --ambient-2: #E5EDF4;
   }
 
+  :root[data-theme='sage'] {
+    /* ============================================
+       THEME: "SALBEI" (Sage green)
+       ============================================ */
+    --bg-background: #F3F6F1;
+    --text-foreground: #1B241E;
+    --color-primary: #3E7D5E;
+    --text-primary-foreground: #F5FAF6;
+    --bg-muted: #E6EDE4;
+    --text-muted-foreground: #6E7F73;
+    --color-border: #DBE4D7;
+    --bg-card: #FFFFFF;
+    --text-card-foreground: #1B241E;
+
+    --chart-pos: #4E9B7D;
+    --chart-neg: #C96F80;
+    --chart-neg-heavy: #A93B54;
+    --chart-gray: #E2EADF;
+
+    --ambient-1: #DCEBD6;
+    --ambient-2: #E8F0E1;
+  }
+
+  :root[data-theme='amber'] {
+    /* ============================================
+       THEME: "BERNSTEIN" (Warm amber / terracotta)
+       ============================================ */
+    --bg-background: #F9F4EC;
+    --text-foreground: #2A2118;
+    --color-primary: #A85F2E;
+    --text-primary-foreground: #FBF6EF;
+    --bg-muted: #F0E7D8;
+    --text-muted-foreground: #8A7A64;
+    --color-border: #E7DBC7;
+    --bg-card: #FFFFFF;
+    --text-card-foreground: #2A2118;
+
+    --chart-pos: #4E9B7D;
+    --chart-neg: #C96F80;
+    --chart-neg-heavy: #A93B54;
+    --chart-gray: #EDE3D3;
+
+    --ambient-1: #F3E3CA;
+    --ambient-2: #F6EAD7;
+  }
+
+  :root[data-theme='lavender'] {
+    /* ============================================
+       THEME: "LAVENDEL" (Soft violet)
+       ============================================ */
+    --bg-background: #F5F4F9;
+    --text-foreground: #211E2B;
+    --color-primary: #6A5AA0;
+    --text-primary-foreground: #F7F6FB;
+    --bg-muted: #EAE8F1;
+    --text-muted-foreground: #746E8A;
+    --color-border: #E0DCEC;
+    --bg-card: #FFFFFF;
+    --text-card-foreground: #211E2B;
+
+    --chart-pos: #4E9B7D;
+    --chart-neg: #C96F80;
+    --chart-neg-heavy: #A93B54;
+    --chart-gray: #E5E1EF;
+
+    --ambient-1: #E4DEF3;
+    --ambient-2: #ECE7F5;
+  }
+
+  :root[data-theme='graphite'] {
+    /* ============================================
+       THEME: "GRAPHIT" (Warm monochrome)
+       ============================================ */
+    --bg-background: #F5F5F4;
+    --text-foreground: #1C1C1E;
+    --color-primary: #42424A;
+    --text-primary-foreground: #FAFAFA;
+    --bg-muted: #EAEAE8;
+    --text-muted-foreground: #78787A;
+    --color-border: #E0E0DE;
+    --bg-card: #FFFFFF;
+    --text-card-foreground: #1C1C1E;
+
+    --chart-pos: #4E9B7D;
+    --chart-neg: #C96F80;
+    --chart-neg-heavy: #A93B54;
+    --chart-gray: #E6E6E4;
+
+    --ambient-1: #E5E5E2;
+    --ambient-2: #EDEDEA;
+  }
+
+  :root[data-theme='midnight'] {
+    /* ============================================
+       THEME: "MITTERNACHT" (Dark OLED, mint accent)
+       ============================================ */
+    --bg-background: #0E1114;
+    --text-foreground: #F2F4F5;
+    --color-primary: #5DCAA5;
+    --text-primary-foreground: #04342C;
+    --bg-muted: #1B2126;
+    --text-muted-foreground: #8A9499;
+    --color-border: #232A2E;
+    --bg-card: #161B1F;
+    --text-card-foreground: #F2F4F5;
+
+    --chart-pos: #5DCAA5;
+    --chart-neg: #E58598;
+    --chart-neg-heavy: #F06A85;
+    --chart-gray: #20272B;
+
+    --ambient-1: #14241F;
+    --ambient-2: #101A1E;
+  }
+
   body {
     height: 100%;
     margin: 0;

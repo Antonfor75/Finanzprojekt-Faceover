@@ -1,57 +1,54 @@
+// Central theme registry. Each theme is a `:root[data-theme='<key>']` block in
+// app/globals.css. The default theme ('rose') is the bare `:root` block, so it
+// carries no data-theme attribute.
 
-export type ThemeColors = {
-    background: string
-    foreground: string
-    primary: string
-    primaryForeground: string
-    muted: string
-    mutedForeground: string
-    border: string
+export type ThemeDef = {
+    key: string
+    label: string
+    swatch: string // accent shown in the picker
 }
 
-// Helper to get variables based on active theme
-// Note: This returns the definition, but in CSS variables are handled by the browser.
-// This is mainly for JS-side usages if needing explicit hex codes.
-export const getThemeVariables = (themeName: string): ThemeColors => {
-    if (themeName === 'pink') {
-        return {
-            background: '#fdf2f8', // light pink
-            foreground: '#1f2937', // gray-800
-            primary: '#ee2b8c',    // Stitch Token
-            primaryForeground: '#ffffff',
-            muted: '#fce7f3',      // muted pink
-            mutedForeground: '#be185d', // dark pink
-            border: '#fbcfe8'      // border pink
-        }
-    }
-    // Default: Blue Premium
-    return {
-        background: '#f2f6fc',
-        foreground: '#1e3246',
-        primary: '#4a8bcf',
-        primaryForeground: '#ffffff',
-        muted: '#e3ebf6',
-        mutedForeground: '#6b849c',
-        border: '#d1e0f0'
-    }
+export const THEMES: ThemeDef[] = [
+    { key: 'rose', label: 'Rosé', swatch: '#C13D5D' },
+    { key: 'blue', label: 'Nordlicht', swatch: '#33618F' },
+    { key: 'sage', label: 'Salbei', swatch: '#3E7D5E' },
+    { key: 'amber', label: 'Bernstein', swatch: '#A85F2E' },
+    { key: 'lavender', label: 'Lavendel', swatch: '#6A5AA0' },
+    { key: 'graphite', label: 'Graphit', swatch: '#42424A' },
+    { key: 'midnight', label: 'Mitternacht', swatch: '#0E1114' },
+]
+
+export const DEFAULT_THEME = 'rose'
+
+const VALID = new Set(THEMES.map(t => t.key))
+
+// Coerce any stored/legacy value to a supported theme key.
+const normalize = (key: string | null | undefined): string => {
+    if (!key) return DEFAULT_THEME
+    if (key === 'pink' || key === 'paper') return DEFAULT_THEME // legacy values
+    return VALID.has(key) ? key : DEFAULT_THEME
+}
+
+export const getSavedTheme = (): string => {
+    if (typeof window === 'undefined') return DEFAULT_THEME
+    return normalize(localStorage.getItem('theme'))
 }
 
 export const applyTheme = (themeName: string) => {
-    // We now use data-theme attribute on root
+    if (typeof window === 'undefined') return
+    const key = normalize(themeName)
     const root = document.documentElement
 
-    // Save to local storage
-    localStorage.setItem('theme', themeName)
+    localStorage.setItem('theme', key)
 
-    if (themeName === 'blue') {
-        root.setAttribute('data-theme', 'blue')
+    if (key === DEFAULT_THEME) {
+        root.removeAttribute('data-theme') // :root defaults to the rose palette
     } else {
-        root.removeAttribute('data-theme') // Default is Pink Premium (no attribute)
+        root.setAttribute('data-theme', key)
     }
 }
 
 export const loadTheme = () => {
     if (typeof window === 'undefined') return
-    const saved = localStorage.getItem('theme') || 'pink'
-    applyTheme(saved)
+    applyTheme(getSavedTheme())
 }

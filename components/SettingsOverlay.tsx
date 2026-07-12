@@ -2,7 +2,7 @@
 
 
 import { useState, useEffect, useMemo } from 'react'
-import { applyTheme, loadTheme } from '@/utils/theme'
+import { applyTheme, loadTheme, getSavedTheme, THEMES } from '@/utils/theme'
 import { ArrowLeft, ChevronRight, Trash2, LogOut, Download, Upload, FileText, HelpCircle, ArrowDown, ShoppingBag, CheckCircle2, AlertCircle } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -76,14 +76,13 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [newAccountType, setNewAccountType] = useState<'distribution' | 'savings'>('distribution')
     const [newAccountValidFrom, setNewAccountValidFrom] = useState(new Date().toISOString().split('T')[0]) // Start Date for distribution
 
-    const [currentTheme, setCurrentTheme] = useState('paper')
+    const [currentTheme, setCurrentTheme] = useState('rose')
 
     useEffect(() => {
         // Load initial theme
-        const saved = localStorage.getItem('theme') || 'paper'
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setCurrentTheme(saved)
         loadTheme()
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setCurrentTheme(getSavedTheme())
     }, [])
 
     const handleThemeChange = (theme: string) => {
@@ -978,36 +977,38 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                     </Field>
                                     <div className="flex gap-2">
                                         <Field className="flex-1">
+                                            <FieldLabel className="text-xs text-muted-foreground ml-2">Aktueller Betrag (€)</FieldLabel>
                                             <Input
                                                 type="number"
-                                                placeholder="Aktueller Betrag (€)"
+                                                placeholder="0"
                                                 value={newAccountAmount}
                                                 onChange={(e) => setNewAccountAmount(e.target.value)}
                                                 className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
                                             />
                                         </Field>
                                         {newAccountType === 'distribution' && (
-                                            <Field className="flex-1">
+                                            <Field className="w-24 shrink-0">
+                                                <FieldLabel className="text-xs text-muted-foreground ml-2">Monate</FieldLabel>
                                                 <Input
                                                     type="number"
-                                                    placeholder="Monate"
+                                                    placeholder="12"
                                                     value={newAccountMonths}
                                                     onChange={(e) => setNewAccountMonths(e.target.value)}
                                                     className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
                                                 />
                                             </Field>
                                         )}
-                                        <Field className="flex-1">
-                                            <Input
-                                                type="date"
-                                                placeholder="Startdatum"
-                                                value={newAccountValidFrom}
-                                                onChange={(e) => setNewAccountValidFrom(e.target.value)}
-                                                className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary text-sm"
-                                                title="Startdatum (Optional)"
-                                            />
-                                        </Field>
                                     </div>
+                                    <Field>
+                                        <FieldLabel className="text-xs text-muted-foreground ml-2">Startdatum (Optional)</FieldLabel>
+                                        <Input
+                                            type="date"
+                                            value={newAccountValidFrom}
+                                            onChange={(e) => setNewAccountValidFrom(e.target.value)}
+                                            className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary text-sm"
+                                            title="Startdatum (Optional)"
+                                        />
+                                    </Field>
 
                                     {newAccountType === 'savings' && (
                                         <div className="space-y-4 pt-2 border-t border-border/50 mt-2">
@@ -1909,22 +1910,29 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
                 {/* Design */}
                 <div className="flex flex-col mb-10">
-                    <p className="eyebrow mb-4">Design</p>
-                    <div className="grid grid-cols-2 gap-3">
-                        <button
-                            onClick={() => handleThemeChange('pink')}
-                            className={`press p-4 rounded-xl border text-left flex items-center gap-3 transition-colors duration-200 ${currentTheme !== 'blue' ? 'border-primary/50 bg-card' : 'border-border bg-transparent hover:bg-card'}`}
-                        >
-                            <span className="w-4 h-4 rounded-full shrink-0 border border-black/10" style={{ backgroundColor: '#C13D5D' }}></span>
-                            <span className={`font-semibold text-sm ${currentTheme !== 'blue' ? 'text-foreground' : 'text-muted-foreground'}`}>Rosé</span>
-                        </button>
-                        <button
-                            onClick={() => handleThemeChange('blue')}
-                            className={`press p-4 rounded-xl border text-left flex items-center gap-3 transition-colors duration-200 ${currentTheme === 'blue' ? 'border-primary/50 bg-card' : 'border-border bg-transparent hover:bg-card'}`}
-                        >
-                            <span className="w-4 h-4 rounded-full shrink-0 border border-black/10" style={{ backgroundColor: '#33618F' }}></span>
-                            <span className={`font-semibold text-sm ${currentTheme === 'blue' ? 'text-foreground' : 'text-muted-foreground'}`}>Nordlicht</span>
-                        </button>
+                    <p className="eyebrow mb-4">Farbschema</p>
+                    <div className="grid grid-cols-3 gap-2.5">
+                        {THEMES.map(theme => {
+                            const active = currentTheme === theme.key
+                            return (
+                                <button
+                                    key={theme.key}
+                                    onClick={() => handleThemeChange(theme.key)}
+                                    aria-pressed={active}
+                                    className={`press p-3 rounded-xl border flex flex-col items-center gap-2 transition-colors duration-200 ${active ? 'border-primary bg-card' : 'border-border bg-transparent hover:bg-card'}`}
+                                >
+                                    <span
+                                        className="w-7 h-7 rounded-full shrink-0 border border-black/10"
+                                        style={{ backgroundColor: theme.swatch }}
+                                    >
+                                        {active && <span className="block w-full h-full rounded-full ring-2 ring-offset-2 ring-offset-card ring-primary" />}
+                                    </span>
+                                    <span className={`text-xs font-medium text-center leading-tight ${active ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                        {theme.label}
+                                    </span>
+                                </button>
+                            )
+                        })}
                     </div>
                 </div>
 

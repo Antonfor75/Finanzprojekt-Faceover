@@ -128,7 +128,7 @@ export default function NetCashflowChart({ data }: Props) {
                                 tick={{ fontSize: 10, fill: 'var(--text-muted-foreground)', fontWeight: '500' }}
                                 domain={domain}
                                 width={60}
-                                tickFormatter={(value) => `${value >= 1000 || value <= -1000 ? (value / 1000).toFixed(1) + 'k' : value}`}
+                                tickFormatter={(value) => { const v = Math.round(value); return Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${v}` }}
                             />
                             <Bar dataKey="val" fill="transparent" />
                         </BarChart>
