@@ -450,7 +450,9 @@ export default function MobileDashboard({
         prevStart.setDate(prevStart.getDate() - 28)
         const prevSpend = expenses.filter(e => {
             const d = getDate(e)
-            return d >= prevStart && d < currentWeekStart && (e.category || 'Sonstiges') === topCat && !e.category?.startsWith('Konto:')
+            // isBudgetRelevantExpense statt nur 'Konto:'-Prefix, damit der 4-Wochen-Schnitt
+            // dieselbe Basis hat wie die aktuelle Woche (Fun-/Konto-Zahlungen ausgenommen).
+            return d >= prevStart && d < currentWeekStart && (e.category || 'Sonstiges') === topCat && isBudgetRelevantExpense(e)
         }).reduce((s, e) => s + Number(e.amount), 0)
         const avgPrev = prevSpend / 4
         if (avgPrev <= 0) return null

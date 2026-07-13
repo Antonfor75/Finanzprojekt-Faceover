@@ -13,6 +13,7 @@ import { de } from 'date-fns/locale'
 
 import { Expense, FixedCost, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
+import { isBudgetRelevantExpense } from '@/utils/funAccount'
 
 type Props = {
     expenses: Expense[]
@@ -572,7 +573,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
                     const cells = days.map(day => {
                         const spent = expenses.filter(e => {
                             const d = new Date(e.expense_date || e.created_at)
-                            return isSameDay(d, day) && !e.category?.startsWith('Konto:')
+                            return isSameDay(d, day) && isBudgetRelevantExpense(e)
                         }).reduce((s, e) => s + Number(e.amount), 0)
                         weekSpent += spent
                         const isFuture = day > today && !isSameDay(day, today)
