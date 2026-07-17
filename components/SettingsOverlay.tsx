@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { applyTheme, loadTheme, getSavedTheme, THEMES } from '@/utils/theme'
-import { ArrowLeft, ChevronRight, Trash2, LogOut, Download, Upload, FileText, HelpCircle, ArrowDown, ShoppingBag, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Trash2, LogOut, Download, Upload, FileText, HelpCircle, ArrowDown, ShoppingBag, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import ImportWizard from '@/components/ImportWizard'
@@ -11,6 +11,7 @@ import HelpModal from '@/components/HelpModal'
 // Set worker source for pdfjs
 import { supabase } from '@/utils/supabase'
 import { addFunAccount, setFunAccountFeed } from '@/app/actions/funAccount'
+import FunAccountHub from '@/components/FunAccountHub'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -38,6 +39,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [showImportWizard, setShowImportWizard] = useState(false)
     const [showHelp, setShowHelp] = useState(false)
     const [showFixedCosts, setShowFixedCosts] = useState(false)
+    const [showFunHub, setShowFunHub] = useState(false)
 
     // REWE / Gmail-Verbindung
     const [showReweConnect, setShowReweConnect] = useState(false)
@@ -1273,6 +1275,15 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         )
     }
 
+    // --- SPASSKONTO (GRUPPEN) SUB-VIEW ---
+    if (showFunHub) {
+        return (
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background animate-in fade-in slide-in-from-right-8 duration-300 ease-[var(--ease-out-strong)] flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none">
+                <FunAccountHub onBack={() => setShowFunHub(false)} onUpdate={onUpdate} />
+            </div>
+        )
+    }
+
     // --- FIXED COSTS SUB-VIEW ---
     if (showFixedCosts) {
         return (
@@ -1951,6 +1962,17 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                             <span className="amount text-base text-[var(--chart-neg-heavy)]">−€{totalFixed.toFixed(2)}</span>
                             <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
                         </div>
+                    </button>
+
+                    <button
+                        onClick={() => setShowFunHub(true)}
+                        className="ledger-row w-full text-left group cursor-pointer"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-primary" strokeWidth={1.75} />
+                            <span className="text-base font-semibold text-foreground">Spaßkonto</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
                     </button>
                 </div>
 

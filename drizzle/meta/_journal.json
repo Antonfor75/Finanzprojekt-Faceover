@@ -29,6 +29,13 @@
       "when": 1783728000000,
       "tag": "0003_receipt_items",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784112990441,
+      "tag": "0004_next_typhoid_mary",
+      "breakpoints": true
     }
   ]
 }

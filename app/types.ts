@@ -114,3 +114,44 @@ export type ReweReceipt = {
     raw_subject?: string | null
     imported_at?: string
 }
+
+// Spaßkonto v2: ein Konto pro User, optionale Gruppen mit Zeitraum.
+export type FunAccountV2 = {
+    id: number
+    created_at?: string
+    name: string
+    foresight_enabled: boolean
+    user_id?: string
+}
+
+export type FunGroup = {
+    id: number
+    created_at?: string
+    fun_account_id: number
+    name: string
+    start_date: string // "Von"
+    end_date?: string | null // "Bis", optional — null = Ein-Tages-Ereignis (= start_date)
+    user_id?: string
+}
+
+export type FunGroupExpense = {
+    id: number
+    created_at?: string
+    fun_account_id: number
+    group_id?: number | null
+    amount: number
+    description?: string | null
+    expense_date: string // darf in der Zukunft liegen (geplante Ausgabe)
+    user_id?: string
+}
+
+export type FunIncomeEntry = {
+    id: number
+    created_at?: string
+    fun_account_id: number
+    group_id?: number | null
+    amount: number
+    description?: string | null
+    income_date: string
+    user_id?: string
+}

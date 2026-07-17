@@ -151,4 +151,55 @@ export const productAliasesTable = pgTable('product_aliases', {
     unique('product_aliases_user_alias_unique').on(t.user_id, t.alias_normalized),
 ]);
 
+// Spaßkonto v2: ein Konto pro User, mit optionalen Gruppen (Events/Zeiträume) statt
+// fester Kontenliste. Getrennt von accountsTable (type='fun'), da Struktur/Zeitmodell
+// abweicht — bewusst isoliert von der Budget-/Girokonto-Berechnung.
+export const funAccountsV2Table = pgTable('fun_accounts_v2', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    name: text('name').notNull().default('Spaßkonto'),
+    foresight_enabled: boolean('foresight_enabled').notNull().default(true),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull().unique(), // ein Konto pro User
+});
+
+// Optionale Gruppierung (z. B. "Urlaub") mit Zeitraum. end_date null = Ein-Tages-Ereignis
+// (= start_date). Ausgaben/Einnahmen können, müssen aber nicht einer Gruppe zugeordnet sein.
+export const funGroupsTable = pgTable('fun_groups', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    fun_account_id: integer('fun_account_id').notNull(),
+    name: text('name').notNull(),
+    start_date: text('start_date').notNull(), // "Von"
+    end_date: text('end_date'), // "Bis", optional
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
+}, (t) => [
+    index('fun_groups_user_account_idx').on(t.user_id, t.fun_account_id),
+]);
+
+export const funGroupExpensesTable = pgTable('fun_group_expenses', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    fun_account_id: integer('fun_account_id').notNull(),
+    group_id: integer('group_id'), // optional
+    amount: numeric('amount').notNull(),
+    description: text('description'),
+    expense_date: text('expense_date').notNull(), // darf in der Zukunft liegen (geplante Ausgabe)
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
+}, (t) => [
+    index('fun_group_expenses_user_account_idx').on(t.user_id, t.fun_account_id),
+]);
+
+export const funIncomeEntriesTable = pgTable('fun_income_entries', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    fun_account_id: integer('fun_account_id').notNull(),
+    group_id: integer('group_id'), // optional
+    amount: numeric('amount').notNull(),
+    description: text('description'),
+    income_date: text('income_date').notNull(),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
+}, (t) => [
+    index('fun_income_entries_user_account_idx').on(t.user_id, t.fun_account_id),
+]);
+
 // public.users table removed. Using auth.users instead.
