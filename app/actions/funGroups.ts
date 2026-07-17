@@ -185,6 +185,34 @@ export async function addFunGroupExpense(
     return { success: true }
 }
 
+export async function updateFunGroupExpense(
+    id: number,
+    amount: number,
+    description: string,
+    expenseDate: string,
+    groupId: number | null
+) {
+    if (isNaN(amount) || amount <= 0 || !expenseDate) {
+        return { success: false, error: 'Ungültige Eingabe' }
+    }
+    const supabase = await createClient()
+
+    const { error } = await supabase.from('fun_group_expenses').update({
+        amount,
+        description: description || null,
+        expense_date: expenseDate,
+        group_id: groupId
+    }).eq('id', id)
+
+    if (error) {
+        console.error('Error updating fun group expense:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/')
+    return { success: true }
+}
+
 export async function deleteFunGroupExpense(id: number) {
     const supabase = await createClient()
     const { error } = await supabase.from('fun_group_expenses').delete().eq('id', id)
@@ -223,6 +251,34 @@ export async function addFunIncomeEntry(
 
     if (error) {
         console.error('Error adding fun income entry:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/')
+    return { success: true }
+}
+
+export async function updateFunIncomeEntry(
+    id: number,
+    amount: number,
+    description: string,
+    incomeDate: string,
+    groupId: number | null
+) {
+    if (isNaN(amount) || amount <= 0 || !incomeDate) {
+        return { success: false, error: 'Ungültige Eingabe' }
+    }
+    const supabase = await createClient()
+
+    const { error } = await supabase.from('fun_income_entries').update({
+        amount,
+        description: description || null,
+        income_date: incomeDate,
+        group_id: groupId
+    }).eq('id', id)
+
+    if (error) {
+        console.error('Error updating fun income entry:', error)
         return { success: false, error: error.message }
     }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { ArrowLeft, Plus, Loader2, ChevronDown, ChevronUp, Pencil, Check, X } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
@@ -12,6 +12,10 @@ import {
     createFunGroup,
     addFunGroupExpense,
     addFunIncomeEntry,
+    updateFunGroupExpense,
+    updateFunIncomeEntry,
+    deleteFunGroupExpense,
+    deleteFunIncomeEntry,
 } from '@/app/actions/funGroups'
 import { FunAccountV2, FunGroup, FunGroupExpense, FunIncomeEntry } from '@/app/types'
 import { classifyBucket, calculateFunAccountSaldo, Bucket } from '@/utils/funAccountGroups'
@@ -53,6 +57,10 @@ export default function FunAccountHub({
 
     const [entryDialog, setEntryDialog] = useState<'expense' | 'income' | null>(null)
     const [groupDialog, setGroupDialog] = useState(false)
+    // null = neuer Eintrag, sonst id des Eintrags, der bearbeitet wird
+    const [editingEntryId, setEditingEntryId] = useState<number | null>(null)
+    // Antippen eines Gruppen-Chips filtert beide Listen auf diese Gruppe
+    const [groupFilter, setGroupFilter] = useState<number | null>(null)
 
     const [entryAmount, setEntryAmount] = useState('')
     const [entryDescription, setEntryDescription] = useState('')
@@ -104,15 +112,21 @@ export default function FunAccountHub({
 
     const bucketedExpenses = useMemo(() => {
         const buckets: Record<Bucket, FunGroupExpense[]> = { aktuell: [], zukuenftig: [], vergangen: [] }
-        for (const e of expenses) buckets[classifyBucket(e.expense_date)].push(e)
+        for (const e of expenses) {
+            if (groupFilter !== null && e.group_id !== groupFilter) continue
+            buckets[classifyBucket(e.expense_date)].push(e)
+        }
         return buckets
-    }, [expenses])
+    }, [expenses, groupFilter])
 
     const bucketedIncome = useMemo(() => {
         const buckets: Record<Bucket, FunIncomeEntry[]> = { aktuell: [], zukuenftig: [], vergangen: [] }
-        for (const i of income) buckets[classifyBucket(i.income_date)].push(i)
+        for (const i of income) {
+            if (groupFilter !== null && i.group_id !== groupFilter) continue
+            buckets[classifyBucket(i.income_date)].push(i)
+        }
         return buckets
-    }, [income])
+    }, [income, groupFilter])
 
     const groupName_ = (groupId: number | null | undefined) =>
         groupId ? groups.find(g => g.id === groupId)?.name : undefined
@@ -136,10 +150,24 @@ export default function FunAccountHub({
     }
 
     const openEntryDialog = (type: 'expense' | 'income') => {
+        setEditingEntryId(null)
         setEntryAmount('')
         setEntryDescription('')
         setEntryDate(format(new Date(), 'yyyy-MM-dd'))
         setEntryGroupId('none')
+        setEntryDialog(type)
+    }
+
+    const openEditDialog = (
+        type: 'expense' | 'income',
+        item: { id: number; amount: number; description?: string | null; group_id?: number | null },
+        dateStr: string
+    ) => {
+        setEditingEntryId(item.id)
+        setEntryAmount(String(Number(item.amount)))
+        setEntryDescription(item.description || '')
+        setEntryDate(dateStr)
+        setEntryGroupId(item.group_id ? String(item.group_id) : 'none')
         setEntryDialog(type)
     }
 
@@ -149,15 +177,37 @@ export default function FunAccountHub({
         if (isNaN(amount) || amount <= 0 || !entryDate) return
         setSaving(true)
         const groupId = entryGroupId === 'none' ? null : Number(entryGroupId)
-        const result = entryDialog === 'expense'
-            ? await addFunGroupExpense(account.id, amount, entryDescription, entryDate, groupId)
-            : await addFunIncomeEntry(account.id, amount, entryDescription, entryDate, groupId)
+        const result = editingEntryId !== null
+            ? (entryDialog === 'expense'
+                ? await updateFunGroupExpense(editingEntryId, amount, entryDescription, entryDate, groupId)
+                : await updateFunIncomeEntry(editingEntryId, amount, entryDescription, entryDate, groupId))
+            : (entryDialog === 'expense'
+                ? await addFunGroupExpense(account.id, amount, entryDescription, entryDate, groupId)
+                : await addFunIncomeEntry(account.id, amount, entryDescription, entryDate, groupId))
         setSaving(false)
         if (!result.success) {
             alert(result.error || 'Fehler beim Speichern')
             return
         }
         setEntryDialog(null)
+        setEditingEntryId(null)
+        await loadAll(account.id)
+        onUpdate?.()
+    }
+
+    const handleDeleteEntry = async () => {
+        if (!account || !entryDialog || editingEntryId === null) return
+        setSaving(true)
+        const result = entryDialog === 'expense'
+            ? await deleteFunGroupExpense(editingEntryId)
+            : await deleteFunIncomeEntry(editingEntryId)
+        setSaving(false)
+        if (!result.success) {
+            alert(result.error || 'Fehler beim Löschen')
+            return
+        }
+        setEntryDialog(null)
+        setEditingEntryId(null)
         await loadAll(account.id)
         onUpdate?.()
     }
@@ -261,6 +311,7 @@ export default function FunAccountHub({
                         groupName={groupName_}
                         dateField="expense_date"
                         onAdd={() => openEntryDialog('expense')}
+                        onEdit={(item, dateStr) => openEditDialog('expense', item, dateStr)}
                         addLabel="Ausgabe"
                     />
                 </TabsContent>
@@ -273,6 +324,7 @@ export default function FunAccountHub({
                         groupName={groupName_}
                         dateField="income_date"
                         onAdd={() => openEntryDialog('income')}
+                        onEdit={(item, dateStr) => openEditDialog('income', item, dateStr)}
                         addLabel="Einnahme"
                     />
                 </TabsContent>
@@ -281,13 +333,28 @@ export default function FunAccountHub({
             {/* GRUPPEN */}
             {groups.length > 0 && (
                 <div className="px-6 mt-6">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Gruppen</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                        Gruppen
+                        {groupFilter !== null && (
+                            <span className="ml-2 normal-case font-medium tracking-normal">· gefiltert, erneut tippen zum Aufheben</span>
+                        )}
+                    </h3>
                     <div className="flex flex-wrap gap-2">
                         {groups.map(g => (
-                            <div key={g.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/70 backdrop-blur-xl border border-white/60 rounded-full text-xs font-semibold shadow-sm">
+                            <button
+                                key={g.id}
+                                onClick={() => setGroupFilter(prev => prev === g.id ? null : g.id)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm transition-colors ${
+                                    groupFilter === g.id
+                                        ? 'bg-primary text-primary-foreground border border-transparent'
+                                        : 'bg-white/70 backdrop-blur-xl border border-white/60'
+                                }`}
+                            >
                                 <span>{g.name}</span>
-                                <span className="text-muted-foreground">€{(groupTotals.get(g.id) || 0).toFixed(2)}</span>
-                            </div>
+                                <span className={groupFilter === g.id ? 'text-primary-foreground/70' : 'text-muted-foreground'}>
+                                    €{(groupTotals.get(g.id) || 0).toFixed(2)}
+                                </span>
+                            </button>
                         ))}
                     </div>
                 </div>
@@ -303,10 +370,14 @@ export default function FunAccountHub({
             </div>
 
             {/* ENTRY DIALOG */}
-            <Dialog open={entryDialog !== null} onOpenChange={(open) => !open && setEntryDialog(null)}>
+            <Dialog open={entryDialog !== null} onOpenChange={(open) => { if (!open) { setEntryDialog(null); setEditingEntryId(null) } }}>
                 <DialogContent className="rounded-3xl max-w-sm">
                     <DialogHeader>
-                        <DialogTitle>{entryDialog === 'expense' ? 'Neue Ausgabe' : 'Neue Einnahme'}</DialogTitle>
+                        <DialogTitle>
+                            {editingEntryId !== null
+                                ? (entryDialog === 'expense' ? 'Ausgabe bearbeiten' : 'Einnahme bearbeiten')
+                                : (entryDialog === 'expense' ? 'Neue Ausgabe' : 'Neue Einnahme')}
+                        </DialogTitle>
                         <DialogDescription>
                             {entryDialog === 'expense' ? 'Auch mit einem zukünftigen Datum als geplante Ausgabe.' : 'Optional einer Gruppe zuordnen.'}
                         </DialogDescription>
@@ -348,6 +419,16 @@ export default function FunAccountHub({
                         >
                             {saving ? <Loader2 className="animate-spin" /> : 'Speichern'}
                         </Button>
+                        {editingEntryId !== null && (
+                            <Button
+                                onClick={handleDeleteEntry}
+                                disabled={saving}
+                                variant="ghost"
+                                className="w-full h-11 rounded-2xl font-bold text-[var(--chart-neg-heavy)] hover:text-[var(--chart-neg-heavy)] hover:bg-[var(--chart-neg)]/10"
+                            >
+                                <Trash2 className="w-4 h-4 mr-1" /> Löschen
+                            </Button>
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
@@ -404,11 +485,13 @@ function EntryList<T extends { id: number; amount: number; description?: string 
     groupName,
     dateField,
     onAdd,
+    onEdit,
     addLabel,
 }: {
     buckets: Record<Bucket, T[]>
     expanded: Record<Bucket, boolean>
     setExpanded: (fn: (prev: Record<Bucket, boolean>) => Record<Bucket, boolean>) => void
+    onEdit: (item: T, dateStr: string) => void
     groupName: (groupId: number | null | undefined) => string | undefined
     dateField: 'expense_date' | 'income_date'
     onAdd: () => void
@@ -448,18 +531,25 @@ function EntryList<T extends { id: number; amount: number; description?: string 
                         </button>
                         {isOpen && (
                             <div className="space-y-2">
-                                {items.map(item => (
-                                    <div key={item.id} className="flex items-center gap-3 p-3 bg-card/80 rounded-2xl border border-border/50 shadow-sm">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-sm text-foreground truncate">{item.description || 'Ohne Beschreibung'}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {format(new Date((item as unknown as Record<string, string>)[dateField]), 'dd. MMM yyyy', { locale: de })}
-                                                {groupName(item.group_id) ? ` · ${groupName(item.group_id)}` : ''}
-                                            </p>
-                                        </div>
-                                        <p className="font-bold text-sm shrink-0">€{Number(item.amount).toFixed(2)}</p>
-                                    </div>
-                                ))}
+                                {items.map(item => {
+                                    const dateStr = (item as unknown as Record<string, string>)[dateField]
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => onEdit(item, dateStr)}
+                                            className="flex items-center gap-3 p-3 w-full text-left bg-card/80 rounded-2xl border border-border/50 shadow-sm transition-colors hover:bg-muted/60 active:scale-[0.99]"
+                                        >
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm text-foreground truncate">{item.description || 'Ohne Beschreibung'}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {format(new Date(dateStr), 'dd. MMM yyyy', { locale: de })}
+                                                    {groupName(item.group_id) ? ` · ${groupName(item.group_id)}` : ''}
+                                                </p>
+                                            </div>
+                                            <p className="font-bold text-sm shrink-0">€{Number(item.amount).toFixed(2)}</p>
+                                        </button>
+                                    )
+                                })}
                             </div>
                         )}
                     </div>
