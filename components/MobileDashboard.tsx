@@ -503,7 +503,7 @@ export default function MobileDashboard({
                         <p className="eyebrow mb-7">Verfügbar diese Woche</p>
 
                         {/* BUDGET-RING */}
-                        <div className="relative w-[220px] h-[220px]" role="img" aria-label={`Noch €${Math.round(currentBalance)} von €${Math.round(weeklyBudget)} Wochenbudget verfügbar`}>
+                        <div className="relative aspect-square w-[min(64vw,240px)]" role="img" aria-label={`Noch €${Math.round(currentBalance)} von €${Math.round(weeklyBudget)} Wochenbudget verfügbar`}>
                             <svg viewBox="0 0 220 220" className="w-full h-full -rotate-90">
                                 <circle cx="110" cy="110" r={RING_R} fill="none" stroke="var(--bg-muted)" strokeWidth="14" />
                                 <circle
@@ -515,10 +515,10 @@ export default function MobileDashboard({
                                 />
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className={`amount text-5xl font-light ${isPositive ? 'text-foreground' : 'text-[var(--chart-neg-heavy)]'}`}>
+                                <span className={`amount text-[clamp(1.75rem,9vw,3rem)] leading-none font-light ${isPositive ? 'text-foreground' : 'text-[var(--chart-neg-heavy)]'}`}>
                                     €{Math.round(currentBalance)}
                                 </span>
-                                <span className="text-xs text-muted-foreground mt-1.5">von €{Math.round(weeklyBudget)} Budget</span>
+                                <span className="text-[clamp(0.65rem,2.8vw,0.75rem)] text-muted-foreground mt-1.5">von €{Math.round(weeklyBudget)} Budget</span>
                             </div>
                         </div>
 
@@ -783,28 +783,28 @@ export default function MobileDashboard({
             )}
 
             {/* === BOTTOM DOCK: Historie · [Center: + auf Startseite / Home sonst] · Einstellungen === */}
-            <div className="fixed bottom-6 left-0 w-full flex justify-center z-40 pointer-events-none pb-[env(safe-area-inset-bottom)] px-6">
-                <div className="flex items-center gap-2.5 pointer-events-auto justify-center bg-card/85 backdrop-blur-md border border-border rounded-full p-2 shadow-lg shadow-foreground/5">
+            <div className="fixed bottom-0 left-0 w-full flex justify-center z-40 pointer-events-none px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] transition-opacity duration-200 in-data-[keyboard=open]:opacity-0 in-data-[keyboard=open]:pointer-events-none">
+                <div className="flex w-full max-w-lg items-center gap-1.5 pointer-events-auto bg-card/85 backdrop-blur-md border border-border rounded-2xl p-1.5 shadow-lg shadow-foreground/5">
 
                     <button
                         onClick={() => setView('history')}
                         aria-label="Historie"
                         aria-current={view === 'history' ? 'page' : undefined}
-                        className={`press w-12 h-12 rounded-full flex items-center justify-center transition-colors duration-250 ease-[var(--ease-out-strong)] ${
+                        className={`press flex-1 h-14 rounded-xl flex items-center justify-center transition-colors duration-250 ease-[var(--ease-out-strong)] ${
                             view === 'history' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                         }`}
                     >
-                        <List className="w-5 h-5" strokeWidth={1.75} />
+                        <List className="w-6 h-6" strokeWidth={1.75} />
                     </button>
 
                     {/* Center: auf der Startseite Ausgabe hinzufügen, sonst zurück zur Startseite */}
                     <button
                         onClick={() => view === 'entry' ? setShowAddSheet(true) : setView('entry')}
                         aria-label={view === 'entry' ? 'Neue Ausgabe hinzufügen' : 'Zur Startseite'}
-                        className="press w-14 h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/25 transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)]"
+                        className="press flex-[1.4] h-14 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/25 transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)]"
                     >
                         {view === 'entry'
-                            ? <Plus className="w-6.5 h-6.5" strokeWidth={2} />
+                            ? <Plus className="w-7 h-7" strokeWidth={2} />
                             : <Home className="w-6 h-6" strokeWidth={2} />}
                     </button>
 
@@ -812,11 +812,11 @@ export default function MobileDashboard({
                         onClick={() => setView('settings')}
                         aria-label="Einstellungen"
                         aria-current={view === 'settings' ? 'page' : undefined}
-                        className={`press w-12 h-12 rounded-full flex items-center justify-center transition-colors duration-250 ease-[var(--ease-out-strong)] ${
+                        className={`press flex-1 h-14 rounded-xl flex items-center justify-center transition-colors duration-250 ease-[var(--ease-out-strong)] ${
                             view === 'settings' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                         }`}
                     >
-                        <Settings className="w-5 h-5" strokeWidth={1.75} />
+                        <Settings className="w-6 h-6" strokeWidth={1.75} />
                     </button>
 
                 </div>
@@ -824,7 +824,7 @@ export default function MobileDashboard({
 
             {/* Edit Expense Dialog */}
             <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
-                <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 bg-card border border-border shadow-xl mx-4 max-w-[calc(100%-2rem)]">
+                <DialogContent className="sm:max-w-[400px] top-[calc(50%-var(--kb-inset)/2)] max-h-[calc(100dvh-var(--kb-inset)-2rem)] overflow-y-auto overscroll-contain rounded-3xl p-6 bg-card border border-border shadow-xl mx-4 max-w-[calc(100%-2rem)] transition-[top] duration-200 ease-[var(--ease-drawer)]">
                     <DialogHeader>
                         <DialogTitle className="font-display text-xl font-semibold tracking-tight text-foreground text-left">Eintrag bearbeiten</DialogTitle>
                         <DialogDescription className="sr-only">Passe die Details deiner Ausgabe an.</DialogDescription>
@@ -882,7 +882,7 @@ export default function MobileDashboard({
 
             {/* Neue Ausgabe — Bottom Sheet (FAB) */}
             <Dialog open={showAddSheet} onOpenChange={setShowAddSheet}>
-                <DialogContent className="top-auto bottom-0 left-0 right-0 translate-x-0 translate-y-0 w-full max-w-full sm:max-w-full rounded-t-3xl rounded-b-none border-t border-x-0 border-b-0 border-border bg-card p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] shadow-2xl data-open:slide-in-from-bottom-10 data-closed:slide-out-to-bottom-10">
+                <DialogContent className="top-auto bottom-[var(--kb-inset)] left-0 right-0 translate-x-0 translate-y-0 w-full max-w-full sm:max-w-full max-h-[calc(100dvh-var(--kb-inset)-1rem)] overflow-y-auto overscroll-contain rounded-t-3xl rounded-b-none border-t border-x-0 border-b-0 border-border bg-card p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] shadow-2xl transition-[bottom] duration-200 ease-[var(--ease-drawer)] data-open:slide-in-from-bottom-10 data-closed:slide-out-to-bottom-10 in-data-[keyboard=open]:pb-6">
                     <DialogHeader className="max-w-md mx-auto w-full">
                         <DialogTitle className="font-display text-xl font-semibold tracking-tight text-foreground text-left">Neue Ausgabe</DialogTitle>
                         <DialogDescription className="sr-only">Trage eine neue Ausgabe ein.</DialogDescription>

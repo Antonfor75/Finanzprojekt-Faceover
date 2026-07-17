@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import SWRegister from "@/components/SWRegister";
+import KeyboardInset from "@/components/KeyboardInset";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,12 +32,14 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  // Tastatur verkleinert den Viewport, statt den Inhalt zu überdecken.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
@@ -48,6 +51,7 @@ export default function RootLayout({
     <html lang="de" className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable}`}>
       <body className="antialiased">
         <SWRegister />
+        <KeyboardInset />
         {children}
       </body>
     </html>

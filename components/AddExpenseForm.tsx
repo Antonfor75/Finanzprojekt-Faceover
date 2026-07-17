@@ -163,7 +163,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     required
                     autoFocus
                     aria-label="Betrag in Euro"
-                    className="amount w-full text-center bg-transparent border-none outline-none font-light text-foreground text-5xl [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-muted-foreground/30"
+                    className="amount w-full text-center bg-transparent border-none outline-none font-light text-foreground text-[clamp(2.25rem,12vw,3rem)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-muted-foreground/30"
                 />
                 <span className="eyebrow mt-2 mb-2">Euro</span>
             </div>

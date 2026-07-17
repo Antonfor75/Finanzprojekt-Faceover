@@ -128,7 +128,7 @@ export default function AdminPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#f8f5e6] flex flex-col gap-4 items-center justify-center">
+            <div className="h-dvh bg-[#f8f5e6] flex flex-col gap-4 items-center justify-center p-4">
                 <Loader2 className="w-10 h-10 animate-spin text-black" />
                 <p className="text-gray-500 font-bold animate-pulse">Lade Admin-Bereich...</p>
                 <button
@@ -143,11 +143,11 @@ export default function AdminPage() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-[#f8f5e6] flex flex-col gap-4 items-center justify-center p-4 text-center">
-                <AlertCircle className="w-12 h-12 text-red-500" />
+            <div className="h-dvh overflow-y-auto bg-[#f8f5e6] flex flex-col gap-4 items-center justify-center p-4 text-center">
+                <AlertCircle className="w-12 h-12 text-red-500 shrink-0" />
                 <h1 className="text-xl font-bold">Admin Zugriff Fehler</h1>
-                <p className="text-gray-600 bg-white p-4 rounded-xl shadow-sm border border-red-100">{error}</p>
-                <div className="flex gap-4">
+                <p className="text-gray-600 bg-white p-4 rounded-xl shadow-sm border border-red-100 max-w-full break-words">{error}</p>
+                <div className="flex flex-wrap justify-center gap-3">
                     <button onClick={() => window.location.reload()} className="px-4 py-2 bg-black text-white rounded-lg">Neu laden</button>
                     <button onClick={() => router.replace('/')} className="px-4 py-2 bg-gray-200 rounded-lg">Zurück Startseite</button>
                     <button onClick={handleLogout} className="px-4 py-2 text-red-500 underline">Logout</button>
@@ -159,39 +159,39 @@ export default function AdminPage() {
     if (!isAdmin) return null
 
     return (
-        <div className="min-h-screen bg-[#f8f5e6] p-4 md:p-8 font-['Patrick_Hand'] text-[#333]">
+        <div className="h-dvh overflow-y-auto overscroll-contain bg-[#f8f5e6] p-4 md:p-8 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+2rem)] font-['Patrick_Hand'] text-[#333]">
             <div className="max-w-4xl mx-auto">
 
-                {/* Header */}
-                <div className="flex justify-between items-center mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold flex items-center gap-2">
-                            <ShieldAlert className="w-8 h-8 text-red-500" />
+                {/* Header — stapelt auf schmalen Displays, damit der Logout erreichbar bleibt */}
+                <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-8">
+                    <div className="min-w-0">
+                        <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                            <ShieldAlert className="w-7 h-7 sm:w-8 sm:h-8 text-red-500 shrink-0" />
                             Master Control
                         </h1>
-                        <p className="text-xl font-bold text-black mt-1">Willkommen zurück Meister Anton !!!</p>
+                        <p className="text-lg sm:text-xl font-bold text-black mt-1">Willkommen zurück Meister Anton !!!</p>
                         <p className="text-gray-500 text-sm mt-1">Verwaltung aller Accounts</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2 shrink-0">
                         <button
                             onClick={() => router.push('/admin/db-structure')}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-[#333] rounded-xl hover:bg-gray-50 transition-colors"
+                            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-[#333] rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap"
                         >
-                            <div className="w-4 h-4 rounded-full border-2 border-purple-600"></div>
+                            <div className="w-4 h-4 rounded-full border-2 border-purple-600 shrink-0"></div>
                             DB Struktur
                         </button>
                         <button
                             onClick={() => router.push('/admin/calculations')}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-[#333] rounded-xl hover:bg-gray-50 transition-colors"
+                            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-[#333] rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap"
                         >
-                            <Calculator className="w-4 h-4 text-green-600" />
+                            <Calculator className="w-4 h-4 text-green-600 shrink-0" />
                             Analytik
                         </button>
                         <button
                             onClick={handleLogout}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-[#333] rounded-xl hover:bg-gray-50 transition-colors"
+                            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-[#333] rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap"
                         >
-                            <LogOut className="w-4 h-4" />
+                            <LogOut className="w-4 h-4 shrink-0" />
                             Logout
                         </button>
                     </div>
@@ -241,16 +241,16 @@ export default function AdminPage() {
                             Vorhandene User ({users.length})
                         </h2>
 
-                        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                        <div className="space-y-3 md:max-h-[60vh] md:overflow-y-auto md:pr-2">
                             {users.map((user) => (
                                 <div key={user.id} className="p-4 rounded-xl bg-gray-50 border border-gray-100 flex flex-col relative group">
-                                    <span className="font-bold text-lg">{user.email}</span>
-                                    <span className="text-xs text-gray-400 font-mono mt-1">ID: {user.id}</span>
+                                    <span className="font-bold text-lg break-all pr-20">{user.email}</span>
+                                    <span className="text-xs text-gray-400 font-mono mt-1 break-all">ID: {user.id}</span>
                                     <span className="text-xs text-gray-400">Erstellt: {new Date(user.created_at).toLocaleDateString()}</span>
 
-                                    {/* Action Buttons */}
+                                    {/* Action Buttons — auf Touch immer sichtbar, am Desktop erst bei Hover */}
                                     {user.email !== ADMIN_EMAIL && (
-                                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="absolute top-4 right-4 flex gap-2 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
 
                                             {/* Reset Button */}
                                             <button

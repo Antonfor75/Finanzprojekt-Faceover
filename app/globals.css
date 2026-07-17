@@ -36,6 +36,9 @@
 
 @layer base {
   :root {
+    /* Höhe der eingeblendeten Tastatur — gesetzt von components/KeyboardInset.tsx */
+    --kb-inset: 0px;
+
     /* ============================================
        THEME: "ROSÉ LEDGER" (Default)
        Warm porcelain canvas, plum ink, one deep
