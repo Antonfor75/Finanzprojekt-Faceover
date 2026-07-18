@@ -105,15 +105,19 @@ export default function FunAccountHub({
         })()
     }, [loadAll])
 
-    // Saldo je Gruppe = Summe ihrer Ausgaben
+    // Saldo je Gruppe = Einnahmen − Ausgaben dieser Gruppe
     const groupTotals = useMemo(() => {
         const totals = new Map<number, number>()
         for (const e of expenses) {
             if (e.group_id == null) continue
-            totals.set(e.group_id, (totals.get(e.group_id) || 0) + Number(e.amount))
+            totals.set(e.group_id, (totals.get(e.group_id) || 0) - Number(e.amount))
+        }
+        for (const i of income) {
+            if (i.group_id == null) continue
+            totals.set(i.group_id, (totals.get(i.group_id) || 0) + Number(i.amount))
         }
         return totals
-    }, [expenses])
+    }, [expenses, income])
 
     const saldo = useMemo(() => {
         if (!account) return 0
@@ -137,9 +141,13 @@ export default function FunAccountHub({
         return buckets
     }, [groups])
 
+    // Hauptliste Einnahmen: analog nur Einträge OHNE Gruppe
     const bucketedIncome = useMemo(() => {
         const buckets: Record<Bucket, FunIncomeEntry[]> = { aktuell: [], zukuenftig: [], vergangen: [] }
-        for (const i of income) buckets[classifyBucket(i.income_date)].push(i)
+        for (const i of income) {
+            if (i.group_id != null) continue
+            buckets[classifyBucket(i.income_date)].push(i)
+        }
         return buckets
     }, [income])
 
@@ -279,12 +287,26 @@ export default function FunAccountHub({
         )
     }
 
-    // --- GRUPPEN-DETAIL: Aufschlüsselung der Ausgaben einer Gruppe ---
+    // --- GRUPPEN-DETAIL: Ausgaben UND Einnahmen der Gruppe, unabhängig vom Reiter ---
     const openGroup = openGroupId !== null ? groups.find(g => g.id === openGroupId) : null
     if (openGroup) {
-        const groupExpenses = expenses
-            .filter(e => e.group_id === openGroup.id)
-            .sort((a, b) => (a.expense_date < b.expense_date ? 1 : -1))
+        type GroupRow = {
+            key: string
+            kind: 'expense' | 'income'
+            id: number
+            amount: number
+            description?: string | null
+            group_id?: number | null
+            date: string
+        }
+        const groupRows: GroupRow[] = [
+            ...expenses
+                .filter(e => e.group_id === openGroup.id)
+                .map(e => ({ key: `e-${e.id}`, kind: 'expense' as const, id: e.id, amount: Number(e.amount), description: e.description, group_id: e.group_id, date: e.expense_date })),
+            ...income
+                .filter(i => i.group_id === openGroup.id)
+                .map(i => ({ key: `i-${i.id}`, kind: 'income' as const, id: i.id, amount: Number(i.amount), description: i.description, group_id: i.group_id, date: i.income_date })),
+        ].sort((a, b) => (a.date < b.date ? 1 : -1))
         const total = groupTotals.get(openGroup.id) || 0
         return (
             <div className="flex flex-col min-h-full pb-8 max-w-lg mx-auto w-full">
@@ -303,38 +325,51 @@ export default function FunAccountHub({
                         </div>
                         <span className="text-[10px] font-bold uppercase tracking-widest bg-primary/10 text-primary px-2.5 py-0.5 rounded-full mb-2">Konto</span>
                         <p className="text-xs font-light uppercase tracking-widest text-muted-foreground mb-2">{openGroup.name}</p>
-                        <div className="font-light tracking-tight leading-none text-6xl text-foreground">
-                            €{Math.floor(total)}
-                            <span className="text-3xl text-muted-foreground/60">.{(total % 1).toFixed(2).split('.')[1] || '00'}</span>
+                        <div className={`font-light tracking-tight leading-none text-6xl ${total < 0 ? 'text-[var(--chart-neg-heavy)]' : 'text-foreground'}`}>
+                            {total < 0 ? '−' : ''}€{Math.floor(Math.abs(total))}
+                            <span className="text-3xl text-muted-foreground/60">.{(Math.abs(total) % 1).toFixed(2).split('.')[1] || '00'}</span>
                         </div>
                         <p className="text-sm text-muted-foreground mt-3">{formatGroupPeriod(openGroup)}</p>
                     </div>
                 </div>
 
                 <div className="px-6 mt-6 space-y-5">
-                    <Button
-                        onClick={() => openEntryDialog('expense', openGroup.id)}
-                        variant="secondary"
-                        className="w-full h-12 rounded-2xl font-bold"
-                    >
-                        <Plus className="w-4 h-4 mr-1" /> Ausgabe hinzufügen
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={() => openEntryDialog('expense', openGroup.id)}
+                            variant="secondary"
+                            className="flex-1 h-12 rounded-2xl font-bold"
+                        >
+                            <Plus className="w-4 h-4 mr-1" /> Ausgabe
+                        </Button>
+                        <Button
+                            onClick={() => openEntryDialog('income', openGroup.id)}
+                            variant="secondary"
+                            className="flex-1 h-12 rounded-2xl font-bold"
+                        >
+                            <Plus className="w-4 h-4 mr-1" /> Einnahme
+                        </Button>
+                    </div>
 
-                    {groupExpenses.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8 text-sm">Noch keine Ausgaben in dieser Gruppe.</p>
+                    {groupRows.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-8 text-sm">Noch keine Einträge in dieser Gruppe.</p>
                     ) : (
                         <div className="space-y-2">
-                            {groupExpenses.map(e => (
+                            {groupRows.map(r => (
                                 <button
-                                    key={e.id}
-                                    onClick={() => openEditDialog('expense', e, e.expense_date)}
+                                    key={r.key}
+                                    onClick={() => openEditDialog(r.kind, r, r.date)}
                                     className="flex items-center gap-3 p-3 w-full text-left bg-card/80 rounded-2xl border border-border/50 shadow-sm transition-colors hover:bg-muted/60 active:scale-[0.99]"
                                 >
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-medium text-sm text-foreground truncate">{e.description || 'Ohne Beschreibung'}</p>
-                                        <p className="text-xs text-muted-foreground">{format(new Date(e.expense_date), 'dd. MMM yyyy', { locale: de })}</p>
+                                        <p className="font-medium text-sm text-foreground truncate">{r.description || 'Ohne Beschreibung'}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {format(new Date(r.date), 'dd. MMM yyyy', { locale: de })} · {r.kind === 'expense' ? 'Ausgabe' : 'Einnahme'}
+                                        </p>
                                     </div>
-                                    <p className="font-bold text-sm shrink-0">€{Number(e.amount).toFixed(2)}</p>
+                                    <p className={`font-bold text-sm shrink-0 ${r.kind === 'expense' ? 'text-[var(--chart-neg-heavy)]' : 'text-[var(--chart-pos)]'}`}>
+                                        {r.kind === 'expense' ? '−' : '+'}€{r.amount.toFixed(2)}
+                                    </p>
                                 </button>
                             ))}
                         </div>
@@ -435,6 +470,9 @@ export default function FunAccountHub({
                 <TabsContent value="einnahmen" className="mt-5">
                     <EntryList
                         buckets={bucketedIncome}
+                        groupRows={bucketedGroups}
+                        groupTotals={groupTotals}
+                        onOpenGroup={id => setOpenGroupId(id)}
                         expanded={expanded}
                         setExpanded={setExpanded}
                         groupName={groupName_}
@@ -472,8 +510,8 @@ export default function FunAccountHub({
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3">
-                        {/* Umschalter: nur bei neuer Ausgabe */}
-                        {entryDialog === 'expense' && editingEntryId === null && (
+                        {/* Umschalter: bei neuen Einträgen in beiden Reitern */}
+                        {editingEntryId === null && (
                             <button
                                 onClick={() => setEntryIsGroup(v => !v)}
                                 className={`w-full flex items-center justify-between px-4 h-11 rounded-2xl text-sm font-bold transition-colors ${entryIsGroup ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}
@@ -647,7 +685,14 @@ function EntryList<T extends { id: number; amount: number; description?: string 
                                             </p>
                                             <p className="text-xs text-muted-foreground">{formatGroupPeriod(g)}</p>
                                         </div>
-                                        <p className="font-bold text-sm shrink-0">€{(groupTotals?.get(g.id) || 0).toFixed(2)}</p>
+                                        {(() => {
+                                            const gTotal = groupTotals?.get(g.id) || 0
+                                            return (
+                                                <p className={`font-bold text-sm shrink-0 ${gTotal < 0 ? 'text-[var(--chart-neg-heavy)]' : gTotal > 0 ? 'text-[var(--chart-pos)]' : 'text-foreground'}`}>
+                                                    {gTotal < 0 ? '−' : gTotal > 0 ? '+' : ''}€{Math.abs(gTotal).toFixed(2)}
+                                                </p>
+                                            )
+                                        })()}
                                         <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
                                     </button>
                                 ))}
