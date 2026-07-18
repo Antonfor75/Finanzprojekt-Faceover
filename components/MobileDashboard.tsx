@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input"
 import AnalysisView from './AnalysisView'
 import GirokontoView from './GirokontoView'
 import FunAccountView from './FunAccountView'
+import FunAccountHub from './FunAccountHub'
+import { calculateFunAccountSaldo } from '@/utils/funAccountGroups'
 // import DashboardHealth from './DashboardHealth' // REMOVED
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
 import { isBudgetRelevantExpense } from '@/utils/funAccount'
@@ -56,6 +58,8 @@ export default function MobileDashboard({
     const [view, setView] = useState<MainView>('entry')
     const [showGirokonto, setShowGirokonto] = useState(false)
     const [openFunAccountId, setOpenFunAccountId] = useState<number | null>(null)
+    const [showFunHub, setShowFunHub] = useState(false)
+    const [funSaldo, setFunSaldo] = useState<number | null>(null)
     const [viewLevel, setViewLevel] = useState<'weeks' | 'days' | 'transactions'>('weeks')
     const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null)
     const [selectedDay, setSelectedDay] = useState<Date | null>(null)
@@ -74,6 +78,25 @@ export default function MobileDashboard({
         }
         return map
     }, [receiptItems])
+
+    // --- EFFECT: SPASSKONTO-SALDO für die Dashboard-Kachel laden ---
+    // Lädt beim Start und immer, wenn der Hub geschlossen wird (showFunHub → false).
+    useEffect(() => {
+        if (showFunHub) return
+        let cancelled = false
+        const loadFunSaldo = async () => {
+            const { data: funAccount } = await supabase.from('fun_accounts_v2').select('*').maybeSingle()
+            if (!funAccount) { if (!cancelled) setFunSaldo(null); return }
+            const [{ data: funExpenses }, { data: funIncome }] = await Promise.all([
+                supabase.from('fun_group_expenses').select('amount, expense_date').eq('fun_account_id', funAccount.id),
+                supabase.from('fun_income_entries').select('amount, income_date').eq('fun_account_id', funAccount.id),
+            ])
+            if (cancelled) return
+            setFunSaldo(calculateFunAccountSaldo(funExpenses || [], funIncome || [], funAccount.foresight_enabled))
+        }
+        loadFunSaldo()
+        return () => { cancelled = true }
+    }, [showFunHub])
 
     // --- EFFECT: PROCESS SAVINGS & DISTRIBUTION ON MOUNT ---
     useEffect(() => {
@@ -479,6 +502,14 @@ export default function MobileDashboard({
         )
     }
 
+    if (showFunHub) {
+        return (
+            <div className="fixed inset-0 z-50 h-dvh w-screen bg-background animate-in fade-in slide-in-from-right-8 duration-300 ease-[var(--ease-out-strong)] flex justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto overflow-x-hidden overscroll-none">
+                <FunAccountHub onBack={() => setShowFunHub(false)} onUpdate={onUpdate} />
+            </div>
+        )
+    }
+
     if (showGirokonto) {
         return (
             <GirokontoView
@@ -536,6 +567,23 @@ export default function MobileDashboard({
                                 <p className="text-xs text-muted-foreground">Wochenbudget</p>
                                 <p className="amount text-lg text-foreground mt-1">€{weeklyBudget.toFixed(2)}</p>
                             </div>
+                            {funSaldo !== null && (
+                                <button
+                                    onClick={() => setShowFunHub(true)}
+                                    className="surface press col-span-2 p-4 text-left group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                            <Sparkles className="w-3.5 h-3.5 text-primary" strokeWidth={1.75} />
+                                            Spaßkonto
+                                        </p>
+                                        <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={1.75} />
+                                    </div>
+                                    <p className={`amount text-lg mt-1 ${funSaldo < 0 ? 'text-[var(--chart-neg-heavy)]' : 'text-foreground'}`}>
+                                        {funSaldo < 0 ? '−' : ''}€{Math.abs(funSaldo).toFixed(2)}
+                                    </p>
+                                </button>
+                            )}
                         </div>
 
                         {/* INSIGHTS */}
