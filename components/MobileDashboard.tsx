@@ -21,7 +21,10 @@ import AnalysisView from './AnalysisView'
 import GirokontoView from './GirokontoView'
 import FunAccountView from './FunAccountView'
 import FunAccountHub from './FunAccountHub'
-import { calculateFunAccountSaldo } from '@/utils/funAccountGroups'
+import { calculateFunAccountSaldo, classifyGroupBucket } from '@/utils/funAccountGroups'
+import { addFunGroupExpense } from '@/app/actions/funGroups'
+import { FunGroup } from '@/app/types'
+import { DatePicker } from '@/components/ui/date-picker'
 // import DashboardHealth from './DashboardHealth' // REMOVED
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
 import { isBudgetRelevantExpense } from '@/utils/funAccount'
@@ -60,6 +63,15 @@ export default function MobileDashboard({
     const [openFunAccountId, setOpenFunAccountId] = useState<number | null>(null)
     const [showFunHub, setShowFunHub] = useState(false)
     const [funSaldo, setFunSaldo] = useState<number | null>(null)
+    const [funAccountId, setFunAccountId] = useState<number | null>(null)
+    const [funCurrentGroup, setFunCurrentGroup] = useState<FunGroup | null>(null)
+    const [funRefresh, setFunRefresh] = useState(0)
+    // Schnell-Ausgabe direkt in die aktuelle Gruppe (nur Ausgaben, keine Einnahmen)
+    const [funGroupDialog, setFunGroupDialog] = useState(false)
+    const [funGroupAmount, setFunGroupAmount] = useState('')
+    const [funGroupDesc, setFunGroupDesc] = useState('')
+    const [funGroupDate, setFunGroupDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+    const [funGroupSaving, setFunGroupSaving] = useState(false)
     const [viewLevel, setViewLevel] = useState<'weeks' | 'days' | 'transactions'>('weeks')
     const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null)
     const [selectedDay, setSelectedDay] = useState<Date | null>(null)
@@ -79,24 +91,51 @@ export default function MobileDashboard({
         return map
     }, [receiptItems])
 
-    // --- EFFECT: SPASSKONTO-SALDO für die Dashboard-Kachel laden ---
-    // Lädt beim Start und immer, wenn der Hub geschlossen wird (showFunHub → false).
+    // --- EFFECT: SPASSKONTO-SALDO + aktuelle Gruppe für die Dashboard-Kacheln laden ---
+    // Lädt beim Start, wenn der Hub geschlossen wird (showFunHub → false) und nach
+    // einer Schnell-Ausgabe (funRefresh).
     useEffect(() => {
         if (showFunHub) return
         let cancelled = false
         const loadFunSaldo = async () => {
             const { data: funAccount } = await supabase.from('fun_accounts_v2').select('*').maybeSingle()
-            if (!funAccount) { if (!cancelled) setFunSaldo(null); return }
-            const [{ data: funExpenses }, { data: funIncome }] = await Promise.all([
+            if (!funAccount) { if (!cancelled) { setFunSaldo(null); setFunCurrentGroup(null); setFunAccountId(null) } return }
+            const [{ data: funExpenses }, { data: funIncome }, { data: funGroups }] = await Promise.all([
                 supabase.from('fun_group_expenses').select('amount, expense_date').eq('fun_account_id', funAccount.id),
                 supabase.from('fun_income_entries').select('amount, income_date').eq('fun_account_id', funAccount.id),
+                supabase.from('fun_groups').select('*').eq('fun_account_id', funAccount.id).order('start_date', { ascending: true }),
             ])
             if (cancelled) return
+            setFunAccountId(funAccount.id)
             setFunSaldo(calculateFunAccountSaldo(funExpenses || [], funIncome || [], funAccount.foresight_enabled))
+            const current = (funGroups || []).find(g => classifyGroupBucket(g) === 'aktuell') || null
+            setFunCurrentGroup(current)
         }
         loadFunSaldo()
         return () => { cancelled = true }
-    }, [showFunHub])
+    }, [showFunHub, funRefresh])
+
+    const openFunGroupDialog = () => {
+        setFunGroupAmount('')
+        setFunGroupDesc('')
+        setFunGroupDate(format(new Date(), 'yyyy-MM-dd'))
+        setFunGroupDialog(true)
+    }
+
+    const handleSaveFunGroupExpense = async () => {
+        if (!funAccountId || !funCurrentGroup) return
+        const amount = parseFloat(funGroupAmount)
+        if (isNaN(amount) || amount <= 0 || !funGroupDate) return
+        setFunGroupSaving(true)
+        const result = await addFunGroupExpense(funAccountId, amount, funGroupDesc, funGroupDate, funCurrentGroup.id)
+        setFunGroupSaving(false)
+        if (!result.success) {
+            alert(result.error || 'Fehler beim Speichern')
+            return
+        }
+        setFunGroupDialog(false)
+        setFunRefresh(n => n + 1)
+    }
 
     // --- EFFECT: PROCESS SAVINGS & DISTRIBUTION ON MOUNT ---
     useEffect(() => {
@@ -568,23 +607,80 @@ export default function MobileDashboard({
                                 <p className="amount text-lg text-foreground mt-1">€{weeklyBudget.toFixed(2)}</p>
                             </div>
                             {funSaldo !== null && (
-                                <button
-                                    onClick={() => setShowFunHub(true)}
-                                    className="surface press col-span-2 p-4 text-left group"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                                            <Sparkles className="w-3.5 h-3.5 text-primary" strokeWidth={1.75} />
-                                            Spaßkonto
+                                <>
+                                    <button
+                                        onClick={() => setShowFunHub(true)}
+                                        className="surface press p-4 text-left group"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                                <Sparkles className="w-3.5 h-3.5 text-primary" strokeWidth={1.75} />
+                                                Spaßkonto
+                                            </p>
+                                            <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={1.75} />
+                                        </div>
+                                        <p className={`amount text-lg mt-1 ${funSaldo < 0 ? 'text-[var(--chart-neg-heavy)]' : 'text-foreground'}`}>
+                                            {funSaldo < 0 ? '−' : ''}€{Math.abs(funSaldo).toFixed(2)}
                                         </p>
-                                        <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={1.75} />
-                                    </div>
-                                    <p className={`amount text-lg mt-1 ${funSaldo < 0 ? 'text-[var(--chart-neg-heavy)]' : 'text-foreground'}`}>
-                                        {funSaldo < 0 ? '−' : ''}€{Math.abs(funSaldo).toFixed(2)}
-                                    </p>
-                                </button>
+                                    </button>
+                                    {funCurrentGroup ? (
+                                        <button
+                                            onClick={openFunGroupDialog}
+                                            className="surface press p-4 text-left group"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-xs text-muted-foreground">Aktuelle Gruppe</p>
+                                                <Plus className="w-3.5 h-3.5 text-primary" strokeWidth={2} />
+                                            </div>
+                                            <p className="text-lg font-semibold text-foreground mt-1 truncate">{funCurrentGroup.name}</p>
+                                        </button>
+                                    ) : (
+                                        <div className="surface p-4">
+                                            <p className="text-xs text-muted-foreground">Aktuelle Gruppe</p>
+                                            <p className="text-sm text-muted-foreground/70 mt-1.5">Keine aktive</p>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
+
+                        {/* SCHNELL-AUSGABE IN DIE AKTUELLE GRUPPE */}
+                        <Dialog open={funGroupDialog} onOpenChange={setFunGroupDialog}>
+                            <DialogContent className="rounded-3xl max-w-sm">
+                                <DialogHeader>
+                                    <DialogTitle>Neue Ausgabe</DialogTitle>
+                                    <DialogDescription>
+                                        Wird direkt in die Gruppe &bdquo;{funCurrentGroup?.name}&ldquo; eingetragen.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-3">
+                                    <Input
+                                        type="number"
+                                        inputMode="decimal"
+                                        step="0.01"
+                                        placeholder="Betrag (€)"
+                                        value={funGroupAmount}
+                                        onChange={e => setFunGroupAmount(e.target.value)}
+                                        className="h-12 rounded-2xl text-lg text-center font-bold"
+                                        autoFocus
+                                    />
+                                    <Input
+                                        placeholder="Beschreibung (optional)"
+                                        value={funGroupDesc}
+                                        onChange={e => setFunGroupDesc(e.target.value)}
+                                        className="h-12 rounded-2xl"
+                                    />
+                                    <DatePicker date={funGroupDate} setDate={setFunGroupDate} className="h-12 rounded-2xl" />
+                                    <Button
+                                        onClick={handleSaveFunGroupExpense}
+                                        disabled={funGroupSaving || !funGroupAmount || !funGroupDate}
+                                        className="w-full h-12 rounded-2xl font-bold"
+                                    >
+                                        {funGroupSaving ? 'Speichert…' : 'Speichern'}
+                                    </Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
 
                         {/* INSIGHTS */}
                         <section className="w-full mt-10">
