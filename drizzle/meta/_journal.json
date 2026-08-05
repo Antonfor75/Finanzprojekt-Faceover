@@ -36,6 +36,13 @@
       "when": 1784112990441,
       "tag": "0004_next_typhoid_mary",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785312000000,
+      "tag": "0005_invite_codes",
+      "breakpoints": true
     }
   ]
 }

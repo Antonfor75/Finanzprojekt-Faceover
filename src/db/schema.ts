@@ -202,4 +202,19 @@ export const funIncomeEntriesTable = pgTable('fun_income_entries', {
     index('fun_income_entries_user_account_idx').on(t.user_id, t.fun_account_id),
 ]);
 
+// Einladungscodes für die Selbstregistrierung: ohne gültigen, unbenutzten Code kann
+// sich niemand einen Account anlegen. Bewusst OHNE RLS-Policy — die Tabelle wird
+// ausschließlich serverseitig über supabaseAdmin (service_role) gelesen/geschrieben,
+// da beim Registrieren noch keine Session existiert.
+export const inviteCodesTable = pgTable('invite_codes', {
+    id: serial('id').primaryKey(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    code: text('code').notNull().unique(),
+    note: text('note'), // Freitext, z. B. für wen der Code gedacht ist
+    expires_at: timestamp('expires_at', { withTimezone: true }), // null = läuft nie ab
+    used_at: timestamp('used_at', { withTimezone: true }), // null = noch frei
+    used_by: uuid('used_by'), // auth.users.id des eingelösten Accounts
+    created_by: uuid('created_by'), // Admin, der den Code erzeugt hat
+});
+
 // public.users table removed. Using auth.users instead.

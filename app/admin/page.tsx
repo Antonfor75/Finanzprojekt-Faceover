@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
 import { getUsers, createUser, deleteUserData as deleteUser, resetUserData as resetUser } from '@/app/actions/admin'
+import InviteCodePanel from '@/components/admin/InviteCodePanel'
+import PasswordInput from '@/components/PasswordInput'
+import { MIN_PASSWORD_LENGTH } from '@/utils/authRules'
 import { Plus, Users, LogOut, Check, ShieldAlert, RefreshCcw, Calculator, Loader2, AlertCircle } from 'lucide-react'
 
 // Hardcoded Admin Email
@@ -316,14 +319,13 @@ export default function AdminPage() {
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-500 mb-1">Passwort</label>
-                                <input
-                                    type="password"
+                                <PasswordInput
                                     required
                                     value={newUserPassword}
-                                    onChange={(e) => setNewUserPassword(e.target.value)}
+                                    onChange={setNewUserPassword}
                                     className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                    placeholder="Mindestens 6 Zeichen"
-                                    minLength={6}
+                                    placeholder={`Mindestens ${MIN_PASSWORD_LENGTH} Zeichen`}
+                                    minLength={MIN_PASSWORD_LENGTH}
                                 />
                             </div>
 
@@ -350,6 +352,11 @@ export default function AdminPage() {
                         </form>
                     </div>
 
+                </div>
+
+                {/* Einladungscodes für die Selbstregistrierung */}
+                <div className="mt-8">
+                    <InviteCodePanel />
                 </div>
             </div>
         </div>

@@ -1,9 +1,12 @@
 'use server'
 
 import { supabaseAdmin } from '@/utils/supabase/admin'
+import { assertAdmin } from '@/utils/adminGuard'
 
 export async function getUsers() {
     try {
+        await assertAdmin()
+
         const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers()
 
         if (error) {
@@ -19,6 +22,8 @@ export async function getUsers() {
 
 export async function createUser(email: string, password: string) {
     try {
+        await assertAdmin()
+
         const { data, error } = await supabaseAdmin.auth.admin.createUser({
             email,
             password,
@@ -38,6 +43,8 @@ export async function createUser(email: string, password: string) {
 
 export async function deleteUserData(userId: string) {
     try {
+        await assertAdmin()
+
         // 1. Delete all related data
         // We use Promise.all to do it in parallel
         await Promise.all([
@@ -65,6 +72,8 @@ export async function deleteUserData(userId: string) {
 
 export async function resetUserData(userId: string) {
     try {
+        await assertAdmin()
+
         // Delete all data but KEEP the user
         await Promise.all([
             supabaseAdmin.from('expenses').delete().eq('user_id', userId),
@@ -86,6 +95,8 @@ import path from 'path'
 
 export async function getSchemaDiagram() {
     try {
+        await assertAdmin()
+
         const schemaPath = path.join(process.cwd(), 'src', 'db', 'schema.ts')
         const content = await fs.readFile(schemaPath, 'utf-8')
 
