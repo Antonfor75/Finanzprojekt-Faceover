@@ -384,7 +384,7 @@ export default function FunAccountHub({
                     </button>
                 </div>
 
-                <EntryDialogView />
+                {EntryDialogView()}
             </div>
         )
     }
@@ -484,7 +484,7 @@ export default function FunAccountHub({
                 </TabsContent>
             </Tabs>
 
-            <EntryDialogView />
+            {EntryDialogView()}
         </div>
     )
 
