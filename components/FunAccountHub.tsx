@@ -488,7 +488,15 @@ export default function FunAccountHub({
         </div>
     )
 
-    // Gemeinsamer Eintrag-/Gruppen-Dialog (in Haupt- und Detailansicht eingebunden)
+    // Gemeinsamer Eintrag-/Gruppen-Dialog (in Haupt- und Detailansicht eingebunden).
+    //
+    // WICHTIG: Wird bewusst als {EntryDialogView()} aufgerufen und NICHT als
+    // <EntryDialogView /> gerendert. Die Funktion liegt innerhalb von FunAccountHub und
+    // wird deshalb bei jedem Rendern neu erzeugt — als JSX-Element saehe React jedes Mal
+    // einen neuen Komponententyp und wuerde den ganzen Dialog abhaengen und neu
+    // aufhaengen, also bei jedem getippten Zeichen. Der Cursor sprang dadurch aus dem
+    // Beschreibungsfeld heraus. Als Funktionsaufruf landet das JSX direkt im Baum des
+    // Elternteils und behaelt seine Identitaet.
     function EntryDialogView() {
         return (
             <Dialog open={entryDialog !== null} onOpenChange={(open) => { if (!open) closeEntryDialog() }}>
@@ -525,12 +533,12 @@ export default function FunAccountHub({
 
                         {entryIsGroup ? (
                             <>
+                                {/* Kein autoFocus: der Nutzer entscheidet per Tipp, wo er schreibt. */}
                                 <Input
                                     placeholder="Name der Gruppe"
                                     value={groupName}
                                     onChange={e => setGroupName(e.target.value)}
                                     className="h-12 rounded-2xl"
-                                    autoFocus
                                 />
                                 <div className="flex justify-center rounded-2xl bg-muted/40 p-1">
                                     <Calendar
@@ -551,6 +559,7 @@ export default function FunAccountHub({
                             </>
                         ) : (
                             <>
+                                {/* Kein autoFocus: sonst zieht das Betragsfeld den Cursor an sich. */}
                                 <Input
                                     type="number"
                                     inputMode="decimal"
@@ -559,7 +568,6 @@ export default function FunAccountHub({
                                     value={entryAmount}
                                     onChange={e => setEntryAmount(e.target.value)}
                                     className="h-12 rounded-2xl text-lg text-center font-bold"
-                                    autoFocus
                                 />
                                 <Input
                                     placeholder="Beschreibung (optional)"

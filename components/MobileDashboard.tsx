@@ -654,6 +654,7 @@ export default function MobileDashboard({
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-3">
+                                    {/* Kein autoFocus: der Nutzer entscheidet per Tipp, wo er schreibt. */}
                                     <Input
                                         type="number"
                                         inputMode="decimal"
@@ -662,7 +663,6 @@ export default function MobileDashboard({
                                         value={funGroupAmount}
                                         onChange={e => setFunGroupAmount(e.target.value)}
                                         className="h-12 rounded-2xl text-lg text-center font-bold"
-                                        autoFocus
                                     />
                                     <Input
                                         placeholder="Beschreibung (optional)"

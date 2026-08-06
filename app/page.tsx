@@ -181,12 +181,15 @@ export default function Home() {
   // LOADING STATE (Auth or Initial Data)
   const isLoading = authLoading || (session && dataLoading && !data)
 
-  const AnimatedBackground = () => <div className="ambient-bg" />
+  // Bewusst ein fertiges Element und keine im Render definierte Komponente: als
+  // JSX-Tag gerendert saehe React bei jedem Rendern einen neuen Komponententyp und
+  // wuerde das Element abhaengen und neu aufhaengen (Animation startet neu).
+  const AnimatedBackground = <div className="ambient-bg" />
 
   if (isLoading && !error) {
     return (
       <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-background relative overflow-hidden gap-6 view-enter">
-        <AnimatedBackground />
+        {AnimatedBackground}
 
         <Loader2 className="z-10 w-7 h-7 animate-spin text-primary" strokeWidth={1.75} />
         <p className="z-10 eyebrow">Lade Finanzen</p>
@@ -198,7 +201,7 @@ export default function Home() {
   if (error) {
     return (
       <div className="h-[100dvh] w-full flex flex-col items-center justify-center bg-background relative overflow-hidden p-6 view-enter">
-        <AnimatedBackground />
+        {AnimatedBackground}
 
         <div className="z-10 flex flex-col w-full max-w-sm">
 
@@ -232,7 +235,7 @@ export default function Home() {
   if (session?.user?.email === 'chef@anton.de') {
     return (
       <div className="h-[100dvh] w-full flex items-center justify-center bg-background relative overflow-hidden">
-        <AnimatedBackground />
+        {AnimatedBackground}
         <Loader2 className="w-7 h-7 animate-spin text-primary z-10" strokeWidth={1.75} />
       </div>
     )
@@ -246,7 +249,7 @@ export default function Home() {
   // AUTHENTICATED APP
   return (
     <main className="h-[100dvh] w-full bg-background relative overflow-hidden">
-      <AnimatedBackground />
+      {AnimatedBackground}
       <div className="absolute inset-0 z-10">
           <MobileDashboard
             expenses={data?.expenses || []}

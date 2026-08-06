@@ -228,6 +228,7 @@ export default function FunAccountView({
                         <DialogDescription>Unregelmäßiges Einkommen auf „{account.name}" einzahlen.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3">
+                        {/* Kein autoFocus: der Nutzer entscheidet per Tipp, wo er schreibt. */}
                         <Input
                             type="number"
                             inputMode="decimal"
@@ -236,7 +237,6 @@ export default function FunAccountView({
                             value={depositAmount}
                             onChange={e => setDepositAmount(e.target.value)}
                             className="h-12 rounded-2xl text-lg text-center font-bold"
-                            autoFocus
                         />
                         <Input
                             placeholder="Notiz (optional, z.B. Geburtstagsgeld)"
@@ -274,6 +274,7 @@ export default function FunAccountView({
                             <option value="Freizeit">Freizeit 🎉</option>
                             <option value="Sonstiges">Sonstiges 📦</option>
                         </select>
+                        {/* Kein autoFocus: der Nutzer entscheidet per Tipp, wo er schreibt. */}
                         <Input
                             type="number"
                             inputMode="decimal"
@@ -282,7 +283,6 @@ export default function FunAccountView({
                             value={expenseAmount}
                             onChange={e => setExpenseAmount(e.target.value)}
                             className="h-12 rounded-2xl text-lg text-center font-bold"
-                            autoFocus
                         />
                         <Input
                             placeholder="Beschreibung (optional)"
