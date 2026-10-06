@@ -131,6 +131,9 @@ export async function syncReweExpenses(userId: string): Promise<SyncResult> {
                 receipt_date: parsed.receiptDate,
                 total_amount: parsed.totalAmount,
                 raw_subject: msg.subject,
+                // Bon-Text für die Handy-App (Auswertung mit dem lokalen Sprachmodell). Setzt die Migration
+                // drizzle/0006_rewe_raw_text.sql voraus; ohne Text bleibt die Spalte unberührt.
+                ...(parsed.rawText ? { raw_text: parsed.rawText } : {}),
             })
             .select('id')
             .single()
@@ -174,7 +177,9 @@ export async function syncReweExpenses(userId: string): Promise<SyncResult> {
             .eq('id', receipt.id)
 
         // 6d. Einzelartikel als Zusatzinfo speichern — best-effort, bricht nichts ab.
-        if (parsed.items?.length) {
+        // Standard AUS: die Artikel trägt die Handy-App per KI aus dem Bon-Text ein (sonst doppelte Artikel).
+        // REWE_SERVER_ITEMS=1 stellt die regelbasierte Artikelerkennung auf dem Server wieder an.
+        if (process.env.REWE_SERVER_ITEMS === '1' && parsed.items?.length) {
             result.itemsImported += await saveReceiptItems(userId, expense.id, parsed.totalAmount, parsed.items, productMatcher)
         }
 
