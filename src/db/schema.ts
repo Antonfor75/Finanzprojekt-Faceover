@@ -220,6 +220,20 @@ export const inviteCodesTable = pgTable('invite_codes', {
     used_at: timestamp('used_at', { withTimezone: true }), // null = noch frei
     used_by: uuid('used_by'), // auth.users.id des eingelösten Accounts
     created_by: uuid('created_by'), // Admin, der den Code erzeugt hat
+    max_uses: integer('max_uses').default(1).notNull(), // für wie viele Personen (1–100)
+    use_count: integer('use_count').default(0).notNull(), // so oft schon eingelöst
 });
+
+// Wer welchen Einladungscode eingelöst hat (ein Code kann für mehrere Personen gelten).
+// Wie invite_codes: RLS ohne Policy, nur service_role. Migration 0007.
+export const inviteCodeRedemptionsTable = pgTable('invite_code_redemptions', {
+    id: serial('id').primaryKey(),
+    code_id: integer('code_id').notNull().references(() => inviteCodesTable.id, { onDelete: 'cascade' }),
+    user_id: uuid('user_id').notNull(),
+    redeemed_at: timestamp('redeemed_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+    unique('invite_code_redemptions_code_user_unique').on(t.code_id, t.user_id),
+    index('invite_code_redemptions_code_idx').on(t.code_id),
+]);
 
 // public.users table removed. Using auth.users instead.

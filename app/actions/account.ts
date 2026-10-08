@@ -40,7 +40,7 @@ export async function deleteOwnAccount(confirmEmail: string): Promise<Result> {
         if (deleteError) throw new Error(deleteError.message)
 
         return { success: true }
-    } catch (err: any) {
+    } catch (err) {
         console.error('Konto löschen fehlgeschlagen:', err)
         return { success: false, error: 'Das Konto konnte nicht gelöscht werden. Bitte versuche es später erneut.' }
     }

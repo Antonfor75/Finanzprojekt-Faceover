@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/utils/supabase'
 import { signUpWithInviteCode } from '@/app/actions/auth'
@@ -32,18 +32,19 @@ const COPY: Record<Mode, { title: string; subtitle: string; submit: string }> = 
 }
 
 export default function LoginScreen() {
-    const [mode, setMode] = useState<Mode>('login')
+    // Aus der Demo kommt man per /?signup=1 direkt in die Registrierung. LoginScreen
+    // rendert nur im Browser (nach dem Session-Check), window ist also da.
+    const [mode, setMode] = useState<Mode>(() =>
+        typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('signup') === '1'
+            ? 'signup'
+            : 'login'
+    )
 
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [passwordRepeat, setPasswordRepeat] = useState('')
     const [inviteCode, setInviteCode] = useState('')
     const [privacyAccepted, setPrivacyAccepted] = useState(false)
-
-    // Aus der Demo kommt man per /?signup=1 direkt in die Registrierung.
-    useEffect(() => {
-        if (new URLSearchParams(window.location.search).get('signup') === '1') setMode('signup')
-    }, [])
 
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)

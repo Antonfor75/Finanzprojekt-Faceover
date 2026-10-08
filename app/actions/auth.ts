@@ -14,9 +14,9 @@ type SignUpResult = { success: true } | { success: false; error: string }
  * `invite_codes` hat RLS ohne Policy, ein nicht angemeldeter Client kommt also
  * nicht an die Codes und kann sie auch nicht durchprobieren-lesen.
  *
- * Der Code wird ZUERST atomar beansprucht und erst danach der User angelegt —
- * so kann derselbe Code nicht von zwei parallelen Anfragen eingelöst werden.
- * Schlägt das Anlegen fehl, wird der Code wieder freigegeben.
+ * Ein Code gilt für `max_uses` Personen. Zuerst wird atomar ein Platz beansprucht
+ * und erst danach der User angelegt — so wird das Kontingent auch bei parallelen
+ * Anfragen nie überschritten. Schlägt das Anlegen fehl, wird der Platz wieder frei.
  */
 export async function signUpWithInviteCode(
     email: string,
@@ -44,44 +44,30 @@ export async function signUpWithInviteCode(
     try {
         const nowIso = new Date().toISOString()
 
-        // Atomar beanspruchen: greift nur, solange der Code noch frei ist. Damit kann
-        // derselbe Code nicht von zwei parallelen Anfragen eingelöst werden.
-        // Die Ablaufprüfung passiert bewusst DANACH und nicht als .or()-Filter —
-        // PostgREST verträgt `or` auf einem UPDATE nicht (meldet 42703).
-        const { data: claimed, error: claimError } = await supabaseAdmin
-            .from('invite_codes')
-            .update({ used_at: nowIso })
-            .eq('code', code)
-            .is('used_at', null)
-            .select('id, expires_at')
-            .maybeSingle()
+        // Atomar einen Platz auf dem Code beanspruchen. Kontingent (max_uses) und
+        // Ablauf prüft die DB-Funktion in EINEM UPDATE — parallele Registrierungen
+        // können das Kontingent so nicht überschreiten (Migration 0007).
+        const { data: claimRows, error: claimError } = await supabaseAdmin
+            .rpc('claim_invite_code', { p_code: code })
 
         if (claimError) {
             console.error('Invite-Code beanspruchen fehlgeschlagen:', claimError)
             return { success: false, error: 'Der Einladungscode konnte nicht geprüft werden.' }
         }
 
-        if (!claimed) {
-            // Kein Treffer — entweder gibt es den Code nicht oder er ist schon weg.
-            const { data: existing } = await supabaseAdmin
-                .from('invite_codes')
-                .select('used_at')
-                .eq('code', code)
-                .maybeSingle()
+        const claim = (Array.isArray(claimRows) ? claimRows[0] : claimRows) as
+            { code_id: number | null; status: 'ok' | 'invalid' | 'exhausted' | 'expired' } | undefined
 
-            return {
-                success: false,
-                error: existing?.used_at
-                    ? 'Dieser Einladungscode wurde bereits verwendet.'
-                    : 'Dieser Einladungscode ist ungültig.',
-            }
+        if (!claim || claim.status !== 'ok' || claim.code_id == null) {
+            const messages = {
+                exhausted: 'Dieser Einladungscode wurde bereits von allen eingeladenen Personen verwendet.',
+                expired: 'Dieser Einladungscode ist abgelaufen.',
+                invalid: 'Dieser Einladungscode ist ungültig.',
+                ok: 'Dieser Einladungscode ist ungültig.',
+            } as const
+            return { success: false, error: messages[claim?.status ?? 'invalid'] }
         }
-
-        if (claimed.expires_at && new Date(claimed.expires_at) <= new Date()) {
-            // Wieder freigeben — abgelaufen heißt nicht "verbraucht".
-            await supabaseAdmin.from('invite_codes').update({ used_at: null }).eq('id', claimed.id)
-            return { success: false, error: 'Dieser Einladungscode ist abgelaufen.' }
-        }
+        const codeId = claim.code_id
 
         const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email: cleanEmail,
@@ -91,8 +77,8 @@ export async function signUpWithInviteCode(
         })
 
         if (createError || !created?.user) {
-            // Code wieder freigeben, damit er nicht durch einen Fehlversuch verbrannt ist.
-            await supabaseAdmin.from('invite_codes').update({ used_at: null }).eq('id', claimed.id)
+            // Platz wieder freigeben, damit er nicht durch einen Fehlversuch verbrannt ist.
+            await supabaseAdmin.rpc('release_invite_code', { p_id: codeId })
 
             const message = createError?.message || ''
             if (/already|exists|registered/i.test(message)) {
@@ -102,10 +88,19 @@ export async function signUpWithInviteCode(
             return { success: false, error: 'Der Account konnte nicht angelegt werden.' }
         }
 
+        // Festhalten, wer eingelöst hat. Ein Fehler hier darf die fertige
+        // Registrierung nicht mehr kippen — der Zähler stimmt ohnehin schon.
+        const { error: redemptionError } = await supabaseAdmin
+            .from('invite_code_redemptions')
+            .insert({ code_id: codeId, user_id: created.user.id, redeemed_at: nowIso })
+        if (redemptionError) console.error('Einlösung festhalten fehlgeschlagen:', redemptionError)
+
+        // used_by (erste Person) weiter pflegen — ältere App-Stände lesen nur dieses Feld.
         await supabaseAdmin
             .from('invite_codes')
             .update({ used_by: created.user.id })
-            .eq('id', claimed.id)
+            .eq('id', codeId)
+            .is('used_by', null)
 
         return { success: true }
     } catch (err: any) {
