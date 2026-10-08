@@ -6,7 +6,9 @@ import { Eye, EyeOff } from 'lucide-react'
 /**
  * Passwortfeld mit Auge-Symbol zum Ein-/Ausblenden.
  * Wird überall verwendet, wo ein Passwort eingegeben wird — Login, Registrierung,
- * Passwort-Reset und das Admin-Formular.
+ * Passwort-Reset, das Admin-Formular und das REWE-App-Passwort.
+ * Standardmäßig verdeckt; die Sichtbarkeit lebt nur im Komponenten-State (verfällt beim
+ * Schließen der Ansicht) und ändert nichts daran, was gespeichert oder gesendet wird.
  */
 export default function PasswordInput({
     id,
@@ -41,6 +43,11 @@ export default function PasswordInput({
                 required={required}
                 minLength={minLength}
                 autoFocus={autoFocus}
+                // Sichtbar ist es ein Textfeld: Autokorrektur/Rechtschreibung (samt Wörterbuch bzw.
+                // Cloud-Prüfung) soll das Passwort weder mitlesen noch lernen.
+                spellCheck={false}
+                autoCorrect="off"
+                autoCapitalize="off"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 className={`${className} pr-12`}

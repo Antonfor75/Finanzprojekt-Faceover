@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import PasswordInput from '@/components/PasswordInput'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { DatePicker } from '@/components/ui/date-picker'
 import { saveEmailConnection, getEmailConnectionStatus, deleteEmailConnection, runReweSyncNow, type ConnectionStatus } from '@/app/actions/emailConnection'
@@ -1798,13 +1799,12 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                                     </Field>
                                     <Field>
                                         <FieldLabel className="text-xs text-muted-foreground ml-2">App-Passwort (16 Zeichen)</FieldLabel>
-                                        <Input
-                                            type="password"
+                                        <PasswordInput
                                             placeholder="xxxx xxxx xxxx xxxx"
                                             value={reweAppPassword}
-                                            onChange={(e) => setReweAppPassword(e.target.value)}
+                                            onChange={setReweAppPassword}
                                             autoComplete="off"
-                                            className="h-12 rounded-xl bg-muted/60 border-transparent shadow-none focus-visible:ring-primary"
+                                            className="h-12 w-full min-w-0 rounded-xl bg-muted/60 border border-transparent px-2.5 py-1 text-base md:text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary"
                                         />
                                     </Field>
 
