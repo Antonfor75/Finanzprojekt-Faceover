@@ -109,6 +109,7 @@ export const reweReceiptsTable = pgTable('rewe_receipts', {
     total_amount: numeric('total_amount'),
     expense_id: integer('expense_id'), // Verweis auf die erzeugte Ausgabe
     raw_subject: text('raw_subject'),
+    raw_text: text('raw_text'), // zeilenweiser eBon-Text für die KI-Auswertung auf dem Handy
     imported_at: timestamp('imported_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

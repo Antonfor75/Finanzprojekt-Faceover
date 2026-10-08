@@ -28,6 +28,11 @@ export type ParsedReweReceipt = {
     receiptDate: string
     /** Einzelartikel aus dem PDF-Bon — optionale Zusatzinfo, fehlt bei Parse-Problemen. */
     items?: ParsedReweItem[]
+    /**
+     * Zeilenweiser Text des eBon-PDFs (bzw. des Mail-Textes, falls kein PDF dabei ist). Die Handy-App wertet
+     * ihn mit dem lokalen Sprachmodell aus und trägt die Artikel selbst ein.
+     */
+    rawText?: string
 }
 
 // Labels, hinter denen der Gesamtbetrag steht — in Prioritätsreihenfolge.
@@ -297,6 +302,7 @@ export async function parseReweEmail(msg: ReweMailMessage): Promise<ParsedReweRe
 
     // 4. Einzelartikel aus dem PDF-Bon — best-effort, Fehler brechen den Import nicht.
     let items: ParsedReweItem[] | undefined
+    let rawText: string | undefined
     try {
         const pdf = msg.attachments.find(
             (a) => a.contentType?.toLowerCase().includes('pdf') || a.filename?.toLowerCase().endsWith('.pdf'),
@@ -305,10 +311,13 @@ export async function parseReweEmail(msg: ReweMailMessage): Promise<ParsedReweRe
             const lines = await extractPdfLines(pdf.content)
             const parsedItems = parseReweItems(lines)
             if (parsedItems.length > 0) items = parsedItems
+            if (lines.length > 0) rawText = lines.join(String.fromCharCode(10))
         }
     } catch (err) {
         console.warn('[parseReweEmail] Artikel-Parsing fehlgeschlagen (Import läuft weiter):', err)
     }
+    // Ohne PDF-Text bleibt der Mail-Text (enthält zumindest Betrag und Datum).
+    if (!rawText && bodyText.trim()) rawText = bodyText.trim()
 
-    return { totalAmount, receiptDate, items }
+    return { totalAmount, receiptDate, items, rawText }
 }
