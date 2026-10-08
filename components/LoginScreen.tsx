@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/utils/supabase'
 import { signUpWithInviteCode } from '@/app/actions/auth'
 import { MIN_PASSWORD_LENGTH } from '@/utils/authRules'
 import PasswordInput from '@/components/PasswordInput'
-import { Loader2, ArrowRight, ArrowLeft, MailCheck } from 'lucide-react'
+import { Loader2, ArrowRight, ArrowLeft, MailCheck, PlayCircle } from 'lucide-react'
 
 type Mode = 'login' | 'signup' | 'forgot'
 
@@ -37,6 +38,12 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('')
     const [passwordRepeat, setPasswordRepeat] = useState('')
     const [inviteCode, setInviteCode] = useState('')
+    const [privacyAccepted, setPrivacyAccepted] = useState(false)
+
+    // Aus der Demo kommt man per /?signup=1 direkt in die Registrierung.
+    useEffect(() => {
+        if (new URLSearchParams(window.location.search).get('signup') === '1') setMode('signup')
+    }, [])
 
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -49,6 +56,7 @@ export default function LoginScreen() {
         setPassword('')
         setPasswordRepeat('')
         setInviteCode('')
+        setPrivacyAccepted(false)
     }
 
     const handleLogin = async () => {
@@ -75,7 +83,13 @@ export default function LoginScreen() {
             return
         }
 
-        const result = await signUpWithInviteCode(email, password, inviteCode)
+        if (!privacyAccepted) {
+            setError('Bitte bestätige, dass du die Datenschutzerklärung zur Kenntnis genommen hast.')
+            setLoading(false)
+            return
+        }
+
+        const result = await signUpWithInviteCode(email, password, inviteCode, privacyAccepted)
 
         if (!result.success) {
             setError(result.error)
@@ -246,12 +260,30 @@ export default function LoginScreen() {
                                         className={`${INPUT_CLASS} tracking-[0.2em] uppercase text-center font-semibold`}
                                     />
                                 </div>
+
+                                <label htmlFor="auth-privacy" className="flex items-start gap-3 px-1 pt-1 cursor-pointer">
+                                    <input
+                                        id="auth-privacy"
+                                        type="checkbox"
+                                        required
+                                        checked={privacyAccepted}
+                                        onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                                        className="mt-0.5 w-5 h-5 shrink-0 rounded-md accent-[var(--color-primary)]"
+                                    />
+                                    <span className="text-xs text-muted-foreground leading-relaxed">
+                                        Ich habe die{' '}
+                                        <Link href="/datenschutz" target="_blank" className="font-semibold text-foreground underline underline-offset-2">
+                                            Datenschutzerklärung
+                                        </Link>{' '}
+                                        zur Kenntnis genommen.
+                                    </span>
+                                </label>
                             </>
                         )}
 
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || (mode === 'signup' && !privacyAccepted)}
                             className="press group mt-3 w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-4 rounded-xl font-semibold text-base disabled:opacity-60 transition-[background-color] duration-200 hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)]"
                         >
                             {loading ? (
@@ -288,8 +320,21 @@ export default function LoginScreen() {
                         >
                             Account erstellen
                         </button>
+                        <Link
+                            href="/demo"
+                            className="press mt-3 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-primary text-base hover:bg-card/60 transition-colors duration-200"
+                        >
+                            <PlayCircle className="w-4 h-4" strokeWidth={2} />
+                            App ausprobieren (Demo)
+                        </Link>
                     </div>
                 )}
+
+                <nav className="mt-8 flex justify-center gap-4 text-xs text-muted-foreground">
+                    <Link href="/impressum" className="hover:text-foreground transition-colors">Impressum</Link>
+                    <span aria-hidden>·</span>
+                    <Link href="/datenschutz" className="hover:text-foreground transition-colors">Datenschutz</Link>
+                </nav>
             </div>
         </div>
     )

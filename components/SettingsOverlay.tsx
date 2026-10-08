@@ -8,6 +8,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import ImportWizard from '@/components/ImportWizard'
 import HelpModal from '@/components/HelpModal'
+import AccountLegalSection from '@/components/legal/AccountLegalSection'
 // Set worker source for pdfjs
 import { supabase } from '@/utils/supabase'
 import { addFunAccount, setFunAccountFeed } from '@/app/actions/funAccount'
@@ -2029,6 +2030,8 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         })}
                     </div>
                 </div>
+
+                <AccountLegalSection />
 
                 {/* Logout Button */}
                 <div className="mt-6 flex justify-center">

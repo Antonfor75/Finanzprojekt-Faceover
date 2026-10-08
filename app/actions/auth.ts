@@ -3,6 +3,7 @@
 import { supabaseAdmin } from '@/utils/supabase/admin'
 import { normalizeCode } from '@/utils/inviteCode'
 import { validatePassword } from '@/utils/authRules'
+import { PRIVACY_VERSION } from '@/lib/legal/operator'
 
 type SignUpResult = { success: true } | { success: false; error: string }
 
@@ -20,7 +21,8 @@ type SignUpResult = { success: true } | { success: false; error: string }
 export async function signUpWithInviteCode(
     email: string,
     password: string,
-    inviteCode: string
+    inviteCode: string,
+    privacyAccepted: boolean
 ): Promise<SignUpResult> {
     const cleanEmail = email.trim().toLowerCase()
     const code = normalizeCode(inviteCode)
@@ -31,6 +33,11 @@ export async function signUpWithInviteCode(
 
     const passwordError = validatePassword(password)
     if (passwordError) return { success: false, error: passwordError }
+
+    // Serverseitig prüfen — das Häkchen im Formular allein ist kein Nachweis.
+    if (privacyAccepted !== true) {
+        return { success: false, error: 'Bitte bestätige die Datenschutzerklärung.' }
+    }
 
     if (!code) return { success: false, error: 'Bitte einen Einladungscode eingeben.' }
 
@@ -80,6 +87,7 @@ export async function signUpWithInviteCode(
             email: cleanEmail,
             password,
             email_confirm: true, // kein Bestätigungslink — der Einladungscode ist der Türsteher
+            user_metadata: { privacy_accepted_at: nowIso, privacy_version: PRIVACY_VERSION },
         })
 
         if (createError || !created?.user) {

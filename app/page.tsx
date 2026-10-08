@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
 import MobileDashboard from '@/components/MobileDashboard'
 import LoginScreen from '@/components/LoginScreen'
+import PrivacyUpdateNotice from '@/components/legal/PrivacyUpdateNotice'
+import { hasAcceptedCurrentPrivacy } from '@/lib/legal/operator'
 import { Loader2 } from 'lucide-react'
 import { Expense, FixedCost, Settings, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 
@@ -263,6 +265,7 @@ export default function Home() {
             onUpdate={fetchData}
           />
       </div>
+      {!hasAcceptedCurrentPrivacy(session.user?.user_metadata) && <PrivacyUpdateNotice />}
     </main>
   )
 }
