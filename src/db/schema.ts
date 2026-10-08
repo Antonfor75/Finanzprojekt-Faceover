@@ -9,6 +9,7 @@ export const expensesTable = pgTable('expenses', {
     expense_date: text('expense_date'), // Stored as string/ISO in actions.ts
     category: text('category'),
     account_id: integer('account_id'), // Optional link to an account
+    transfer_id: uuid('transfer_id'), // verbindet beide Seiten einer Umbuchung Girokonto <-> Spaßkonto (utils/transfer.ts)
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 
@@ -68,9 +69,10 @@ export const accountTransactionsTable = pgTable('account_transactions', {
     created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     account_id: integer('account_id').notNull(),
     amount: numeric('amount').notNull(), // positive = deposit
-    type: text('type').notNull(), // 'manual_deposit' | 'auto_deposit'
+    type: text('type').notNull(), // 'manual_deposit' | 'auto_deposit' | 'transfer_in' | 'transfer_out'
     note: text('note'),
     transaction_date: timestamp('transaction_date', { withTimezone: true }).defaultNow().notNull(),
+    transfer_id: uuid('transfer_id'), // verbindet beide Seiten einer Umbuchung Girokonto <-> Spaßkonto (utils/transfer.ts)
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 });
 
@@ -184,6 +186,7 @@ export const funGroupExpensesTable = pgTable('fun_group_expenses', {
     amount: numeric('amount').notNull(),
     description: text('description'),
     expense_date: text('expense_date').notNull(), // darf in der Zukunft liegen (geplante Ausgabe)
+    transfer_id: uuid('transfer_id'), // verbindet beide Seiten einer Umbuchung Girokonto <-> Spaßkonto (utils/transfer.ts)
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 }, (t) => [
     index('fun_group_expenses_user_account_idx').on(t.user_id, t.fun_account_id),
@@ -197,6 +200,7 @@ export const funIncomeEntriesTable = pgTable('fun_income_entries', {
     amount: numeric('amount').notNull(),
     description: text('description'),
     income_date: text('income_date').notNull(),
+    transfer_id: uuid('transfer_id'), // verbindet beide Seiten einer Umbuchung Girokonto <-> Spaßkonto (utils/transfer.ts)
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 }, (t) => [
     index('fun_income_entries_user_account_idx').on(t.user_id, t.fun_account_id),

@@ -2,6 +2,37 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
+import { updateTransfer, deleteTransfer } from '@/app/actions/transfers'
+
+type FunEntryTable = 'fun_group_expenses' | 'fun_income_entries'
+
+/** transfer_id eines Eintrags, falls er Teil einer Umbuchung Girokonto <-> Spaßkonto ist (sonst null). */
+async function linkedTransferId(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    table: FunEntryTable,
+    id: number
+): Promise<string | null> {
+    const { data } = await supabase.from(table).select('transfer_id').eq('id', id).maybeSingle()
+    return data?.transfer_id ?? null
+}
+
+/** Ändert eine gekoppelte Umbuchung auf BEIDEN Seiten (gleicher Betrag), danach die Gruppe dieses Eintrags. */
+async function updateLinkedEntry(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    table: FunEntryTable,
+    id: number,
+    transferId: string,
+    amount: number,
+    description: string,
+    date: string,
+    groupId: number | null
+) {
+    const result = await updateTransfer(transferId, { amount, reason: description, date })
+    if (!result.success) return result
+    const { error } = await supabase.from(table).update({ group_id: groupId }).eq('id', id)
+    if (error) return { success: false as const, error: error.message }
+    return { success: true as const }
+}
 
 export async function getOrCreateFunAccountV2() {
     const supabase = await createClient()
@@ -197,6 +228,9 @@ export async function updateFunGroupExpense(
     }
     const supabase = await createClient()
 
+    const transferId = await linkedTransferId(supabase, 'fun_group_expenses', id)
+    if (transferId) return updateLinkedEntry(supabase, 'fun_group_expenses', id, transferId, amount, description, expenseDate, groupId)
+
     const { error } = await supabase.from('fun_group_expenses').update({
         amount,
         description: description || null,
@@ -215,6 +249,10 @@ export async function updateFunGroupExpense(
 
 export async function deleteFunGroupExpense(id: number) {
     const supabase = await createClient()
+
+    const transferId = await linkedTransferId(supabase, 'fun_group_expenses', id)
+    if (transferId) return deleteTransfer(transferId)
+
     const { error } = await supabase.from('fun_group_expenses').delete().eq('id', id)
 
     if (error) {
@@ -270,6 +308,9 @@ export async function updateFunIncomeEntry(
     }
     const supabase = await createClient()
 
+    const transferId = await linkedTransferId(supabase, 'fun_income_entries', id)
+    if (transferId) return updateLinkedEntry(supabase, 'fun_income_entries', id, transferId, amount, description, incomeDate, groupId)
+
     const { error } = await supabase.from('fun_income_entries').update({
         amount,
         description: description || null,
@@ -288,6 +329,10 @@ export async function updateFunIncomeEntry(
 
 export async function deleteFunIncomeEntry(id: number) {
     const supabase = await createClient()
+
+    const transferId = await linkedTransferId(supabase, 'fun_income_entries', id)
+    if (transferId) return deleteTransfer(transferId)
+
     const { error } = await supabase.from('fun_income_entries').delete().eq('id', id)
 
     if (error) {

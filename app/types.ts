@@ -6,6 +6,8 @@ export type Expense = {
     expense_date: string
     category?: string
     account_id?: number | null
+    /** Gesetzt bei Umbuchungen Girokonto <-> Spaßkonto; verbindet beide Seiten. */
+    transfer_id?: string | null
     user_id?: string
 }
 
@@ -37,9 +39,10 @@ export type AccountTransaction = {
     created_at: string
     account_id: number
     amount: number
-    type: 'manual_deposit' | 'auto_deposit'
+    type: 'manual_deposit' | 'auto_deposit' | 'transfer_in' | 'transfer_out'
     note?: string | null
     transaction_date: string
+    transfer_id?: string | null
     user_id?: string
 }
 
@@ -142,6 +145,7 @@ export type FunGroupExpense = {
     amount: number
     description?: string | null
     expense_date: string // darf in der Zukunft liegen (geplante Ausgabe)
+    transfer_id?: string | null
     user_id?: string
 }
 
@@ -153,5 +157,6 @@ export type FunIncomeEntry = {
     amount: number
     description?: string | null
     income_date: string
+    transfer_id?: string | null
     user_id?: string
 }
