@@ -23,6 +23,7 @@ import FunAccountView from './FunAccountView'
 import FunAccountHub from './FunAccountHub'
 import { calculateFunAccountSaldo, classifyGroupBucket } from '@/utils/funAccountGroups'
 import { addFunGroupExpense } from '@/app/actions/funGroups'
+import { updateTransfer, deleteTransfer } from '@/app/actions/transfers'
 import { FunGroup } from '@/app/types'
 import { DatePicker } from '@/components/ui/date-picker'
 // import DashboardHealth from './DashboardHealth' // REMOVED
@@ -219,6 +220,20 @@ export default function MobileDashboard({
         const expense_date = formData.get('date') as string
         const category = formData.get('category') as string || 'Sonstiges'
 
+        // Umbuchung Girokonto <-> Spaßkonto: beide Seiten bekommen denselben Betrag. Das Vorzeichen
+        // (Abbuchen/Hinzufügen) bleibt erhalten, die Kategorie bleibt "Umbuchung".
+        const existing = expenses.find(e => e.id === id)
+        if (existing?.transfer_id) {
+            const result = await updateTransfer(existing.transfer_id, {
+                amount: Math.abs(amount),
+                reason: description || existing.description,
+                date: expense_date,
+            })
+            if (!result.success) alert(result.error)
+            onUpdate?.()
+            return
+        }
+
         await supabase.from('expenses').update({
             description: description || category,
             amount,
@@ -231,6 +246,14 @@ export default function MobileDashboard({
     const deleteExpenseLocal = async (id: number) => {
         // 1. Get the expense to check for linked account
         const { data: expense } = await supabase.from('expenses').select('*').eq('id', id).single()
+
+        // Umbuchung Girokonto <-> Spaßkonto: beide Seiten zusammen löschen (Spaßkonto-Saldo wird korrigiert)
+        if (expense?.transfer_id) {
+            const result = await deleteTransfer(expense.transfer_id)
+            if (!result.success) alert(result.error)
+            onUpdate?.()
+            return
+        }
 
         if (expense?.account_id) {
             // 2. Fetch account
@@ -556,6 +579,7 @@ export default function MobileDashboard({
                 incomeSources={initialIncomeSources}
                 initialFixedCosts={initialFixedCosts}
                 currentGiroBalance={currentGiroBalance} // Pass the "True" value
+                onUpdate={onUpdate}
                 onBack={() => setShowGirokonto(false)}
             />
         )
@@ -868,7 +892,7 @@ export default function MobileDashboard({
                                                         {expense.category && <span className="eyebrow">{expense.category}</span>}
                                                     </div>
                                                     <div className="flex items-center gap-3">
-                                                        <span className="amount text-base text-foreground">−€{expense.amount.toFixed(2)}</span>
+                                                        <span className="amount text-base text-foreground">{expense.amount < 0 ? '+' : '−'}€{Math.abs(expense.amount).toFixed(2)}</span>
                                                         <div className="flex gap-1">
                                                             <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
                                                                 <Pencil className="w-4 h-4" strokeWidth={1.75} />

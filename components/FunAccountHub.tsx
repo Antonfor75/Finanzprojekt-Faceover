@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { ArrowLeft, Plus, Loader2, ChevronDown, ChevronUp, ChevronRight, Pencil, Check, X, Trash2, Sparkles } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, ChevronDown, ChevronUp, ChevronRight, Pencil, Check, X, Trash2, Sparkles, ArrowLeftRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
@@ -25,6 +25,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
+import TransferDialog from '@/components/TransferDialog'
 import { Calendar } from '@/components/ui/calendar'
 import type { DateRange } from 'react-day-picker'
 
@@ -76,6 +77,9 @@ export default function FunAccountHub({
     const [entryDate, setEntryDate] = useState(format(new Date(), 'yyyy-MM-dd'))
     const [entryGroupId, setEntryGroupId] = useState<string>('none')
     const [saving, setSaving] = useState(false)
+    const [transferOpen, setTransferOpen] = useState(false)
+    // Der bearbeitete Eintrag ist Teil einer Umbuchung mit dem Girokonto (Änderungen gelten für beide Seiten)
+    const [editingLinked, setEditingLinked] = useState(false)
 
     const [groupName, setGroupName] = useState('')
     // Ein Klick = Zeitpunkt (from), zweiter Klick = Zeitraum (from–to)
@@ -174,6 +178,7 @@ export default function FunAccountHub({
 
     const openEntryDialog = (type: 'expense' | 'income', presetGroupId?: number) => {
         setEditingEntryId(null)
+        setEditingLinked(false)
         setEntryIsGroup(false)
         setEntryAmount('')
         setEntryDescription('')
@@ -186,10 +191,11 @@ export default function FunAccountHub({
 
     const openEditDialog = (
         type: 'expense' | 'income',
-        item: { id: number; amount: number; description?: string | null; group_id?: number | null },
+        item: { id: number; amount: number; description?: string | null; group_id?: number | null; transfer_id?: string | null },
         dateStr: string
     ) => {
         setEditingEntryId(item.id)
+        setEditingLinked(!!item.transfer_id)
         setEntryIsGroup(false)
         setEntryAmount(String(Number(item.amount)))
         setEntryDescription(item.description || '')
@@ -441,6 +447,14 @@ export default function FunAccountHub({
                         </span>
                         Vorausschauend
                     </button>
+
+                    <button
+                        onClick={() => setTransferOpen(true)}
+                        className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-muted text-foreground hover:bg-muted/70 transition-colors"
+                    >
+                        <ArrowLeftRight className="w-3.5 h-3.5" />
+                        Geld buchen
+                    </button>
                 </div>
             </div>
 
@@ -485,6 +499,14 @@ export default function FunAccountHub({
             </Tabs>
 
             {EntryDialogView()}
+
+            <TransferDialog
+                open={transferOpen}
+                onOpenChange={setTransferOpen}
+                mode="fun"
+                fixedTarget={{ kind: 'v2', accountId: account.id, name: account.name }}
+                onDone={async () => { await loadAll(account.id); onUpdate?.() }}
+            />
         </div>
     )
 
@@ -510,7 +532,9 @@ export default function FunAccountHub({
                                     : (entryDialog === 'expense' ? 'Neue Ausgabe' : 'Neue Einnahme')}
                         </DialogTitle>
                         <DialogDescription>
-                            {entryIsGroup
+                            {editingLinked
+                                ? 'Verbunden mit dem Girokonto: Betrag, Begründung und Datum ändern sich dort mit, Löschen entfernt beide Seiten.'
+                                : entryIsGroup
                                 ? 'Einen Tag antippen für einen Zeitpunkt, zwei Tage für einen Zeitraum.'
                                 : entryDialog === 'expense'
                                     ? 'Auch mit einem zukünftigen Datum als geplante Ausgabe.'

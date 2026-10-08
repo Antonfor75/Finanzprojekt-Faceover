@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ArrowLeft, Sparkles, Plus, Minus, Loader2, ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
+import { ArrowLeft, Sparkles, Plus, Minus, Loader2, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight } from 'lucide-react'
 import { format, isSameMonth } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
@@ -10,6 +10,7 @@ import { Account, Expense, AccountTransaction } from '@/app/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import TransferDialog from '@/components/TransferDialog'
 
 type HistoryEntry = {
     id: string
@@ -34,7 +35,7 @@ export default function FunAccountView({
 }) {
     const [transactions, setTransactions] = useState<AccountTransaction[]>([])
     const [loading, setLoading] = useState(false)
-    const [dialog, setDialog] = useState<'deposit' | 'expense' | null>(null)
+    const [dialog, setDialog] = useState<'deposit' | 'expense' | 'transfer' | null>(null)
 
     // Deposit form
     const [depositAmount, setDepositAmount] = useState('')
@@ -175,6 +176,15 @@ export default function FunAccountView({
                         <Minus className="w-5 h-5 mr-1" /> Ausgeben
                     </Button>
                 </div>
+                <div className="px-6 mt-3">
+                    <Button
+                        onClick={() => setDialog('transfer')}
+                        variant="outline"
+                        className="w-full h-12 rounded-2xl font-bold active:scale-95"
+                    >
+                        <ArrowLeftRight className="w-4 h-4 mr-1.5" /> Geld buchen (Girokonto)
+                    </Button>
+                </div>
 
                 {/* MONTH SUMMARY */}
                 <div className="mx-6 mt-6 p-4 bg-white/70 backdrop-blur-2xl border border-white/60 rounded-3xl shadow-sm flex justify-around text-center">
@@ -221,6 +231,14 @@ export default function FunAccountView({
             </div>
 
             {/* DEPOSIT DIALOG */}
+            <TransferDialog
+                open={dialog === 'transfer'}
+                onOpenChange={(open) => !open && setDialog(null)}
+                mode="fun"
+                fixedTarget={{ kind: 'legacy', accountId: account.id, name: account.name }}
+                onDone={() => { loadTransactions(); onUpdate?.() }}
+            />
+
             <Dialog open={dialog === 'deposit'} onOpenChange={(open) => !open && setDialog(null)}>
                 <DialogContent className="rounded-3xl max-w-sm">
                     <DialogHeader>

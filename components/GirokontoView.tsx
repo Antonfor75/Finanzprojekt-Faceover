@@ -2,10 +2,11 @@
 
 import { useState, useMemo, useRef, useLayoutEffect } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
-import { TrendingUp, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import { TrendingUp, ArrowLeft, ChevronLeft, ChevronRight, ArrowLeftRight } from 'lucide-react'
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, subDays, addDays, getYear, format, isSameDay, subYears } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
+import TransferDialog from '@/components/TransferDialog'
 
 type Props = {
     expenses: any[]
@@ -13,10 +14,12 @@ type Props = {
     initialFixedCosts: any[]
     currentGiroBalance: number // New Prop
     onBack: () => void
+    onUpdate?: () => void
 }
 
-export default function GirokontoView({ expenses, incomeSources, initialFixedCosts, currentGiroBalance: targetBalance, onBack }: Props) {
+export default function GirokontoView({ expenses, incomeSources, initialFixedCosts, currentGiroBalance: targetBalance, onBack, onUpdate }: Props) {
     const range = 'monthly' // Forced to Monthly as per user request
+    const [transferOpen, setTransferOpen] = useState(false)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
 
     // --- DATA GENERATION (Using central girokonto.ts) ---
@@ -108,7 +111,16 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
                     </div>
                 </div>
 
-                {/* CONTROLS REMOVED */}
+                {/* GELD BUCHEN: Abbuchen / Hinzufügen, optional mit Spaßkonto-Gegenbuchung */}
+                <div className="px-6 pt-2">
+                    <button
+                        onClick={() => setTransferOpen(true)}
+                        className="press w-full h-12 rounded-2xl bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity duration-200"
+                    >
+                        <ArrowLeftRight className="w-4 h-4" strokeWidth={2} />
+                        Geld buchen
+                    </button>
+                </div>
 
                 {/* CHART */}
                 <div className="p-6 flex flex-col flex-1">
@@ -161,6 +173,12 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
                     </div>
                 </div>
             </div>
+            <TransferDialog
+                open={transferOpen}
+                onOpenChange={setTransferOpen}
+                mode="giro"
+                onDone={() => onUpdate?.()}
+            />
         </div>
     )
 }
