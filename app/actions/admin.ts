@@ -41,19 +41,46 @@ export async function createUser(email: string, password: string) {
     }
 }
 
+// Alle user-bezogenen Tabellen, Kinder vor Eltern (Fremdschluessel).
+// Muss identisch zu USER_TABLES in der Chefansicht-App bleiben
+// (supabase/functions/chef-admin/index.ts) — Web und App loeschen dasselbe.
+const USER_TABLES = [
+    'receipt_items',
+    'rewe_receipts',
+    'product_aliases',
+    'products',
+    'fun_group_expenses',
+    'fun_income_entries',
+    'fun_groups',
+    'fun_accounts_v2',
+    'account_transactions',
+    'budget_logs',
+    'email_connections',
+    'expenses',
+    'fixed_costs',
+    'accounts',
+    'settings',
+    'income_sources',
+] as const
+
+/** Loescht alle Daten eines Users, laesst den Account selbst stehen. */
+async function wipeUserData(userId: string) {
+    // Nacheinander, nicht parallel: die Reihenfolge Kinder-vor-Eltern haelt nur so.
+    for (const table of USER_TABLES) {
+        const { error } = await supabaseAdmin.from(table).delete().eq('user_id', userId)
+        // Eine Tabelle, die es (noch) nicht gibt, darf den Reset nicht kippen.
+        if (error && error.code !== '42P01') {
+            throw new Error(`${table}: ${error.message}`)
+        }
+    }
+}
+
 export async function deleteUserData(userId: string) {
     try {
         await assertAdmin()
 
         // 1. Delete all related data
-        // We use Promise.all to do it in parallel
-        await Promise.all([
-            supabaseAdmin.from('expenses').delete().eq('user_id', userId),
-            supabaseAdmin.from('fixed_costs').delete().eq('user_id', userId),
-            supabaseAdmin.from('accounts').delete().eq('user_id', userId),
-            supabaseAdmin.from('settings').delete().eq('user_id', userId),
-            supabaseAdmin.from('income_sources').delete().eq('user_id', userId)
-        ])
+        await wipeUserData(userId)
 
         // 2. Delete the user from Auth
         const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
@@ -75,13 +102,7 @@ export async function resetUserData(userId: string) {
         await assertAdmin()
 
         // Delete all data but KEEP the user
-        await Promise.all([
-            supabaseAdmin.from('expenses').delete().eq('user_id', userId),
-            supabaseAdmin.from('fixed_costs').delete().eq('user_id', userId),
-            supabaseAdmin.from('accounts').delete().eq('user_id', userId),
-            supabaseAdmin.from('settings').delete().eq('user_id', userId),
-            supabaseAdmin.from('income_sources').delete().eq('user_id', userId)
-        ])
+        await wipeUserData(userId)
 
         return { success: true }
     } catch (error: any) {
