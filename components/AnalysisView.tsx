@@ -1,10 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid, ReferenceLine, BarChart, Bar } from 'recharts'
 import { Download } from 'lucide-react'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 import CashflowTab from './analysis/CashflowTab'
 import PurchasesTab from './analysis/PurchasesTab'
@@ -12,7 +10,8 @@ import { startOfWeek, endOfWeek, isWithinInterval, eachDayOfInterval, format, is
 import { de } from 'date-fns/locale'
 
 import { Expense, FixedCost, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
-import { calculateGirokontoTimeline } from '@/utils/girokonto'
+import { preloadPdf, withPdf } from '@/lib/pdf'
+import { calculateGirokontoTimeline, dayKeyOf, type GirokontoTimelineResult } from '@/utils/girokonto'
 import { isBudgetRelevantExpense } from '@/utils/funAccount'
 
 type Props = {
@@ -24,6 +23,8 @@ type Props = {
     currentGiroBalance: number
     receiptItems?: ReceiptItem[]
     products?: Product[]
+    /** Bereits berechnete Simulation (MobileDashboard) — spart die erneute Tagesrechnung. */
+    girokontoTimeline?: GirokontoTimelineResult
 }
 
 const COLORS = ['#FF8042', '#0088FE', '#00C49F', '#FFBB28', '#8884d8', '#ffc658', '#82ca9d']
@@ -42,7 +43,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 // Helper for wealth calculation
 const getMonthKey = (date: Date) => format(date, 'yyyy-MM')
 
-export default function AnalysisView({ expenses, budget, fixedCosts, accounts, incomeSources, currentGiroBalance, receiptItems = [], products = [] }: Props) {
+export default function AnalysisView({ expenses, budget, fixedCosts, accounts, incomeSources, currentGiroBalance, receiptItems = [], products = [], girokontoTimeline }: Props) {
     const [analysisTab, setAnalysisTab] = useState<'cashflow' | 'purchases'>('cashflow')
     // Lifted state from CashflowTab
     const [cashflowRange, setCashflowRange] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly')
@@ -131,7 +132,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
 
         // --- 2. CASHFLOW DATA GENERATION (Using unified Timeline engine) ---
         // We calculate the timeline once, which holds tagesgenaue income, expenses, and fixed_costs.
-        const timelineResult = calculateGirokontoTimeline(expenses, incomeSources, fixedCosts)
+        const timelineResult = girokontoTimeline ?? calculateGirokontoTimeline(expenses, incomeSources, fixedCosts)
         const fullTimeline = timelineResult.timeline
 
         // Helpers to aggregate timeline
@@ -150,9 +151,13 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
             return Object.values(map).sort((a, b) => a.key.localeCompare(b.key))
         }
 
+        // Schlüssel der Timeline-Tage einmal vorberechnen (statt date-fns format() pro Tag
+        // und Gruppierung); identisch zu format(t.date, 'yyyy-MM-dd').
+        const dayKeys = new Map(fullTimeline.map(t => [t, dayKeyOf(t.date)] as const))
+
         // A. DAILY
         const cashflowDataDaily90 = groupBy(
-            t => format(t.date, 'yyyy-MM-dd'),
+            t => dayKeys.get(t)!,
             t => format(t.date, 'dd.MM'),
             t => ({ fullDate: t.date })
         ).map(g => ({ month: g.label, income: g.income, expenses: g.expenses, fullDate: g.fullDate }))
@@ -168,15 +173,16 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
             t => ({ date: startOfWeek(t.date, { weekStartsOn: 1 }) })
         ).map(g => ({ month: g.label, income: g.income, expenses: g.expenses, date: g.date }))
 
-        // C. MONTHLY (cashflowData12M)
-        const cashflowData12M = groupBy(
-            t => format(t.date, 'yyyy-MM'),
+        // C. MONTHLY (cashflowData12M) — dieselbe Gruppierung dient unten auch der Vermögensreihe
+        const fullMonthlyGroups = groupBy(
+            t => dayKeys.get(t)!.slice(0, 7), // = format(t.date, 'yyyy-MM')
             t => format(t.date, 'MMM yy', { locale: de })
-        ).map(g => ({ month: g.label, income: g.income, expenses: g.expenses }))
+        )
+        const cashflowData12M = fullMonthlyGroups.map(g => ({ month: g.label, income: g.income, expenses: g.expenses }))
 
         // D. YEARLY
         const cashflowDataYearly = groupBy(
-            t => format(t.date, 'yyyy'),
+            t => dayKeys.get(t)!.slice(0, 4), // = format(t.date, 'yyyy')
             t => format(t.date, 'yyyy')
         ).map(g => ({ month: g.label, income: g.income, expenses: g.expenses }))
 
@@ -218,12 +224,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
         const monthlyNetFlow: Record<string, number> = {}
         let cumulativeNetCashflow = 0
 
-        // Let's use the explicit group we have with keys
-        const fullMonthlyGroups = groupBy(
-            t => format(t.date, 'yyyy-MM'),
-            t => format(t.date, 'MMM yy', { locale: de })
-        )
-
+        // Let's use the explicit group we have with keys (fullMonthlyGroups, siehe C.)
         fullMonthlyGroups.forEach(m => {
             const net = m.income - m.expenses
             monthlyNetFlow[m.key] = net
@@ -273,9 +274,12 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
             topCategories,
             wealthData: wealthSeries
         }
-    }, [expenses, budget, fixedCosts, accounts, incomeSources])
+    }, [expenses, budget, fixedCosts, accounts, incomeSources, girokontoTimeline])
 
-    const generateAnalysisPDF = () => {
+    // PDF-Bibliothek im Hintergrund laden, damit der Export-Knopf sofort reagiert
+    useEffect(() => { preloadPdf().catch(() => {}) }, [])
+
+    const generateAnalysisPDF = () => withPdf(({ jsPDF, autoTable }) => {
         const doc = new jsPDF()
 
         // --- HEADER ---
@@ -512,7 +516,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
         }
 
         doc.save('Finanz_Analyse_Bericht.pdf')
-    }
+    })
 
     return (
         <div className="flex flex-col h-full w-full">

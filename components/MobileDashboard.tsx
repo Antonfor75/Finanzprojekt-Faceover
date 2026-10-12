@@ -1,26 +1,22 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { loadTheme } from '@/utils/theme'
 import { processWeeklySavings } from '@/lib/data/actions'
 import { processFunAccountFeeds } from '@/lib/data/actions'
-import { ArrowLeft, ArrowUpRight, Settings, Trash2, List, Pencil, Plus, Home, Download, TrendingUp, TrendingDown, CalendarClock, Check, ChevronDown, Wallet, ChevronRight, X, PiggyBank, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Settings, Trash2, List, Pencil, Plus, Home, Download, TrendingUp, TrendingDown, CalendarClock, Check, ChevronDown, Wallet, ChevronRight, X, PiggyBank, Sparkles, Loader2 } from 'lucide-react'
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, getDaysInMonth } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
 
 
 import AddExpenseForm from './AddExpenseForm'
-import SettingsOverlay from './SettingsOverlay'
 import CalendarHistory from './CalendarHistory'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import AnalysisView from './AnalysisView'
-import GirokontoView from './GirokontoView'
-import FunAccountView from './FunAccountView'
-import FunAccountHub from './FunAccountHub'
 import { calculateFunAccountSaldo, classifyGroupBucket } from '@/utils/funAccountGroups'
 import { addFunGroupExpense, updateTransfer, deleteTransfer } from '@/lib/data/actions'
 import { FunGroup } from '@/app/types'
@@ -28,13 +24,41 @@ import { DatePicker } from '@/components/ui/date-picker'
 // import DashboardHealth from './DashboardHealth' // REMOVED
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
 import { isBudgetRelevantExpense } from '@/utils/funAccount'
+import { preloadPdf, withPdf } from '@/lib/pdf'
 
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 
 type MainView = 'entry' | 'history' | 'settings'
+
+// Unteransichten (Diagramme/recharts, Einstellungen, Spaßkonto) gehören nicht ins
+// Startpaket: sie werden getrennt geladen und kurz nach dem ersten Anzeigen im
+// Hintergrund vorgeladen, sodass sie beim ersten Antippen bereits bereitstehen.
+const loadAnalysisView = () => import('./AnalysisView')
+const loadGirokontoView = () => import('./GirokontoView')
+const loadSettingsOverlay = () => import('./SettingsOverlay')
+const loadFunAccountHub = () => import('./FunAccountHub')
+const loadFunAccountView = () => import('./FunAccountView')
+
+function ViewLoading() {
+    return (
+        <div className="w-full flex items-center justify-center py-24">
+            <Loader2 className="w-7 h-7 animate-spin text-primary" strokeWidth={1.75} />
+        </div>
+    )
+}
+
+const AnalysisView = dynamic(loadAnalysisView, { ssr: false, loading: ViewLoading })
+const GirokontoView = dynamic(loadGirokontoView, { ssr: false, loading: ViewLoading })
+const SettingsOverlay = dynamic(loadSettingsOverlay, { ssr: false, loading: ViewLoading })
+const FunAccountHub = dynamic(loadFunAccountHub, { ssr: false, loading: ViewLoading })
+const FunAccountView = dynamic(loadFunAccountView, { ssr: false, loading: ViewLoading })
+
+function preloadSubViews() {
+    for (const load of [loadAnalysisView, loadGirokontoView, loadSettingsOverlay, loadFunAccountHub, loadFunAccountView]) {
+        load().catch(() => {}) // Fehler hier egal: beim Öffnen wird erneut geladen
+    }
+}
 
 export default function MobileDashboard({
     expenses,
@@ -137,6 +161,21 @@ export default function MobileDashboard({
         setFunRefresh(n => n + 1)
     }
 
+    // Unteransichten im Leerlauf nach dem ersten Anzeigen vorladen
+    useEffect(() => {
+        if (typeof window.requestIdleCallback === 'function') {
+            const id = window.requestIdleCallback(preloadSubViews, { timeout: 2000 })
+            return () => window.cancelIdleCallback(id)
+        }
+        const t = setTimeout(preloadSubViews, 800)
+        return () => clearTimeout(t)
+    }, [])
+
+    // PDF-Bibliothek im Hintergrund laden, sobald der PDF-Knopf (Historie → Liste) sichtbar ist
+    useEffect(() => {
+        if (view === 'history' && historyMode === 'list') preloadPdf().catch(() => {})
+    }, [view, historyMode])
+
     // --- EFFECT: PROCESS SAVINGS & DISTRIBUTION ON MOUNT ---
     useEffect(() => {
         const initDashboard = async () => {
@@ -201,11 +240,18 @@ export default function MobileDashboard({
     }, []) // Run ONCE on mount. onUpdate dependency caused infinite loop.
 
     // --- CALCULATE GIROKONTO BALANCE (Dynamic Net Cashflow) ---
+    // Einmal rechnen und an Girokonto- und Analyse-Ansicht weiterreichen. Die Simulation
+    // läuft bis "heute" — der Tag gehört daher in die Abhängigkeiten.
+    const todayKey = format(new Date(), 'yyyy-MM-dd')
+    const girokontoTimeline = useMemo(
+        () => calculateGirokontoTimeline(expenses, initialIncomeSources, initialFixedCosts),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [expenses, initialFixedCosts, initialIncomeSources, todayKey]
+    )
     const giroData = useMemo(() => {
         if (expenses.length === 0 && initialIncomeSources.length === 0) return { finalBalance: 0, timeline: [] as { date: Date; balance: number }[] }
-        const result = calculateGirokontoTimeline(expenses, initialIncomeSources, initialFixedCosts)
-        return { finalBalance: result.finalBalance, timeline: result.timeline }
-    }, [expenses, initialFixedCosts, initialIncomeSources])
+        return { finalBalance: girokontoTimeline.finalBalance, timeline: girokontoTimeline.timeline }
+    }, [expenses, initialIncomeSources, girokontoTimeline])
     const currentGiroBalance = giroData.finalBalance
 
     const handleLogout = async () => {
@@ -349,10 +395,17 @@ export default function MobileDashboard({
 
     // Expenses for CURRENT WEEK ONLY
     // Account-paid expenses (savings/fun) are budget-neutral and excluded.
-    const relevantExpensesThisWeek = expenses.filter(e => {
-        const d = new Date(e.expense_date || e.created_at)
-        return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }) && isBudgetRelevantExpense(e)
-    })
+    // Memoisiert: läuft sonst bei jedem Rendern (z. B. jedem Tastendruck) über alle Ausgaben.
+    // Die Woche steckt als Zeitstempel in den Abhängigkeiten, Montag/Sonntag folgen daraus.
+    const currentWeekStartTime = currentWeekStart.getTime()
+    const relevantExpensesThisWeek = useMemo(() => {
+        const start = new Date(currentWeekStartTime)
+        const end = endOfWeek(start, { weekStartsOn: 1 })
+        return expenses.filter(e => {
+            const d = new Date(e.expense_date || e.created_at)
+            return isWithinInterval(d, { start, end }) && isBudgetRelevantExpense(e)
+        })
+    }, [expenses, currentWeekStartTime])
 
     const totalSpentThisWeek = relevantExpensesThisWeek.reduce((acc, curr) => acc + Number(curr.amount), 0)
 
@@ -371,8 +424,9 @@ export default function MobileDashboard({
     const getDate = (e: Expense) => new Date(e.expense_date || e.created_at)
 
 
-    // Groups logic
-    const getWeeklyGroups = () => {
+    // Groups logic (nur von expenses abhängig → memoisiert)
+    const weeklyGroups = useMemo(() => {
+        const getDate = (e: Expense) => new Date(e.expense_date || e.created_at)
         const groups: Record<string, { start: Date, total: number, count: number }> = {}
         expenses.forEach(e => {
             const date = getDate(e)
@@ -383,7 +437,8 @@ export default function MobileDashboard({
             groups[key].count += 1
         })
         return Object.values(groups).sort((a, b) => b.start.getTime() - a.start.getTime())
-    }
+    }, [expenses])
+    const getWeeklyGroups = () => weeklyGroups
     const getDailyGroups = () => {
         if (!selectedWeekStart) return []
         const weekEnd = endOfWeek(selectedWeekStart, { weekStartsOn: 1 })
@@ -420,7 +475,7 @@ export default function MobileDashboard({
     }
 
     // PDF Export
-    const generatePDF = () => {
+    const generatePDF = () => withPdf(({ jsPDF, autoTable }) => {
         const doc = new jsPDF()
         doc.setFontSize(18)
         doc.text("Meine Ausgaben Übersicht", 14, 22)
@@ -483,7 +538,7 @@ export default function MobileDashboard({
             styles: { fontSize: 10, cellPadding: 3 },
         })
         doc.save('Finanzbericht.pdf')
-    }
+    })
 
 
 
@@ -522,7 +577,10 @@ export default function MobileDashboard({
     })()
 
     // Kategorie-Trend: größte Kategorie dieser Woche vs. Ø der 4 Vorwochen
-    const categoryInsight = (() => {
+    // (memoisiert; Eingaben: Ausgaben, aktuelle Woche und Wochentag)
+    const categoryInsight = useMemo(() => {
+        const currentWeekStart = new Date(currentWeekStartTime)
+        const getDate = (e: Expense) => new Date(e.expense_date || e.created_at)
         if (relevantExpensesThisWeek.length === 0) return null
         const catTotals: Record<string, number> = {}
         relevantExpensesThisWeek.forEach(e => {
@@ -544,7 +602,7 @@ export default function MobileDashboard({
         const projected = (topAmt / isoDay) * 7
         const pct = Math.round(((projected - avgPrev) / avgPrev) * 100)
         return { category: topCat, pct }
-    })()
+    }, [relevantExpensesThisWeek, expenses, currentWeekStartTime, isoDay])
 
     const openFunAccount = openFunAccountId !== null
         ? initialAccounts.find(a => a.id === openFunAccountId)
@@ -578,6 +636,7 @@ export default function MobileDashboard({
                 incomeSources={initialIncomeSources}
                 initialFixedCosts={initialFixedCosts}
                 currentGiroBalance={currentGiroBalance} // Pass the "True" value
+                girokontoTimeline={girokontoTimeline}
                 onUpdate={onUpdate}
                 onBack={() => setShowGirokonto(false)}
             />
@@ -839,6 +898,7 @@ export default function MobileDashboard({
                                 accounts={initialAccounts}
                                 incomeSources={initialIncomeSources}
                                 currentGiroBalance={currentGiroBalance}
+                                girokontoTimeline={girokontoTimeline}
                                 receiptItems={receiptItems}
                                 products={products}
                             />

@@ -4,13 +4,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { applyTheme, loadTheme, getSavedTheme, THEMES } from '@/utils/theme'
 import { ArrowLeft, ChevronRight, Trash2, LogOut, Download, Upload, FileText, HelpCircle, ArrowDown, ShoppingBag, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 import ImportWizard from '@/components/ImportWizard'
 import HelpModal from '@/components/HelpModal'
 import AccountLegalSection from '@/components/legal/AccountLegalSection'
 // Set worker source for pdfjs
 import { supabase } from '@/utils/supabase'
+import { preloadPdf, withPdf } from '@/lib/pdf'
 import { addFunAccount, setFunAccountFeed } from '@/lib/data/actions'
 import FunAccountHub from '@/components/FunAccountHub'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
@@ -660,7 +659,10 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     }
 
 
-    const handleDownloadFullReport = () => {
+    // PDF-Bibliothek im Hintergrund laden, damit der Report-Knopf sofort reagiert
+    useEffect(() => { preloadPdf().catch(() => {}) }, [])
+
+    const handleDownloadFullReport = () => withPdf(({ jsPDF, autoTable }) => {
         const doc = new jsPDF()
         // FIXED: Filter out expired costs for PDF
         const activeFixedCostsForPdf = fixedCosts.filter(fc => {
@@ -823,7 +825,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         doc.text(backupString, 10, 10, { maxWidth: 190 })
 
         doc.save(`Finanzen_Report_${new Date().toISOString().split('T')[0]}.pdf`)
-    }
+    })
 
     const handleRestoreBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0]

@@ -40,7 +40,7 @@ type DemoData = {
 export default function DemoPage() {
     // Vor dem ersten Rendern umschalten — noch bevor irgendein Kind Daten anfasst.
     // Bewusst nie wieder zurückschalten: die Demo wird nur per vollem Seitenwechsel verlassen.
-    useState(() => enableDemoMode())
+    useState(() => enableDemoMode(getDemoClient))
 
     const [data, setData] = useState<DemoData | null>(null)
     const [version, setVersion] = useState(0)

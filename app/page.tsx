@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { supabase } from '@/utils/supabase'
-import MobileDashboard from '@/components/MobileDashboard'
 import LoginScreen from '@/components/LoginScreen'
 import PrivacyUpdateNotice from '@/components/legal/PrivacyUpdateNotice'
 import { hasAcceptedCurrentPrivacy } from '@/lib/legal/operator'
@@ -11,6 +11,19 @@ import { calculateMonthlyBudget } from '@/utils/financeHelpers'
 import { disableDemoMode } from '@/lib/data/mode'
 import { Loader2 } from 'lucide-react'
 import { Expense, FixedCost, Settings, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
+
+// Das Dashboard-Paket lädt parallel zur Anmeldung und zu den Supabase-Abfragen, statt
+// vorher den Seitenstart zu blockieren. Der Ladezustand sieht aus wie "Lade Finanzen".
+const loadDashboard = () => import('@/components/MobileDashboard')
+const MobileDashboard = dynamic(loadDashboard, {
+  ssr: false,
+  loading: () => (
+    <div className="h-[100dvh] w-full flex flex-col items-center justify-center gap-6">
+      <Loader2 className="w-7 h-7 animate-spin text-primary" strokeWidth={1.75} />
+      <p className="eyebrow">Lade Finanzen</p>
+    </div>
+  ),
+})
 
 export default function Home() {
   // Falls man per Client-Navigation aus der Demo hierher kommt: die echte App
@@ -36,6 +49,7 @@ export default function Home() {
   // 1. AUTH & SESSION
   useEffect(() => {
     let mounted = true
+    loadDashboard().catch(() => {}) // sofort mitladen; Fehler zeigt dynamic() beim Rendern
 
     // Timeout safety for Auth check (max 5 seconds)
     const authTimeout = setTimeout(() => {
