@@ -17,7 +17,7 @@ import {
     updateFunIncomeEntry,
     deleteFunGroupExpense,
     deleteFunIncomeEntry,
-} from '@/app/actions/funGroups'
+} from '@/lib/data/actions'
 import { FunAccountV2, FunGroup, FunGroupExpense, FunIncomeEntry } from '@/app/types'
 import { classifyBucket, classifyGroupBucket, calculateFunAccountSaldo, Bucket } from '@/utils/funAccountGroups'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'

@@ -18,13 +18,15 @@ export default function LegalPage({
         <div className="h-[100dvh] w-full overflow-y-auto bg-background relative">
             <div className="ambient-bg" />
             <main className="relative z-10 mx-auto w-full max-w-2xl px-4 sm:px-6 py-10 view-enter">
-                <Link
+                {/* Voller Seitenwechsel: die App startet immer frisch im Live-Modus. */}
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+                <a
                     href="/"
                     className="flex items-center gap-1.5 eyebrow mb-3 hover:text-foreground transition-colors duration-200 w-fit"
                 >
                     <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2} />
                     Zurück zur App
-                </Link>
+                </a>
                 <p className="eyebrow mb-2">{eyebrow}</p>
                 <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-foreground mb-8 break-words hyphens-auto">
                     {title}

@@ -7,10 +7,15 @@ import MobileDashboard from '@/components/MobileDashboard'
 import LoginScreen from '@/components/LoginScreen'
 import PrivacyUpdateNotice from '@/components/legal/PrivacyUpdateNotice'
 import { hasAcceptedCurrentPrivacy } from '@/lib/legal/operator'
+import { calculateMonthlyBudget } from '@/utils/financeHelpers'
+import { disableDemoMode } from '@/lib/data/mode'
 import { Loader2 } from 'lucide-react'
 import { Expense, FixedCost, Settings, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 
 export default function Home() {
+  // Falls man per Client-Navigation aus der Demo hierher kommt: die echte App
+  // läuft IMMER im Live-Modus — noch bevor irgendein Datenzugriff passiert.
+  useState(() => disableDemoMode())
   const router = useRouter()
   const [session, setSession] = useState<any>(null)
   const [data, setData] = useState<{
@@ -142,18 +147,8 @@ export default function Home() {
         finalSettings = { monthly_budget: 0, savings_balance: 0, savings_months_remaining: 0, id: 0, last_processed_month: null, user_id: user.id }
       }
 
-      // Calculate Total Budget: Sum of Income Sources + Distributed Accounts
-      const totalIncome = incomeSourcesList.reduce((sum: number, src: any) => sum + Number(src.amount), 0)
-      const baseBudget = totalIncome || 0
-
-      const accountDistributions = accountsList.reduce((sum: number, acc: Account) => {
-        if (acc.type === 'distribution' && acc.months > 0 && acc.amount > 0) {
-          return sum + (acc.amount / acc.months)
-        }
-        return sum
-      }, 0)
-
-      const monthlyBudget = baseBudget + accountDistributions
+      // Gleiche Formel wie in der Demo (utils/financeHelpers.ts)
+      const monthlyBudget = calculateMonthlyBudget(incomeSourcesList, accountsList)
 
       setData({
         expenses: expensesRes.data || [],

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { supabase } from '@/utils/supabase'
-import { addAccountExpense } from '@/app/actions/funAccount'
+import { addAccountExpense } from '@/lib/data/actions'
 import { Account } from '@/app/types'
 import { Loader2, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'

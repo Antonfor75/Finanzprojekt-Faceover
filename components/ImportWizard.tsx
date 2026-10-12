@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { parseFullImport, ImportData } from '@/utils/parseFullImport'
-import { bulkImportAll } from '@/app/actions/import'
+import { bulkImportAll } from '@/lib/data/actions'
 import { X, Check, ArrowRight, Save, Trash2, HelpCircle } from 'lucide-react'
 import { format } from 'date-fns'
 

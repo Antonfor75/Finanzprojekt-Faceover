@@ -52,3 +52,22 @@ export function calculateProjectedMonthlySavings(weeklySavings: number): number 
 export function calculateWeeklyFixedCosts(totalFixedCosts: number): number {
     return totalFixedCosts / 4.33;
 }
+
+/**
+ * Monatsbudget = Summe aller Einnahmequellen + monatliche Ausschüttung der
+ * Verteilkonten (Betrag ÷ Restmonate). Einzige Quelle dieser Formel — von der
+ * echten App (app/page.tsx) und der Demo (app/demo/page.tsx) gleichermaßen genutzt.
+ */
+export function calculateMonthlyBudget(
+    incomeSources: { amount: number | string }[],
+    accounts: { type?: string | null; amount: number | string; months: number | string }[]
+): number {
+    const totalIncome = incomeSources.reduce((sum, src) => sum + Number(src.amount), 0) || 0
+    const distributions = accounts.reduce((sum, acc) => {
+        const amount = Number(acc.amount)
+        const months = Number(acc.months)
+        if (acc.type === 'distribution' && months > 0 && amount > 0) return sum + amount / months
+        return sum
+    }, 0)
+    return totalIncome + distributions
+}

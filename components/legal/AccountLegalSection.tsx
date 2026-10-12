@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { ChevronRight, FileText, ShieldCheck, UserX, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { deleteOwnAccount } from '@/app/actions/account'
 import { supabase } from '@/utils/supabase'
+import { isDemoMode } from '@/lib/data/mode'
 
 const ROW =
     'group w-full flex items-center justify-between py-4 border-b border-border/60 last:border-b-0 text-left'
@@ -14,7 +14,8 @@ const ROW =
  * Abschnitt „Rechtliches & Konto“ am Ende der Einstellungen: Links auf Impressum
  * und Datenschutz sowie „Konto löschen“. In der Demo gibt es nichts zu löschen.
  */
-export default function AccountLegalSection({ demo = false }: { demo?: boolean }) {
+export default function AccountLegalSection() {
+    const demo = isDemoMode()
     const [open, setOpen] = useState(false)
     const [confirmEmail, setConfirmEmail] = useState('')
     const [busy, setBusy] = useState(false)
@@ -44,20 +45,21 @@ export default function AccountLegalSection({ demo = false }: { demo?: boolean }
         <div className="flex flex-col mb-10">
             <p className="eyebrow mb-2">Rechtliches &amp; Konto</p>
 
-            <Link href="/datenschutz" className={ROW}>
+            {/* Volle Seitenwechsel (<a>), damit der Demo-Schalter nicht mitwandert. */}
+            <a href="/datenschutz" className={ROW}>
                 <span className="flex items-center gap-3 text-base font-semibold text-foreground">
                     <ShieldCheck className="w-4 h-4 text-muted-foreground" strokeWidth={1.75} />
                     Datenschutz
                 </span>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" strokeWidth={1.75} />
-            </Link>
-            <Link href="/impressum" className={ROW}>
+            </a>
+            <a href="/impressum" className={ROW}>
                 <span className="flex items-center gap-3 text-base font-semibold text-foreground">
                     <FileText className="w-4 h-4 text-muted-foreground" strokeWidth={1.75} />
                     Impressum
                 </span>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" strokeWidth={1.75} />
-            </Link>
+            </a>
 
             {!demo && (
                 <button type="button" onClick={() => setOpen(true)} className={ROW}>

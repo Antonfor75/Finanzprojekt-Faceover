@@ -5,7 +5,7 @@ import { ArrowLeft, Sparkles, Plus, Minus, Loader2, ArrowDownCircle, ArrowUpCirc
 import { format, isSameMonth } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
-import { depositToFunAccount, addAccountExpense } from '@/app/actions/funAccount'
+import { depositToFunAccount, addAccountExpense } from '@/lib/data/actions'
 import { Account, Expense, AccountTransaction } from '@/app/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'

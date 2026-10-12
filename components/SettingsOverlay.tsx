@@ -11,7 +11,7 @@ import HelpModal from '@/components/HelpModal'
 import AccountLegalSection from '@/components/legal/AccountLegalSection'
 // Set worker source for pdfjs
 import { supabase } from '@/utils/supabase'
-import { addFunAccount, setFunAccountFeed } from '@/app/actions/funAccount'
+import { addFunAccount, setFunAccountFeed } from '@/lib/data/actions'
 import FunAccountHub from '@/components/FunAccountHub'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import PasswordInput from '@/components/PasswordInput'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { DatePicker } from '@/components/ui/date-picker'
-import { saveEmailConnection, getEmailConnectionStatus, deleteEmailConnection, runReweSyncNow, type ConnectionStatus } from '@/app/actions/emailConnection'
+import { saveEmailConnection, getEmailConnectionStatus, deleteEmailConnection, runReweSyncNow, type ConnectionStatus } from '@/lib/data/actions'
 
 
 type SettingsOverlayProps = {
