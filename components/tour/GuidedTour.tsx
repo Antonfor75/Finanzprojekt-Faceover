@@ -115,7 +115,17 @@ export default function GuidedTour({
         const stop = (e: Event) => e.stopPropagation()
         const events = ['pointerdown', 'mousedown', 'touchstart'] as const
         events.forEach(ev => el.addEventListener(ev, stop))
-        return () => events.forEach(ev => el.removeEventListener(ev, stop))
+
+        // Ein modaler Dialog versteckt alles außerhalb per aria-hidden vor Screenreadern —
+        // die Tour-Karte muss aber lesbar bleiben, während sie den Dialog erklärt.
+        const unhide = () => { if (el.hasAttribute('aria-hidden')) el.removeAttribute('aria-hidden') }
+        const observer = new MutationObserver(unhide)
+        observer.observe(el, { attributes: true, attributeFilter: ['aria-hidden'] })
+
+        return () => {
+            events.forEach(ev => el.removeEventListener(ev, stop))
+            observer.disconnect()
+        }
     }, [])
 
     if (typeof document === 'undefined') return null
