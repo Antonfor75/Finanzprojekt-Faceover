@@ -135,10 +135,14 @@ export default function LoginScreen() {
     const copy = COPY[mode]
 
     return (
-        <div className="min-h-[100dvh] w-full flex items-center justify-center p-6 relative overflow-hidden bg-background">
+        // html/body sind app-weit auf overflow:hidden gestellt — die Seite scrollt deshalb
+        // in diesem eigenen Container (sonst ist auf kleinen Handys alles unter dem
+        // Anmelden-Knopf, z. B. die Demo und die Rechtslinks, unerreichbar).
+        <div className="h-[100dvh] w-full overflow-y-auto overscroll-contain relative bg-background">
 
-            <div className="ambient-bg" />
+            <div className="ambient-bg !fixed" />
 
+            <div className="min-h-full w-full flex items-center justify-center p-6">
             <div className="w-full max-w-sm z-10 flex flex-col view-enter py-8">
 
                 {/* Wordmark */}
@@ -336,6 +340,7 @@ export default function LoginScreen() {
                     <span aria-hidden>·</span>
                     <Link href="/datenschutz" className="hover:text-foreground transition-colors">Datenschutz</Link>
                 </nav>
+            </div>
             </div>
         </div>
     )
