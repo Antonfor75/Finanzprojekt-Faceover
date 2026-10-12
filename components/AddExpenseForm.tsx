@@ -163,6 +163,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     required
                     autoFocus
                     aria-label="Betrag in Euro"
+                    data-tour="amount-input"
                     className="amount w-full text-center bg-transparent border-none outline-none font-light text-foreground text-[clamp(2.25rem,12vw,3rem)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-muted-foreground/30"
                 />
                 <span className="eyebrow mt-2 mb-2">Euro</span>
@@ -232,7 +233,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
             )}
 
             {/* Category Select */}
-            <div className="relative flex items-center rounded-xl bg-muted/60 border border-transparent focus-within:bg-card focus-within:border-border transition-[background-color,border-color] duration-200">
+            <div data-tour="category-select" className="relative flex items-center rounded-xl bg-muted/60 border border-transparent focus-within:bg-card focus-within:border-border transition-[background-color,border-color] duration-200">
                 <span className="absolute left-4 text-xs font-medium text-muted-foreground pointer-events-none">Kategorie</span>
                 <select
                     name="category"
@@ -267,6 +268,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
             <div className="pt-2">
                 <button
                     type="submit"
+                    data-tour="save-expense"
                     disabled={loading}
                     className="press w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-4 rounded-xl font-semibold text-base disabled:opacity-60 transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)]"
                 >

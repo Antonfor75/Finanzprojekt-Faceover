@@ -1888,7 +1888,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                 <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
                     Einstellungen
                 </h1>
-                <div className="flex gap-1">
+                <div data-tour="settings-tools" className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => setShowHelp(true)} className="press rounded-full w-10 h-10 text-muted-foreground hover:text-foreground hover:bg-muted" title="Hilfe & Logik">
                         <HelpCircle className="w-5 h-5" strokeWidth={1.75} />
                     </Button>
@@ -1923,7 +1923,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                 </div>
 
                 {/* Finanzen — Ledger-Zeilen */}
-                <div className="flex flex-col mb-10">
+                <div data-tour="settings-finance" className="flex flex-col mb-10">
                     <p className="eyebrow mb-2">Finanzen</p>
 
                     <button

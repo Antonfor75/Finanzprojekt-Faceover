@@ -91,6 +91,7 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
                 {/* HEAD */}
                 <div className="p-6 md:pt-12 pb-2 shrink-0">
                     <button
+                        data-tour="giro-back"
                         onClick={onBack}
                         className="press flex items-center gap-1.5 text-muted-foreground hover:text-foreground mb-8 transition-colors duration-200 py-2 -ml-1"
                     >

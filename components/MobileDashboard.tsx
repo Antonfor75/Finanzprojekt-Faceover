@@ -596,7 +596,7 @@ export default function MobileDashboard({
                         <p className="eyebrow mb-7">Verfügbar diese Woche</p>
 
                         {/* BUDGET-RING */}
-                        <div className="relative aspect-square w-[min(64vw,240px)]" role="img" aria-label={`Noch €${Math.round(currentBalance)} von €${Math.round(weeklyBudget)} Wochenbudget verfügbar`}>
+                        <div data-tour="budget-ring" className="relative aspect-square w-[min(64vw,240px)]" role="img" aria-label={`Noch €${Math.round(currentBalance)} von €${Math.round(weeklyBudget)} Wochenbudget verfügbar`}>
                             <svg viewBox="0 0 220 220" className="w-full h-full -rotate-90">
                                 <circle cx="110" cy="110" r={RING_R} fill="none" stroke="var(--bg-muted)" strokeWidth="14" />
                                 <circle
@@ -615,7 +615,7 @@ export default function MobileDashboard({
                             </div>
                         </div>
 
-                        <p className="text-sm text-muted-foreground mt-6">
+                        <p data-tour="daily-budget" className="text-sm text-muted-foreground mt-6">
                             Noch {daysLeftInWeek} {daysLeftInWeek === 1 ? 'Tag' : 'Tage'} · <span className="amount font-medium text-primary">€{Math.max(0, dailyAllowance).toFixed(0)} / Tag</span>
                         </p>
 
@@ -632,6 +632,7 @@ export default function MobileDashboard({
                             {funSaldo !== null && (
                                 <>
                                     <button
+                                        data-tour="fun-tile"
                                         onClick={() => setShowFunHub(true)}
                                         className="surface press p-4 text-left group"
                                     >
@@ -736,7 +737,7 @@ export default function MobileDashboard({
                                     </div>
                                 )}
 
-                                <button onClick={() => setShowGirokonto(true)} className="surface press w-full p-4 text-left group">
+                                <button data-tour="giro-card" onClick={() => setShowGirokonto(true)} className="surface press w-full p-4 text-left group">
                                     <div className="flex justify-between items-baseline">
                                         <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                                             Girokonto
@@ -800,7 +801,7 @@ export default function MobileDashboard({
                     {/* Header & Tabs */}
                     <div className="flex flex-col gap-2 mb-1 shrink-0 mt-3">
                         <Tabs value={historyMode} onValueChange={(val: any) => setHistoryMode(val)} className="w-full">
-                            <TabsList className="flex w-full rounded-xl p-1 h-auto bg-muted/70">
+                            <TabsList data-tour="history-tabs" className="flex w-full rounded-xl p-1 h-auto bg-muted/70">
                                 <TabsTrigger value="calendar" className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 data-[state=active]:text-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm">Kalender</TabsTrigger>
                                 <TabsTrigger value="list" className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 data-[state=active]:text-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm">Liste</TabsTrigger>
                                 <TabsTrigger value="analysis" className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 data-[state=active]:text-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm">Analyse</TabsTrigger>
@@ -954,6 +955,7 @@ export default function MobileDashboard({
                 <div className="flex w-full max-w-lg items-center gap-1.5 pointer-events-auto bg-card/85 backdrop-blur-md border border-border rounded-2xl p-1.5 shadow-lg shadow-foreground/5">
 
                     <button
+                        data-tour="nav-history"
                         onClick={() => setView('history')}
                         aria-label="Historie"
                         aria-current={view === 'history' ? 'page' : undefined}
@@ -966,6 +968,7 @@ export default function MobileDashboard({
 
                     {/* Center: auf der Startseite Ausgabe hinzufügen, sonst zurück zur Startseite */}
                     <button
+                        data-tour="add-button"
                         onClick={() => view === 'entry' ? setShowAddSheet(true) : setView('entry')}
                         aria-label={view === 'entry' ? 'Neue Ausgabe hinzufügen' : 'Zur Startseite'}
                         className="press flex-[1.4] h-14 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md shadow-primary/25 transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--color-primary)_92%,black)]"
@@ -976,6 +979,7 @@ export default function MobileDashboard({
                     </button>
 
                     <button
+                        data-tour="nav-settings"
                         onClick={() => setView('settings')}
                         aria-label="Einstellungen"
                         aria-current={view === 'settings' ? 'page' : undefined}

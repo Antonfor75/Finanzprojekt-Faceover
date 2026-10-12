@@ -4,10 +4,22 @@ import { useCallback, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import MobileDashboard from '@/components/MobileDashboard'
 import DemoBanner from '@/components/demo/DemoBanner'
+import GuidedTour from '@/components/tour/GuidedTour'
+import { TOUR_STEPS } from '@/lib/demo/tourSteps'
 import { enableDemoMode } from '@/lib/data/mode'
 import { getDemoClient, resetDemoData } from '@/lib/demo/demoClient'
 import { calculateMonthlyBudget } from '@/utils/financeHelpers'
 import type { Expense, FixedCost, Settings, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
+
+const TOUR_DONE_KEY = 'cashflow-demo:tour-done'
+
+function tourAlreadySeen(): boolean {
+    try {
+        return window.localStorage.getItem(TOUR_DONE_KEY) === '1'
+    } catch {
+        return false
+    }
+}
 
 type DemoData = {
     expenses: Expense[]
@@ -32,6 +44,19 @@ export default function DemoPage() {
 
     const [data, setData] = useState<DemoData | null>(null)
     const [version, setVersion] = useState(0)
+    // Beim ersten Besuch startet die Einführung von selbst, danach über das Demo-Menü.
+    const [tourOpen, setTourOpen] = useState(() => typeof window !== 'undefined' && !tourAlreadySeen())
+    const [tourRun, setTourRun] = useState(0)
+
+    const closeTour = useCallback(() => {
+        setTourOpen(false)
+        try { window.localStorage.setItem(TOUR_DONE_KEY, '1') } catch { /* egal */ }
+    }, [])
+
+    const startTour = () => {
+        setTourRun(r => r + 1) // neu einhängen → beginnt wieder bei Schritt 1
+        setTourOpen(true)
+    }
 
     const load = useCallback(async () => {
         setData(await fetchDemoData())
@@ -77,7 +102,8 @@ export default function DemoPage() {
                     onUpdate={load}
                 />
             </div>
-            <DemoBanner onStartTour={() => {}} onReset={handleReset} />
+            <DemoBanner onStartTour={startTour} onReset={handleReset} />
+            {tourOpen && <GuidedTour key={tourRun} steps={TOUR_STEPS} onClose={closeTour} />}
         </main>
     )
 }
