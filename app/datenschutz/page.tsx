@@ -77,7 +77,7 @@ export default function DatenschutzPage() {
                 <ul>
                     <li>
                         <strong>Supabase</strong> (Supabase Inc.) — Datenbank und Anmeldung. Die Daten liegen auf
-                        Servern in <strong>Deutschland</strong> (EU). Grundlage ist ein Auftragsverarbeitungsvertrag
+                        Servern <strong>innerhalb der EU</strong>. Grundlage ist ein Auftragsverarbeitungsvertrag
                         nach Art. 28 DSGVO.
                     </li>
                     <li>
