@@ -46,7 +46,7 @@ export async function signUpWithInviteCode(
 
         // Atomar einen Platz auf dem Code beanspruchen. Kontingent (max_uses) und
         // Ablauf prüft die DB-Funktion in EINEM UPDATE — parallele Registrierungen
-        // können das Kontingent so nicht überschreiten (Migration 0007).
+        // können das Kontingent so nicht überschreiten (Migration 0008).
         const { data: claimRows, error: claimError } = await supabaseAdmin
             .rpc('claim_invite_code', { p_code: code })
 

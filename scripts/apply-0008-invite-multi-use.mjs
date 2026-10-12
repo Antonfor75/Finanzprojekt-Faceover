@@ -1,7 +1,7 @@
-// Spielt NUR drizzle/0007_invite_code_multi_use.sql ein (rein additiv, löscht nichts).
+// Spielt NUR drizzle/0008_invite_code_multi_use.sql ein (rein additiv, löscht nichts).
 //
-//   node scripts/apply-0007-invite-multi-use.mjs --dry-run   # alles in einer Transaktion + Tests, dann ROLLBACK
-//   node scripts/apply-0007-invite-multi-use.mjs             # wirklich einspielen
+//   node scripts/apply-0008-invite-multi-use.mjs --dry-run   # alles in einer Transaktion + Tests, dann ROLLBACK
+//   node scripts/apply-0008-invite-multi-use.mjs             # wirklich einspielen
 //
 // Nicht über `drizzle-kit migrate` — die Migrations-Buchführung ist hier leer.
 // Der Direkt-Host aus DATABASE_URL ist nur per IPv6 erreichbar; ohne IPv6 auf den
@@ -26,7 +26,7 @@ function connectionUrl() {
 const sql = postgres(connectionUrl(), { ssl: 'require', max: 1 })
 
 async function runMigration(tx) {
-    const file = await fs.readFile('drizzle/0007_invite_code_multi_use.sql', 'utf-8')
+    const file = await fs.readFile('drizzle/0008_invite_code_multi_use.sql', 'utf-8')
     for (const stmt of file.split('--> statement-breakpoint')) {
         const trimmed = stmt.trim()
         if (!trimmed) continue

@@ -3,6 +3,10 @@
 import { getDemoClient, type Row } from './demoClient'
 import type { BulkImportPayload } from '@/app/actions/import'
 import type { ConnectionStatus } from '@/app/actions/emailConnection'
+import {
+    planTransfer, validateTransferInput, directionFromGiroAmount, giroExpenseAmount, funEffect, roundCents,
+    type TransferInput, type TransferDirection,
+} from '@/utils/transfer'
 
 const db = () => getDemoClient()
 const NOT_IN_DEMO = 'In der Demo nicht verfügbar — leg dir ein Konto an, um diese Funktion zu nutzen.'
@@ -220,4 +224,78 @@ export async function runReweSyncNow() {
 
 export async function deleteEmailConnection() {
     return { success: false, error: NOT_IN_DEMO }
+}
+
+// --- Umbuchungen Girokonto <-> Spaßkonto ---------------------------------------
+// Gleiche Regeln und Zeilen wie app/actions/transfers.ts (Aufbau aus utils/transfer.ts),
+// nur ohne Rücknahme-Schritte: der localStorage kennt keine Teilausfälle.
+
+export async function createTransfer(input: TransferInput) {
+    const valid = validateTransferInput(input)
+    if (!valid.ok) return { success: false as const, error: valid.error }
+    const transferId = crypto.randomUUID()
+    const plan = planTransfer({ ...input, amount: valid.amount, reason: valid.reason }, transferId)
+
+    if (plan.fun?.kind === 'legacy') {
+        const account = await getAccount(plan.fun.accountId)
+        if (!account) return { success: false as const, error: 'Spaßkonto nicht gefunden.' }
+        const after = roundCents(Number(account.amount) + plan.fun.balanceDelta)
+        if (after < 0) return { success: false as const, error: 'Nicht genug Guthaben auf dem Spaßkonto.' }
+        await db().from('accounts').update({ amount: after }).eq('id', plan.fun.accountId)
+        await db().from('account_transactions').insert(plan.fun.tx)
+    }
+    await db().from('expenses').insert(plan.giro)
+    if (plan.fun?.kind === 'v2_income') await db().from('fun_income_entries').insert(plan.fun.row)
+    if (plan.fun?.kind === 'v2_expense') await db().from('fun_group_expenses').insert(plan.fun.row)
+    return { success: true as const, transferId }
+}
+
+async function rowsOf(table: string, transferId: string) {
+    const { data } = await db().from(table).select('*').eq('transfer_id', transferId)
+    return (data ?? []) as Row[]
+}
+
+export async function deleteTransfer(transferId: string) {
+    if (!transferId) return { success: false as const, error: 'Umbuchung nicht gefunden.' }
+    const txs = await rowsOf('account_transactions', transferId)
+    for (const t of txs) {
+        const account = await getAccount(Number(t.account_id))
+        if (account) await db().from('accounts').update({ amount: roundCents(Number(account.amount) - Number(t.amount)) }).eq('id', account.id)
+    }
+    for (const table of ['account_transactions', 'fun_income_entries', 'fun_group_expenses', 'expenses']) {
+        await db().from(table).delete().eq('transfer_id', transferId)
+    }
+    return { success: true as const }
+}
+
+export async function updateTransfer(transferId: string, changes: { amount: number; reason: string; date: string }) {
+    if (!transferId) return { success: false as const, error: 'Umbuchung nicht gefunden.' }
+    const valid = validateTransferInput(changes)
+    if (!valid.ok) return { success: false as const, error: valid.error }
+    const { amount, reason } = valid
+    const { date } = changes
+
+    const [expenses, incomes, funExpenses, txs] = await Promise.all([
+        rowsOf('expenses', transferId), rowsOf('fun_income_entries', transferId),
+        rowsOf('fun_group_expenses', transferId), rowsOf('account_transactions', transferId),
+    ])
+    let direction: TransferDirection = 'from_giro'
+    if (expenses.length) direction = directionFromGiroAmount(Number(expenses[0].amount))
+    else if (incomes.length) direction = 'from_giro'
+    else if (funExpenses.length) direction = 'to_giro'
+    else if (txs.length) direction = Number(txs[0].amount) >= 0 ? 'from_giro' : 'to_giro'
+
+    for (const t of txs) {
+        const delta = roundCents(funEffect(direction, amount) - Number(t.amount))
+        const account = await getAccount(Number(t.account_id))
+        if (!account) continue
+        const after = roundCents(Number(account.amount) + delta)
+        if (after < 0) return { success: false as const, error: 'Nicht genug Guthaben auf dem Spaßkonto.' }
+        await db().from('accounts').update({ amount: after }).eq('id', account.id)
+    }
+    await db().from('account_transactions').update({ amount: funEffect(direction, amount), note: reason, transaction_date: `${date}T12:00:00` }).eq('transfer_id', transferId)
+    await db().from('fun_income_entries').update({ amount, description: reason, income_date: date }).eq('transfer_id', transferId)
+    await db().from('fun_group_expenses').update({ amount, description: reason, expense_date: date }).eq('transfer_id', transferId)
+    await db().from('expenses').update({ amount: giroExpenseAmount(direction, amount), description: reason, expense_date: date }).eq('transfer_id', transferId)
+    return { success: true as const }
 }

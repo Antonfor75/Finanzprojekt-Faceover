@@ -8,6 +8,7 @@ import * as funGroups from '@/app/actions/funGroups'
 import * as savings from '@/app/actions/savings'
 import * as importActions from '@/app/actions/import'
 import * as email from '@/app/actions/emailConnection'
+import * as transfers from '@/app/actions/transfers'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function route<F extends (...args: any[]) => Promise<any>>(live: F, local: (...args: any[]) => Promise<any>): F {
@@ -39,6 +40,10 @@ export const updateFunIncomeEntry = route(funGroups.updateFunIncomeEntry, demo.u
 export const deleteFunIncomeEntry = route(funGroups.deleteFunIncomeEntry, demo.deleteFunIncomeEntry)
 
 export const bulkImportAll = route(importActions.bulkImportAll, demo.bulkImportAll)
+
+export const createTransfer = route(transfers.createTransfer, demo.createTransfer)
+export const updateTransfer = route(transfers.updateTransfer, demo.updateTransfer)
+export const deleteTransfer = route(transfers.deleteTransfer, demo.deleteTransfer)
 
 export const saveEmailConnection = route(email.saveEmailConnection, demo.saveEmailConnection)
 export const getEmailConnectionStatus = route(email.getEmailConnectionStatus, demo.getEmailConnectionStatus)

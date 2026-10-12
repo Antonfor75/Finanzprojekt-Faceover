@@ -225,7 +225,7 @@ export const inviteCodesTable = pgTable('invite_codes', {
 });
 
 // Wer welchen Einladungscode eingelöst hat (ein Code kann für mehrere Personen gelten).
-// Wie invite_codes: RLS ohne Policy, nur service_role. Migration 0007.
+// Wie invite_codes: RLS ohne Policy, nur service_role. Migration 0008.
 export const inviteCodeRedemptionsTable = pgTable('invite_code_redemptions', {
     id: serial('id').primaryKey(),
     code_id: integer('code_id').notNull().references(() => inviteCodesTable.id, { onDelete: 'cascade' }),
