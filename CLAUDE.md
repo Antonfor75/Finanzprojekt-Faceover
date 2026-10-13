@@ -63,4 +63,4 @@ Admin area lives under `app/admin/*` and is gated by the hardcoded email `chef@a
 
 - **PWA:** `app/manifest.ts`, `public/service-worker.js`, `components/SWRegister.tsx`.
 - **Bank statement import:** `components/ImportWizard.tsx` + `utils/parseBankStatement.ts` / `utils/parseFullImport.ts` (uses `pdfjs-dist`); PDF export via `jspdf` + `jspdf-autotable`.
-- The repo root contains many stray debug/log files (`*.log`, `*.txt`, `schema_*.json`) — build/diagnostic leftovers, not source.
+- Debug/log leftovers (`*.log`, `schema_*.json`, `scripts/userdata*.json`) and Playwright outputs are git-ignored — never commit them (the repo is public).

@@ -5,7 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { TrendingUp, ArrowLeft, ChevronLeft, ChevronRight, ArrowLeftRight } from 'lucide-react'
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, subDays, addDays, getYear, format, isSameDay, subYears } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { calculateGirokontoTimeline } from '@/utils/girokonto'
+import { calculateGirokontoTimeline, type GirokontoTimelineResult } from '@/utils/girokonto'
 import TransferDialog from '@/components/TransferDialog'
 
 type Props = {
@@ -13,18 +13,20 @@ type Props = {
     incomeSources: any[]
     initialFixedCosts: any[]
     currentGiroBalance: number // New Prop
+    /** Bereits berechnete Simulation (MobileDashboard) — spart die erneute Tagesrechnung. */
+    girokontoTimeline?: GirokontoTimelineResult
     onBack: () => void
     onUpdate?: () => void
 }
 
-export default function GirokontoView({ expenses, incomeSources, initialFixedCosts, currentGiroBalance: targetBalance, onBack, onUpdate }: Props) {
+export default function GirokontoView({ expenses, incomeSources, initialFixedCosts, currentGiroBalance: targetBalance, girokontoTimeline, onBack, onUpdate }: Props) {
     const range = 'monthly' // Forced to Monthly as per user request
     const [transferOpen, setTransferOpen] = useState(false)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
 
     // --- DATA GENERATION (Using central girokonto.ts) ---
     const { chartData, currentBalance, splitOffset } = useMemo(() => {
-        const result = calculateGirokontoTimeline(expenses, incomeSources, initialFixedCosts)
+        const result = girokontoTimeline ?? calculateGirokontoTimeline(expenses, incomeSources, initialFixedCosts)
 
         // Show daily data instead of filtering to month-end
         const filteredData = result.timeline.map((t: any) => ({
@@ -61,7 +63,7 @@ export default function GirokontoView({ expenses, incomeSources, initialFixedCos
         }
 
         return { chartData: alignedData, currentBalance: targetBalance, splitOffset: split }
-    }, [expenses, incomeSources, initialFixedCosts, targetBalance]) // Added targetBalance dependency
+    }, [expenses, incomeSources, initialFixedCosts, targetBalance, girokontoTimeline]) // Added targetBalance dependency
 
     // Auto-Scroll (same as CashflowTab)
     useLayoutEffect(() => {

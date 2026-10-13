@@ -30,7 +30,10 @@ export async function updateSession(request: NextRequest) {
 
     // refresh session if expired - required for Server Components
     // https://supabase.com/docs/guides/auth/server-side/nextjs
-    await supabase.auth.getUser()
+    // getClaims() frischt die Sitzung genauso auf wie getUser(), prüft das Token bei
+    // asymmetrischen Schlüsseln aber lokal (JWKS, zwischengespeichert) statt mit einem
+    // Aufruf an Supabase Auth. Bei symmetrischen Schlüsseln fällt es selbst auf getUser() zurück.
+    await supabase.auth.getClaims()
 
     return supabaseResponse
 }

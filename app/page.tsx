@@ -1,33 +1,57 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
+import { preconnect } from 'react-dom'
 import { supabase } from '@/utils/supabase'
-import MobileDashboard from '@/components/MobileDashboard'
 import LoginScreen from '@/components/LoginScreen'
 import PrivacyUpdateNotice from '@/components/legal/PrivacyUpdateNotice'
 import { hasAcceptedCurrentPrivacy } from '@/lib/legal/operator'
 import { calculateMonthlyBudget } from '@/utils/financeHelpers'
 import { disableDemoMode } from '@/lib/data/mode'
 import { Loader2 } from 'lucide-react'
-import { Expense, FixedCost, Settings, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
+import { Settings } from '@/app/types'
+import { loadFunSummary } from '@/lib/data/funSummary'
+import {
+  type DashboardData, type RefreshScope,
+  readCachedData, writeCachedData, clearCachedData,
+} from '@/lib/data/dashboardData'
+
+// Das Dashboard-Paket lädt parallel zur Anmeldung und zu den Supabase-Abfragen, statt
+// vorher den Seitenstart zu blockieren. Der Ladezustand sieht aus wie "Lade Finanzen".
+const loadDashboard = () => import('@/components/MobileDashboard')
+// Schon beim Laden dieses Moduls anstoßen (vor dem ersten Rendern), nicht erst im Effekt.
+if (typeof window !== 'undefined') loadDashboard().catch(() => {}) // Fehler zeigt dynamic() beim Rendern
+const MobileDashboard = dynamic(loadDashboard, {
+  ssr: false,
+  loading: () => (
+    <div className="h-[100dvh] w-full flex flex-col items-center justify-center gap-6">
+      <Loader2 className="w-7 h-7 animate-spin text-primary" strokeWidth={1.75} />
+      <p className="eyebrow">Lade Finanzen</p>
+    </div>
+  ),
+})
 
 export default function Home() {
   // Falls man per Client-Navigation aus der Demo hierher kommt: die echte App
   // läuft IMMER im Live-Modus — noch bevor irgendein Datenzugriff passiert.
   useState(() => disableDemoMode())
+  // Verbindung zu Supabase (DNS + TCP + TLS) schon aufbauen, während das JavaScript lädt —
+  // die erste Datenabfrage kann dann sofort losschicken. Steht als <link> im HTML-Kopf.
+  preconnect(process.env.NEXT_PUBLIC_SUPABASE_URL!, { crossOrigin: 'anonymous' })
   const router = useRouter()
   const [session, setSession] = useState<any>(null)
-  const [data, setData] = useState<{
-    expenses: Expense[],
-    monthlyBudget: number,
-    fixedCosts: FixedCost[],
-    settings: Settings,
-    accounts: Account[],
-    incomeSources: IncomeSource[],
-    receiptItems: ReceiptItem[],
-    products: Product[]
-  } | null>(null)
+  const [data, setData] = useState<DashboardData | null>(null)
+  // Aktueller Stand für fetchData (läuft aus Closures, die älter sein können)
+  const dataRef = useRef<DashboardData | null>(null)
+  useEffect(() => { dataRef.current = data }, [data])
+  // true, solange nur der zwischengespeicherte Stand vom letzten Öffnen angezeigt wird
+  const showingCachedData = useRef(false)
+  // Für welchen Nutzer schon geladen wurde (ein Ladevorgang pro Anmeldung)
+  const loadedForUser = useRef<string | null>(null)
+  // Bon-Artikel/Produkte: erst bei Bedarf laden (Historie/Analyse), danach mit aktualisieren
+  const receiptsRequested = useRef(false)
 
   const [authLoading, setAuthLoading] = useState(true)
   const [dataLoading, setDataLoading] = useState(false)
@@ -51,6 +75,7 @@ export default function Home() {
         console.error("Auth Session Error:", error)
         setError("Fehler beim Laden der Sitzung: " + error.message)
       }
+      if (!session && !error) clearCachedData()
       setSession(session)
       setAuthLoading(false)
       clearTimeout(authTimeout)
@@ -68,6 +93,11 @@ export default function Home() {
       setAuthLoading(false)
       if (!session) {
         setData(null)
+        dataRef.current = null
+        loadedForUser.current = null
+        receiptsRequested.current = false
+        // Abgemeldet: zwischengespeicherte Finanzdaten vom Gerät entfernen
+        if (_event === 'SIGNED_OUT') clearCachedData()
       }
     })
 
@@ -86,8 +116,29 @@ export default function Home() {
   }, [session, router])
 
   // 2. DATA FETCHING
-  const fetchData = async () => {
+  const loadReceiptsAndProducts = async () => {
+    const [receiptItemsRes, productsRes] = await Promise.all([
+      supabase.from('receipt_items').select('*'),
+      supabase.from('products').select('*')
+    ])
+    // Artikel sind optionale Zusatzinfo — ein Fehler hier (z. B. Migration noch
+    // nicht angewendet) darf die App nicht blockieren.
+    if (receiptItemsRes.error) console.warn('Receipt Items:', receiptItemsRes.error.message)
+    if (productsRes.error) console.warn('Products:', productsRes.error.message)
+    return { receiptItems: receiptItemsRes.data || [], products: productsRes.data || [] }
+  }
+
+  const applyData = (userId: string, next: DashboardData) => {
+    dataRef.current = next
+    setData(next)
+    writeCachedData(userId, next)
+  }
+
+  // Lädt alles neu — oder mit `scope` nur die Tabellen, die eine Änderung betrifft.
+  const fetchData = async (scope?: RefreshScope[]) => {
     if (!session) return
+    if (scope && dataRef.current && !showingCachedData.current) return refreshPartial(scope)
+
     setDataLoading(true)
     setError(null)
 
@@ -96,14 +147,16 @@ export default function Home() {
       // Explicitly checking for user to satisfy Typescript if needed, though session implies it
       if (!user) throw new Error("No user found in session")
 
-      const [expensesRes, fixedCostsRes, accountsRes, settingsRes, incomeSourcesRes, receiptItemsRes, productsRes] = await Promise.all([
+      // Spaßkonto-Kacheln und (falls schon gebraucht) Bon-Artikel laufen parallel mit
+      const funSummaryPromise = loadFunSummary().catch(err => { console.warn('Spaßkonto:', err); return null })
+      const receiptsPromise = receiptsRequested.current ? loadReceiptsAndProducts() : null
+
+      const [expensesRes, fixedCostsRes, accountsRes, settingsRes, incomeSourcesRes] = await Promise.all([
         supabase.from('expenses').select('*').order('created_at', { ascending: false }),
         supabase.from('fixed_costs').select('*'),
         supabase.from('accounts').select('*'),
         supabase.from('settings').select('*').single(),
-        supabase.from('income_sources').select('*'),
-        supabase.from('receipt_items').select('*'),
-        supabase.from('products').select('*')
+        supabase.from('income_sources').select('*')
       ])
 
       if (expensesRes.error) throw new Error("Expenses: " + expensesRes.error.message)
@@ -114,12 +167,6 @@ export default function Home() {
       const fixedCostsList = fixedCostsRes.data || []
       const accountsList = accountsRes.data || []
       const incomeSourcesList = incomeSourcesRes.data || []
-      // Artikel sind optionale Zusatzinfo — ein Fehler hier (z. B. Migration noch
-      // nicht angewendet) darf die App nicht blockieren.
-      if (receiptItemsRes.error) console.warn('Receipt Items:', receiptItemsRes.error.message)
-      const receiptItemsList = receiptItemsRes.data || []
-      if (productsRes.error) console.warn('Products:', productsRes.error.message)
-      const productsList = productsRes.data || []
 
       // Create default settings if missing
       let finalSettings = settingsObj
@@ -150,30 +197,99 @@ export default function Home() {
       // Gleiche Formel wie in der Demo (utils/financeHelpers.ts)
       const monthlyBudget = calculateMonthlyBudget(incomeSourcesList, accountsList)
 
-      setData({
+      const [funSummary, receipts] = await Promise.all([funSummaryPromise, receiptsPromise])
+
+      showingCachedData.current = false
+      applyData(user.id, {
         expenses: expensesRes.data || [],
         monthlyBudget,
         fixedCosts: fixedCostsList,
-        settings: finalSettings,
+        settings: finalSettings as Settings,
         accounts: accountsList,
         incomeSources: incomeSourcesList,
-        receiptItems: receiptItemsList,
-        products: productsList
+        receiptItems: receipts?.receiptItems ?? dataRef.current?.receiptItems,
+        products: receipts?.products ?? dataRef.current?.products,
+        funSummary
       })
     } catch (err: any) {
       console.error("Failed to load data", err)
-      setError("Daten konnten nicht geladen werden: " + (err.message || "Unbekannter Fehler"))
+      if (showingCachedData.current) {
+        // Kein Netz o. Ä.: der zwischengespeicherte Stand bleibt sichtbar statt der Fehlerseite
+        console.warn('Zeige zwischengespeicherte Daten, Aktualisierung fehlgeschlagen')
+      } else {
+        setError("Daten konnten nicht geladen werden: " + (err.message || "Unbekannter Fehler"))
+      }
     } finally {
       setDataLoading(false)
     }
   }
 
-  // Trigger Fetch
-  useEffect(() => {
-    if (session && !data && !dataLoading && session.user.email !== 'chef@anton.de') {
-      fetchData()
+  // Nach einer Änderung nur die betroffenen Tabellen neu laden (statt aller)
+  const refreshPartial = async (scope: RefreshScope[]) => {
+    if (!session?.user) return
+    try {
+      const [expensesRes, accountsRes, receipts] = await Promise.all([
+        scope.includes('expenses') ? supabase.from('expenses').select('*').order('created_at', { ascending: false }) : null,
+        scope.includes('accounts') ? supabase.from('accounts').select('*') : null,
+        scope.includes('receipts') && receiptsRequested.current ? loadReceiptsAndProducts() : null
+      ])
+      if (expensesRes?.error) throw new Error("Expenses: " + expensesRes.error.message)
+
+      const current = dataRef.current
+      if (!current) return
+      const next: DashboardData = { ...current }
+      if (expensesRes) next.expenses = expensesRes.data || []
+      if (accountsRes) {
+        next.accounts = accountsRes.data || []
+        // Gleiche Formel wie beim vollständigen Laden
+        next.monthlyBudget = calculateMonthlyBudget(current.incomeSources, next.accounts)
+      }
+      if (receipts) {
+        next.receiptItems = receipts.receiptItems
+        next.products = receipts.products
+      }
+      applyData(session.user.id, next)
+    } catch (err) {
+      console.error("Failed to load data", err)
+      setError("Daten konnten nicht geladen werden: " + ((err instanceof Error && err.message) || "Unbekannter Fehler"))
     }
-  }, [session, data]) // Removed dataLoading from dep array to avoid loops, handled inside
+  }
+
+  // Bon-Artikel/Produkte nachladen, sobald die Historie geöffnet wird
+  const loadReceipts = useCallback(() => {
+    if (receiptsRequested.current) return
+    receiptsRequested.current = true
+    loadReceiptsAndProducts()
+      .catch(err => {
+        console.warn('Receipt Items:', err)
+        return { receiptItems: [], products: [] }
+      })
+      .then(({ receiptItems, products }) => {
+        const current = dataRef.current
+        if (!current) return
+        const next = { ...current, receiptItems, products }
+        dataRef.current = next
+        setData(next)
+      })
+  }, [])
+
+  // Trigger Fetch: einmal pro Anmeldung. Gibt es einen Stand vom letzten Öffnen, wird
+  // der sofort angezeigt und im Hintergrund aktualisiert.
+  useEffect(() => {
+    if (!session || session.user.email === 'chef@anton.de') return
+    if (loadedForUser.current === session.user.id) return
+    loadedForUser.current = session.user.id
+    if (!dataRef.current) {
+      const cached = readCachedData(session.user.id)
+      if (cached) {
+        showingCachedData.current = true
+        dataRef.current = cached
+        setData(cached)
+      }
+    }
+    fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session])
 
   // LOADING STATE (Auth or Initial Data)
   const isLoading = authLoading || (session && dataLoading && !data)
@@ -255,8 +371,10 @@ export default function Home() {
             initialSettings={data?.settings!}
             initialAccounts={data?.accounts || []}
             initialIncomeSources={data?.incomeSources || []}
-            receiptItems={data?.receiptItems || []}
-            products={data?.products || []}
+            receiptItems={data?.receiptItems}
+            products={data?.products}
+            initialFunSummary={data ? data.funSummary : undefined}
+            onNeedReceipts={loadReceipts}
             onUpdate={fetchData}
           />
       </div>

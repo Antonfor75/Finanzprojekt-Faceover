@@ -11,7 +11,7 @@ export const expensesTable = pgTable('expenses', {
     account_id: integer('account_id'), // Optional link to an account
     transfer_id: uuid('transfer_id'), // verbindet beide Seiten einer Umbuchung Girokonto <-> Spaßkonto (utils/transfer.ts)
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
-});
+}, (t) => [index('expenses_user_id_idx').on(t.user_id)]); // drizzle/0009
 
 export const fixedCostsTable = pgTable('fixed_costs', {
     id: serial('id').primaryKey(),
@@ -25,7 +25,7 @@ export const fixedCostsTable = pgTable('fixed_costs', {
     execution_day: integer('execution_day'),
     frequency: text('frequency'),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
-});
+}, (t) => [index('fixed_costs_user_id_idx').on(t.user_id)]); // drizzle/0009
 
 export const settingsTable = pgTable('settings', {
     id: serial('id').primaryKey(),
@@ -36,7 +36,7 @@ export const settingsTable = pgTable('settings', {
     last_processed_month: text('last_processed_month'),
     last_processed_week: text('last_processed_week'),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
-});
+}, (t) => [index('settings_user_id_idx').on(t.user_id)]); // drizzle/0009
 
 export const accountsTable = pgTable('accounts', {
     id: serial('id').primaryKey(), // Using serial as it seems to be bigint/int
@@ -51,7 +51,7 @@ export const accountsTable = pgTable('accounts', {
     processed_month: text('processed_month'),
     valid_from: timestamp('valid_from', { withTimezone: true }),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
-});
+}, (t) => [index('accounts_user_id_idx').on(t.user_id)]); // drizzle/0009
 
 export const incomeSourcesTable = pgTable('income_sources', {
     id: serial('id').primaryKey(),
@@ -62,7 +62,7 @@ export const incomeSourcesTable = pgTable('income_sources', {
     valid_to: timestamp('valid_to', { withTimezone: true }), // Nullable = Open End
     execution_day: integer('execution_day'),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
-});
+}, (t) => [index('income_sources_user_id_idx').on(t.user_id)]); // drizzle/0009
 
 export const accountTransactionsTable = pgTable('account_transactions', {
     id: serial('id').primaryKey(),
@@ -74,14 +74,14 @@ export const accountTransactionsTable = pgTable('account_transactions', {
     transaction_date: timestamp('transaction_date', { withTimezone: true }).defaultNow().notNull(),
     transfer_id: uuid('transfer_id'), // verbindet beide Seiten einer Umbuchung Girokonto <-> Spaßkonto (utils/transfer.ts)
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
-});
+}, (t) => [index('account_transactions_user_id_idx').on(t.user_id)]); // drizzle/0009
 
 export const budgetLogsTable = pgTable('budget_logs', {
     id: serial('id').primaryKey(),
     created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     amount: numeric('amount').notNull(),
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
-});
+}, (t) => [index('budget_logs_user_id_idx').on(t.user_id)]); // drizzle/0009
 
 // Verbundene E-Mail-Postfächer für den automatischen REWE-Import (ein Postfach pro User).
 // Das Secret (App-Passwort bzw. später OAuth-Refresh-Token) wird AES-256-GCM-verschlüsselt gespeichert.
@@ -111,7 +111,7 @@ export const reweReceiptsTable = pgTable('rewe_receipts', {
     raw_subject: text('raw_subject'),
     raw_text: text('raw_text'), // zeilenweiser eBon-Text für die KI-Auswertung auf dem Handy
     imported_at: timestamp('imported_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [index('rewe_receipts_user_id_idx').on(t.user_id)]); // drizzle/0009
 
 // Artikelzeilen zu einer Ausgabe — optionale Zusatzinfo (aus Bon-Import oder später manuell).
 // Hängt bewusst an expense_id (nicht an rewe_receipts), damit manuelle Artikel und
@@ -140,7 +140,7 @@ export const productsTable = pgTable('products', {
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
     name: text('name').notNull(), // z. B. "Tomatensoße"
     category: text('category'), // vorbereitet für spätere Kategorisierung, bleibt vorerst leer
-});
+}, (t) => [index('products_user_id_idx').on(t.user_id)]); // drizzle/0009
 
 // Lerntabelle des Matchings: normalisierter Bon-Text → Produkt. Jede neue Schreibweise,
 // die (fuzzy) zugeordnet wurde, landet hier und matcht künftig exakt.

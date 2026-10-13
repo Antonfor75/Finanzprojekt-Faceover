@@ -1,50 +1,69 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { loadTheme } from '@/utils/theme'
-import { processWeeklySavings } from '@/lib/data/actions'
-import { processFunAccountFeeds } from '@/lib/data/actions'
-import { ArrowLeft, ArrowUpRight, Settings, Trash2, List, Pencil, Plus, Home, Download, TrendingUp, TrendingDown, CalendarClock, Check, ChevronDown, Wallet, ChevronRight, X, PiggyBank, Sparkles } from 'lucide-react'
+import { runStartupJobs } from '@/lib/data/actions'
+import { ArrowUpRight, Settings, List, Plus, Home, TrendingUp, TrendingDown, CalendarClock, Check, ChevronRight, Sparkles } from 'lucide-react'
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, getDaysInMonth } from 'date-fns'
-import { de } from 'date-fns/locale'
 import { supabase } from '@/utils/supabase'
 
-
-import AddExpenseForm from './AddExpenseForm'
-import SettingsOverlay from './SettingsOverlay'
-import CalendarHistory from './CalendarHistory'
+import AddExpenseForm, { warmUpExpenseForm } from './AddExpenseForm'
+import { ViewLoading } from './dashboard/ViewLoading'
+import { downloadExpensesPdf } from './dashboard/expensesPdf'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import AnalysisView from './AnalysisView'
-import GirokontoView from './GirokontoView'
-import FunAccountView from './FunAccountView'
-import FunAccountHub from './FunAccountHub'
-import { calculateFunAccountSaldo, classifyGroupBucket } from '@/utils/funAccountGroups'
+import { loadFunSummary, type FunSummary } from '@/lib/data/funSummary'
+import type { DashboardRefresh } from '@/lib/data/dashboardData'
 import { addFunGroupExpense, updateTransfer, deleteTransfer } from '@/lib/data/actions'
-import { FunGroup } from '@/app/types'
 import { DatePicker } from '@/components/ui/date-picker'
 // import DashboardHealth from './DashboardHealth' // REMOVED
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
-import { expenseEditPatch, historyPdfCells, isSpendingExpense, isTransferExpense } from '@/utils/transfer'
-
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import { expenseEditPatch, isSpendingExpense, isTransferExpense } from '@/utils/transfer'
+import { preloadPdf, withPdf } from '@/lib/pdf'
 
 import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 
 type MainView = 'entry' | 'history' | 'settings'
 
+// Unteransichten (Diagramme/recharts, Einstellungen, Spaßkonto) gehören nicht ins
+// Startpaket: sie werden getrennt geladen und kurz nach dem ersten Anzeigen im
+// Hintergrund vorgeladen, sodass sie beim ersten Antippen bereits bereitstehen.
+const loadAnalysisView = () => import('./AnalysisView')
+const loadGirokontoView = () => import('./GirokontoView')
+const loadSettingsOverlay = () => import('./SettingsOverlay')
+const loadFunAccountHub = () => import('./FunAccountHub')
+const loadFunAccountView = () => import('./FunAccountView')
+const loadHistoryView = () => import('./dashboard/HistoryView')
+
+const GirokontoView = dynamic(loadGirokontoView, { ssr: false, loading: ViewLoading })
+const SettingsOverlay = dynamic(loadSettingsOverlay, { ssr: false, loading: ViewLoading })
+const FunAccountHub = dynamic(loadFunAccountHub, { ssr: false, loading: ViewLoading })
+const FunAccountView = dynamic(loadFunAccountView, { ssr: false, loading: ViewLoading })
+// Historie (Kalender/Liste) ist für das schnelle Eintragen auf der Startseite nicht nötig
+const HistoryView = dynamic(loadHistoryView, { ssr: false, loading: ViewLoading })
+
+function preloadSubViews() {
+    for (const load of [loadHistoryView, loadAnalysisView, loadGirokontoView, loadSettingsOverlay, loadFunAccountHub, loadFunAccountView]) {
+        load().catch(() => {}) // Fehler hier egal: beim Öffnen wird erneut geladen
+    }
+}
+
+const NO_RECEIPT_ITEMS: ReceiptItem[] = []
+const NO_PRODUCTS: Product[] = []
+
 export default function MobileDashboard({
-    expenses,
+    expenses: serverExpenses,
     initialBudget,
     initialFixedCosts,
     initialSettings,
     initialAccounts,
     initialIncomeSources,
-    receiptItems = [],
-    products = [],
+    receiptItems: loadedReceiptItems,
+    products: loadedProducts,
+    initialFunSummary,
+    onNeedReceipts,
     onUpdate
 }: {
     expenses: Expense[],
@@ -53,18 +72,40 @@ export default function MobileDashboard({
     initialSettings: SettingsType,
     initialAccounts: Account[],
     initialIncomeSources: IncomeSource[],
+    // undefined = noch nicht geladen (werden erst für Historie/Analyse nachgeladen)
     receiptItems?: ReceiptItem[],
     products?: Product[],
-    onUpdate?: () => void
+    // Spaßkonto-Kacheln, schon beim Start mitgeladen; undefined = selbst laden
+    initialFunSummary?: FunSummary,
+    onNeedReceipts?: () => void,
+    onUpdate?: DashboardRefresh
 }) {
+    const receiptItems = loadedReceiptItems ?? NO_RECEIPT_ITEMS
+    const products = loadedProducts ?? NO_PRODUCTS
+    const receiptsLoading = loadedReceiptItems === undefined
+
+    // Neue Ausgaben erscheinen sofort (optimistisch), bis das Speichern bestätigt und neu geladen ist.
+    const [pendingExpenses, setPendingExpenses] = useState<Expense[]>([])
+    const expenses = useMemo(
+        () => pendingExpenses.length > 0 ? [...pendingExpenses, ...serverExpenses] : serverExpenses,
+        [pendingExpenses, serverExpenses]
+    )
+
     // --- APP STATE ---
     const [view, setView] = useState<MainView>('entry')
     const [showGirokonto, setShowGirokonto] = useState(false)
     const [openFunAccountId, setOpenFunAccountId] = useState<number | null>(null)
     const [showFunHub, setShowFunHub] = useState(false)
-    const [funSaldo, setFunSaldo] = useState<number | null>(null)
-    const [funAccountId, setFunAccountId] = useState<number | null>(null)
-    const [funCurrentGroup, setFunCurrentGroup] = useState<FunGroup | null>(null)
+    const [funSummary, setFunSummary] = useState<FunSummary>(initialFunSummary ?? null)
+    // Neuer Stand vom Neuladen der Seite (app/page.tsx) → Kacheln übernehmen ihn direkt
+    const [prevInitialFunSummary, setPrevInitialFunSummary] = useState(initialFunSummary)
+    if (initialFunSummary !== prevInitialFunSummary) {
+        setPrevInitialFunSummary(initialFunSummary)
+        if (initialFunSummary !== undefined) setFunSummary(initialFunSummary)
+    }
+    const funSaldo = funSummary?.saldo ?? null
+    const funAccountId = funSummary?.accountId ?? null
+    const funCurrentGroup = funSummary?.currentGroup ?? null
     const [funRefresh, setFunRefresh] = useState(0)
     // Schnell-Ausgabe direkt in die aktuelle Gruppe (nur Ausgaben, keine Einnahmen)
     const [funGroupDialog, setFunGroupDialog] = useState(false)
@@ -92,28 +133,21 @@ export default function MobileDashboard({
     }, [receiptItems])
 
     // --- EFFECT: SPASSKONTO-SALDO + aktuelle Gruppe für die Dashboard-Kacheln laden ---
-    // Lädt beim Start, wenn der Hub geschlossen wird (showFunHub → false) und nach
-    // einer Schnell-Ausgabe (funRefresh).
+    // Lädt beim Start (außer die Seite hat es schon mitgeladen), wenn der Hub geschlossen
+    // wird (showFunHub → false) und nach einer Schnell-Ausgabe (funRefresh).
+    const funSummaryPreloaded = useRef(initialFunSummary !== undefined)
     useEffect(() => {
         if (showFunHub) return
+        if (funSummaryPreloaded.current) { funSummaryPreloaded.current = false; return }
         let cancelled = false
-        const loadFunSaldo = async () => {
-            const { data: funAccount } = await supabase.from('fun_accounts_v2').select('*').maybeSingle()
-            if (!funAccount) { if (!cancelled) { setFunSaldo(null); setFunCurrentGroup(null); setFunAccountId(null) } return }
-            const [{ data: funExpenses }, { data: funIncome }, { data: funGroups }] = await Promise.all([
-                supabase.from('fun_group_expenses').select('amount, expense_date').eq('fun_account_id', funAccount.id),
-                supabase.from('fun_income_entries').select('amount, income_date').eq('fun_account_id', funAccount.id),
-                supabase.from('fun_groups').select('*').eq('fun_account_id', funAccount.id).order('start_date', { ascending: true }),
-            ])
-            if (cancelled) return
-            setFunAccountId(funAccount.id)
-            setFunSaldo(calculateFunAccountSaldo(funExpenses || [], funIncome || [], funAccount.foresight_enabled))
-            const current = (funGroups || []).find(g => classifyGroupBucket(g) === 'aktuell') || null
-            setFunCurrentGroup(current)
-        }
-        loadFunSaldo()
+        loadFunSummary().then(summary => { if (!cancelled) setFunSummary(summary) })
         return () => { cancelled = true }
     }, [showFunHub, funRefresh])
+
+    // Bon-Artikel erst laden, wenn Historie (Liste mit Artikeln, Analyse → Einkäufe) geöffnet wird
+    useEffect(() => {
+        if (view === 'history' && receiptsLoading) onNeedReceipts?.()
+    }, [view, receiptsLoading, onNeedReceipts])
 
     const openFunGroupDialog = () => {
         setFunGroupAmount('')
@@ -137,75 +171,64 @@ export default function MobileDashboard({
         setFunRefresh(n => n + 1)
     }
 
-    // --- EFFECT: PROCESS SAVINGS & DISTRIBUTION ON MOUNT ---
+    // Eintrag-Formular vorwärmen (Emoji-/Betragsschrift), sobald der Browser nach dem Start Luft hat
     useEffect(() => {
-        const initDashboard = async () => {
-            console.log('--- Init Dashboard ---')
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
-
-            // 0. Load Theme
-            loadTheme()
-
-            // 1. Process Weekly Savings (The "Sunday Logic")
-            await processWeeklySavings(user.id)
-
-            // 1b. Credit monthly feeds to fun accounts (lazy, idempotent)
-            const feedResult = await processFunAccountFeeds()
-            if (feedResult.credited > 0) onUpdate?.()
-
-            // 2. Process Monthly Distributions (The existing logic)
-            const { data: accounts } = await supabase.from('accounts').select('*')
-            const { data: settings } = await supabase.from('settings').select('*').single()
-
-            if (!settings || !accounts) return
-
-            const currentMonth = new Date().toISOString().slice(0, 7)
-            let budgetIncrease = 0
-            let updatesMade = false
-
-            for (const account of accounts) {
-                if (account.type === 'distribution' &&
-                    account.processed_month !== currentMonth &&
-                    account.amount > 0 &&
-                    account.months > 0) {
-
-                    // Check valid_from
-                    if (account.valid_from) {
-                        const validFromMonth = new Date(account.valid_from).toISOString().slice(0, 7)
-                        if (currentMonth < validFromMonth) continue
-                    }
-
-                    const amountToDistribute = account.amount / account.months
-
-                    await supabase.from('accounts').update({
-                        amount: account.amount - amountToDistribute,
-                        months: account.months - 1,
-                        processed_month: currentMonth
-                    }).eq('id', account.id)
-
-                    budgetIncrease += amountToDistribute
-                    updatesMade = true
-                }
-            }
-
-            if (updatesMade && budgetIncrease > 0) {
-                await supabase.from('settings').update({
-                    monthly_budget: settings.monthly_budget + budgetIncrease
-                }).eq('id', settings.id)
-                onUpdate?.()
-            }
+        if (typeof window.requestIdleCallback === 'function') {
+            const id = window.requestIdleCallback(warmUpExpenseForm, { timeout: 1500 })
+            return () => window.cancelIdleCallback(id)
         }
-        initDashboard()
+        const t = setTimeout(warmUpExpenseForm, 500)
+        return () => clearTimeout(t)
+    }, [])
+
+    // Unteransichten im Leerlauf nach dem ersten Anzeigen vorladen
+    useEffect(() => {
+        if (typeof window.requestIdleCallback === 'function') {
+            const id = window.requestIdleCallback(preloadSubViews, { timeout: 2000 })
+            return () => window.cancelIdleCallback(id)
+        }
+        const t = setTimeout(preloadSubViews, 800)
+        return () => clearTimeout(t)
+    }, [])
+
+    // PDF-Bibliothek im Hintergrund laden, sobald der PDF-Knopf (Historie → Liste) sichtbar ist
+    useEffect(() => {
+        if (view === 'history' && historyMode === 'list') preloadPdf().catch(() => {})
+    }, [view, historyMode])
+
+    // --- EFFECT: PROCESS SAVINGS & DISTRIBUTION ON MOUNT ---
+    // Wochensparen, Spaßkonto-Feeds und Verteilkonten laufen gebündelt in einer
+    // Server Action (app/actions/startup.ts) statt in 5–6 Abfragen aus dem Browser.
+    useEffect(() => {
+        console.log('--- Init Dashboard ---')
+        loadTheme()
+        // Erst wenn die Startseite steht und der Browser Luft hat — die Jobs sollen nicht mit
+        // dem Laden der Daten und dem ersten Eintragen um Netz und CPU konkurrieren.
+        const run = () => runStartupJobs()
+            .then(result => { if (result.changed) onUpdate?.() })
+            .catch(err => console.error('Start-Jobs fehlgeschlagen:', err))
+        if (typeof window.requestIdleCallback === 'function') {
+            const id = window.requestIdleCallback(run, { timeout: 3000 })
+            return () => window.cancelIdleCallback(id)
+        }
+        const t = setTimeout(run, 1500)
+        return () => clearTimeout(t)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []) // Run ONCE on mount. onUpdate dependency caused infinite loop.
 
     // --- CALCULATE GIROKONTO BALANCE (Dynamic Net Cashflow) ---
+    // Einmal rechnen und an Girokonto- und Analyse-Ansicht weiterreichen. Die Simulation
+    // läuft bis "heute" — der Tag gehört daher in die Abhängigkeiten.
+    const todayKey = format(new Date(), 'yyyy-MM-dd')
+    const girokontoTimeline = useMemo(
+        () => calculateGirokontoTimeline(expenses, initialIncomeSources, initialFixedCosts),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [expenses, initialFixedCosts, initialIncomeSources, todayKey]
+    )
     const giroData = useMemo(() => {
         if (expenses.length === 0 && initialIncomeSources.length === 0) return { finalBalance: 0, timeline: [] as { date: Date; balance: number }[] }
-        const result = calculateGirokontoTimeline(expenses, initialIncomeSources, initialFixedCosts)
-        return { finalBalance: result.finalBalance, timeline: result.timeline }
-    }, [expenses, initialFixedCosts, initialIncomeSources])
+        return { finalBalance: girokontoTimeline.finalBalance, timeline: girokontoTimeline.timeline }
+    }, [expenses, initialIncomeSources, girokontoTimeline])
     const currentGiroBalance = giroData.finalBalance
 
     const handleLogout = async () => {
@@ -235,7 +258,7 @@ export default function MobileDashboard({
 
         // Manuelle Buchungen / alte Umbuchungen behalten ihre Kategorie (sonst würden sie still zur Ausgabe).
         await supabase.from('expenses').update(expenseEditPatch(existing, { description, amount, expense_date, category })).eq('id', id)
-        onUpdate?.()
+        onUpdate?.(['expenses'])
     }
 
     const deleteExpenseLocal = async (id: number) => {
@@ -268,7 +291,24 @@ export default function MobileDashboard({
 
         // 5. Delete the expense
         await supabase.from('expenses').delete().eq('id', id)
-        onUpdate?.()
+        onUpdate?.(expense?.account_id ? ['expenses', 'accounts', 'receipts'] : ['expenses', 'receipts'])
+    }
+
+    // Neue Ausgabe (normales Budget): sofort anzeigen und Formular schließen, im Hintergrund
+    // speichern. Schlägt das Speichern fehl, verschwindet sie wieder und es kommt die Fehlermeldung.
+    const addExpenseOptimistic = (draft: Pick<Expense, 'description' | 'amount' | 'expense_date' | 'category'>, save: () => Promise<void>) => {
+        const temp: Expense = {
+            ...draft,
+            id: -Date.now(),
+            created_at: new Date().toISOString(),
+            account_id: null,
+            transfer_id: null,
+        }
+        setPendingExpenses(list => [temp, ...list])
+        setShowAddSheet(false)
+        save()
+            .then(() => onUpdate?.(['expenses']), (err: Error) => alert(err?.message || 'Fehler beim Speichern.'))
+            .finally(() => setPendingExpenses(list => list.filter(e => e !== temp)))
     }
 
     const handleEditSave = async (formData: FormData) => {
@@ -345,11 +385,18 @@ export default function MobileDashboard({
 
     // Expenses for CURRENT WEEK ONLY
     // Account-paid expenses (savings/fun) are budget-neutral and excluded.
-    // Umbuchungen/manuelle Buchungen zählen nicht (Entscheidung 13.10.: kein Verbrauch, nur Kontostand).
-    const relevantExpensesThisWeek = expenses.filter(e => {
-        const d = new Date(e.expense_date || e.created_at)
-        return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }) && isSpendingExpense(e)
-    })
+    // Memoisiert: läuft sonst bei jedem Rendern (z. B. jedem Tastendruck) über alle Ausgaben.
+    // Die Woche steckt als Zeitstempel in den Abhängigkeiten, Montag/Sonntag folgen daraus.
+    const currentWeekStartTime = currentWeekStart.getTime()
+    const relevantExpensesThisWeek = useMemo(() => {
+        const start = new Date(currentWeekStartTime)
+        const end = endOfWeek(start, { weekStartsOn: 1 })
+        return expenses.filter(e => {
+            const d = new Date(e.expense_date || e.created_at)
+            // Umbuchungen/manuelle Buchungen zählen nicht (Entscheidung 13.10.: kein Verbrauch, nur Kontostand).
+            return isWithinInterval(d, { start, end }) && isSpendingExpense(e)
+        })
+    }, [expenses, currentWeekStartTime])
 
     const totalSpentThisWeek = relevantExpensesThisWeek.reduce((acc, curr) => acc + Number(curr.amount), 0)
 
@@ -367,9 +414,9 @@ export default function MobileDashboard({
 
     const getDate = (e: Expense) => new Date(e.expense_date || e.created_at)
 
-
-    // Groups logic
-    const getWeeklyGroups = () => {
+    // Groups logic (nur von expenses abhängig → memoisiert)
+    const weeklyGroups = useMemo(() => {
+        const getDate = (e: Expense) => new Date(e.expense_date || e.created_at)
         const groups: Record<string, { start: Date, total: number, count: number }> = {}
         expenses.forEach(e => {
             const date = getDate(e)
@@ -381,7 +428,8 @@ export default function MobileDashboard({
             groups[key].count += 1
         })
         return Object.values(groups).sort((a, b) => b.start.getTime() - a.start.getTime())
-    }
+    }, [expenses])
+    const getWeeklyGroups = () => weeklyGroups
     const getDailyGroups = () => {
         if (!selectedWeekStart) return []
         const weekEnd = endOfWeek(selectedWeekStart, { weekStartsOn: 1 })
@@ -419,70 +467,7 @@ export default function MobileDashboard({
     }
 
     // PDF Export
-    const generatePDF = () => {
-        const doc = new jsPDF()
-        doc.setFontSize(18)
-        doc.text("Meine Ausgaben Übersicht", 14, 22)
-        doc.setFontSize(10)
-        doc.text(`Wochenbudget: €${weeklyBudget.toFixed(2)}`, 14, 28)
-
-        const sortedExpenses = [...expenses].sort((a, b) => getDate(b).getTime() - getDate(a).getTime())
-        const grouped: { [key: string]: { expenses: Expense[], total: number, start: Date } } = {}
-        const weekKeys: string[] = []
-
-        sortedExpenses.forEach(e => {
-            const date = getDate(e)
-            const start = startOfWeek(date, { weekStartsOn: 1 })
-            const key = start.toISOString()
-            if (!grouped[key]) {
-                grouped[key] = { expenses: [], total: 0, start }
-                weekKeys.push(key)
-            }
-            grouped[key].expenses.push(e)
-            if (!isTransferExpense(e)) grouped[key].total += Number(e.amount) // Umbuchungen: keine Ausgabe
-        })
-
-        weekKeys.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-        const tableBody: any[] = []
-
-        weekKeys.forEach(key => {
-            const group = grouped[key]
-            const groupWeekNum = format(group.start, 'w', { locale: de })
-            const groupIsOverBudget = group.total > weeklyBudget
-            group.expenses.forEach(e => {
-                tableBody.push([format(getDate(e), 'dd.MM.yyyy'), ...historyPdfCells(e)])
-            })
-            tableBody.push([
-                {
-                    content: `Summe KW ${groupWeekNum}:`,
-                    colSpan: 2,
-                    styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 240, 240] }
-                },
-                {
-                    content: `€${group.total.toFixed(2)}`,
-                    styles: {
-                        fontStyle: 'bold',
-                        textColor: groupIsOverBudget ? [220, 38, 38] : [22, 163, 74],
-                        fillColor: [240, 240, 240]
-                    }
-                }
-            ])
-        })
-
-        autoTable(doc, {
-            head: [['Datum', 'Beschreibung', 'Betrag']],
-            body: tableBody,
-            startY: 35,
-            theme: 'grid',
-            headStyles: { fillColor: [0, 0, 0] },
-            styles: { fontSize: 10, cellPadding: 3 },
-        })
-        doc.save('Finanzbericht.pdf')
-    }
-
-
-
-
+    const generatePDF = () => withPdf(pdf => downloadExpensesPdf(pdf, expenses, weeklyBudget))
 
     // --- FOKUS-RING & INSIGHTS (derived display data, no new logic) ---
     const isoDay = ((now.getDay() + 6) % 7) + 1 // Mo=1 … So=7
@@ -517,7 +502,10 @@ export default function MobileDashboard({
     })()
 
     // Kategorie-Trend: größte Kategorie dieser Woche vs. Ø der 4 Vorwochen
-    const categoryInsight = (() => {
+    // (memoisiert; Eingaben: Ausgaben, aktuelle Woche und Wochentag)
+    const categoryInsight = useMemo(() => {
+        const currentWeekStart = new Date(currentWeekStartTime)
+        const getDate = (e: Expense) => new Date(e.expense_date || e.created_at)
         if (relevantExpensesThisWeek.length === 0) return null
         const catTotals: Record<string, number> = {}
         relevantExpensesThisWeek.forEach(e => {
@@ -539,7 +527,7 @@ export default function MobileDashboard({
         const projected = (topAmt / isoDay) * 7
         const pct = Math.round(((projected - avgPrev) / avgPrev) * 100)
         return { category: topCat, pct }
-    })()
+    }, [relevantExpensesThisWeek, expenses, currentWeekStartTime, isoDay])
 
     const openFunAccount = openFunAccountId !== null
         ? initialAccounts.find(a => a.id === openFunAccountId)
@@ -573,12 +561,12 @@ export default function MobileDashboard({
                 incomeSources={initialIncomeSources}
                 initialFixedCosts={initialFixedCosts}
                 currentGiroBalance={currentGiroBalance} // Pass the "True" value
+                girokontoTimeline={girokontoTimeline}
                 onUpdate={onUpdate}
                 onBack={() => setShowGirokonto(false)}
             />
         )
     }
-
 
     return (
         <div id="dashboard-container" className="fixed inset-0 h-[100dvh] w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-foreground">
@@ -792,143 +780,34 @@ export default function MobileDashboard({
 
             {/* === HISTORY VIEW === */}
             {view === 'history' && (
-                <div className="w-full h-full flex flex-col pt-[env(safe-area-inset-top)] px-4 pb-0 max-w-xl mx-auto view-enter">
-                    {/* Header & Tabs */}
-                    <div className="flex flex-col gap-2 mb-1 shrink-0 mt-3">
-                        <Tabs value={historyMode} onValueChange={(val: any) => setHistoryMode(val)} className="w-full">
-                            <TabsList data-tour="history-tabs" className="flex w-full rounded-xl p-1 h-auto bg-muted/70">
-                                <TabsTrigger value="calendar" className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 data-[state=active]:text-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm">Kalender</TabsTrigger>
-                                <TabsTrigger value="list" className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 data-[state=active]:text-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm">Liste</TabsTrigger>
-                                <TabsTrigger value="analysis" className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 data-[state=active]:text-foreground data-[state=active]:bg-card data-[state=active]:shadow-sm">Analyse</TabsTrigger>
-                            </TabsList>
-                        </Tabs>
-
-                        {/* Back Button (Only if going deep) */}
-                        <div className={`flex items-center justify-start ${viewLevel === 'weeks' ? 'hidden' : 'block'}`}>
-                            <button
-                                onClick={() => viewLevel !== 'weeks' && handleBackHistory()}
-                                className="press flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors duration-200 py-1"
-                            >
-                                <ArrowLeft className="w-4 h-4" strokeWidth={2} />
-                                <span className="text-sm font-medium">Zurück</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Content Area */}
-                    <div className="flex-1 p-4 pb-32 overflow-y-auto relative">
-                        {historyMode === 'list' && (
-                            <button
-                                onClick={generatePDF}
-                                className="press absolute right-4 top-4 text-muted-foreground hover:text-foreground text-xs font-medium flex items-center gap-1.5 z-10 bg-card border border-border px-2.5 py-1.5 rounded-lg transition-colors duration-200"
-                            >
-                                <Download className="w-3.5 h-3.5" strokeWidth={1.75} /> PDF
-                            </button>
-                        )}
-
-                        {historyMode === 'analysis' ? (
-                            <AnalysisView
-                                expenses={expenses}
-                                budget={weeklyBudget}
-                                fixedCosts={initialFixedCosts}
-                                accounts={initialAccounts}
-                                incomeSources={initialIncomeSources}
-                                currentGiroBalance={currentGiroBalance}
-                                receiptItems={receiptItems}
-                                products={products}
-                            />
-                        ) : historyMode === 'calendar' ? (
-                            <CalendarHistory
-                                expenses={expenses}
-                                weeklyBudget={weeklyBudget}
-                                onDayClick={handleCalendarDayClick}
-                            />
-                        ) : (
-                            <div className="stagger-children pt-8">
-                                {viewLevel === 'weeks' && (
-                                    getWeeklyGroups().map((group, idx) => (
-                                        <button key={idx} onClick={() => handleWeekClick(group.start)} className="ledger-row w-full text-left cursor-pointer group">
-                                            <div>
-                                                <p className="text-base font-semibold text-foreground">KW {format(group.start, 'w', { locale: de })}</p>
-                                                <p className="text-xs text-muted-foreground mt-0.5">{format(group.start, 'dd.MM.')} – {format(endOfWeek(group.start, { weekStartsOn: 1 }), 'dd.MM.yyyy')}</p>
-                                            </div>
-                                            <div className="amount text-base text-foreground group-hover:text-primary transition-colors duration-200">€{group.total.toFixed(2)}</div>
-                                        </button>
-                                    ))
-                                )}
-                                {viewLevel === 'days' && (
-                                    getDailyGroups().map((group, idx) => (
-                                        <button key={idx} onClick={() => handleDayClick(group.date)} className="ledger-row w-full text-left cursor-pointer group">
-                                            <div className="flex items-baseline gap-3">
-                                                <span className="amount text-sm text-muted-foreground">{format(group.date, 'dd.MM')}</span>
-                                                <span className="text-base font-semibold text-foreground">{format(group.date, 'EEEE', { locale: de })}</span>
-                                            </div>
-                                            <div className="amount text-base text-foreground group-hover:text-primary transition-colors duration-200">€{group.total.toFixed(2)}</div>
-                                        </button>
-                                    ))
-                                )}
-                                {viewLevel === 'transactions' && (
-                                    getTransactions().map(expense => {
-                                        const items = itemsByExpense.get(expense.id)
-                                        const isExpanded = expandedExpenseId === expense.id
-                                        return (
-                                            <div key={expense.id}>
-                                                <div
-                                                    className={`ledger-row ${items ? 'cursor-pointer' : ''}`}
-                                                    onClick={() => { if (items) setExpandedExpenseId(isExpanded ? null : expense.id) }}
-                                                >
-                                                    <div className="min-w-0 flex-1 mr-4">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <p className="font-medium text-foreground truncate">{expense.description}</p>
-                                                            {items && (
-                                                                <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} strokeWidth={2} />
-                                                            )}
-                                                        </div>
-                                                        {expense.category && <span className="eyebrow">{expense.category}</span>}
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        {isTransferExpense(expense) ? (
-                                                            <span className="amount text-base text-muted-foreground" title="Umbuchung – keine Ausgabe">⇄ €{Math.abs(expense.amount).toFixed(2)}</span>
-                                                        ) : (
-                                                            <span className="amount text-base text-foreground">{expense.amount < 0 ? '+' : '−'}€{Math.abs(expense.amount).toFixed(2)}</span>
-                                                        )}
-                                                        <div className="flex gap-1">
-                                                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
-                                                                <Pencil className="w-4 h-4" strokeWidth={1.75} />
-                                                            </Button>
-                                                            <Button variant="ghost" size="icon" onClick={async (e) => { e.stopPropagation(); if (confirm('Löschen?')) await deleteExpenseLocal(expense.id) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-[var(--chart-neg-heavy)] hover:bg-muted">
-                                                                <Trash2 className="w-4 h-4" strokeWidth={1.75} />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                {items && isExpanded && (
-                                                    <div className="pl-4 pr-2 pb-3 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                                                        {items.map(item => (
-                                                            <div key={item.id} className="flex items-center justify-between text-sm">
-                                                                <span className="text-muted-foreground truncate mr-3">
-                                                                    {item.name_raw}
-                                                                    {item.unit && (
-                                                                        <span className="text-xs ml-1.5 opacity-70">
-                                                                            {Number(item.quantity)} {item.unit === 'kg' ? 'kg' : '×'}{item.unit_price ? ` à €${Number(item.unit_price).toFixed(2)}` : ''}
-                                                                        </span>
-                                                                    )}
-                                                                </span>
-                                                                <span className={`amount text-xs shrink-0 ${Number(item.total_price) < 0 ? 'text-[var(--chart-pos)]' : 'text-muted-foreground'}`}>
-                                                                    €{Number(item.total_price).toFixed(2)}
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )
-                                    })
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
+                <HistoryView
+                    historyMode={historyMode}
+                    setHistoryMode={setHistoryMode}
+                    viewLevel={viewLevel}
+                    handleBackHistory={handleBackHistory}
+                    handleCalendarDayClick={handleCalendarDayClick}
+                    handleWeekClick={handleWeekClick}
+                    handleDayClick={handleDayClick}
+                    getWeeklyGroups={getWeeklyGroups}
+                    getDailyGroups={getDailyGroups}
+                    getTransactions={getTransactions}
+                    expandedExpenseId={expandedExpenseId}
+                    setExpandedExpenseId={setExpandedExpenseId}
+                    setEditingExpense={setEditingExpense}
+                    deleteExpenseLocal={deleteExpenseLocal}
+                    itemsByExpense={itemsByExpense}
+                    generatePDF={generatePDF}
+                    expenses={expenses}
+                    weeklyBudget={weeklyBudget}
+                    currentGiroBalance={currentGiroBalance}
+                    girokontoTimeline={girokontoTimeline}
+                    initialFixedCosts={initialFixedCosts}
+                    initialAccounts={initialAccounts}
+                    initialIncomeSources={initialIncomeSources}
+                    receiptItems={receiptItems}
+                    products={products}
+                    receiptsLoading={receiptsLoading}
+                />
             )}
 
             {/* === SETTINGS VIEW === */}
@@ -1064,6 +943,7 @@ export default function MobileDashboard({
                         <AddExpenseForm
                             accounts={initialAccounts}
                             onRefresh={() => { setShowAddSheet(false); onUpdate?.() }}
+                            onOptimisticAdd={addExpenseOptimistic}
                         />
                     </div>
                 </DialogContent>

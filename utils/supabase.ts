@@ -1,7 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { isDemoMode } from '@/lib/data/mode'
-import { getDemoClient } from '@/lib/demo/demoClient'
+import { isDemoMode, getRegisteredDemoClient } from '@/lib/data/mode'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -22,7 +21,7 @@ function getRealClient(): Client {
  */
 export const supabase = new Proxy({} as Client, {
     get(_target, prop) {
-        const client = (isDemoMode() ? getDemoClient() : getRealClient()) as unknown as Record<PropertyKey, unknown>
+        const client = (isDemoMode() ? getRegisteredDemoClient() : getRealClient()) as unknown as Record<PropertyKey, unknown>
         const value = client[prop]
         return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(client) : value
     },

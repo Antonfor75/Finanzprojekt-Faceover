@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Expense } from '@/app/types'
+import { dayKeyOf } from '@/utils/girokonto'
 import { isTransferExpense } from '@/utils/transfer'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -30,11 +31,19 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
 
     const calendarDays = eachDayOfInterval({ start: startDate, end: endDate })
 
-    const getDailyTotal = (date: Date) => {
-        return expenses
-            .filter(e => isSameDay(new Date(e.expense_date || e.created_at), date) && !isTransferExpense(e))
-            .reduce((acc, curr) => acc + Number(curr.amount), 0)
-    }
+    // Tagessummen einmal je Ausgabenliste bilden statt pro Kalendertag alle Ausgaben zu
+    // durchsuchen. Gleiche Reihenfolge der Additionen wie zuvor → identische Summen.
+    const totalsByDay = useMemo(() => {
+        const totals = new Map<string, number>()
+        for (const e of expenses) {
+            if (isTransferExpense(e)) continue // Umbuchungen: keine Ausgabe
+            const key = dayKeyOf(new Date(e.expense_date || e.created_at))
+            totals.set(key, (totals.get(key) ?? 0) + Number(e.amount))
+        }
+        return totals
+    }, [expenses])
+
+    const getDailyTotal = (date: Date) => totalsByDay.get(dayKeyOf(date)) ?? 0
 
     return (
         <div className="flex flex-col h-full w-full">

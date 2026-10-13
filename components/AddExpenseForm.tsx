@@ -3,14 +3,38 @@
 import { useRef, useState } from 'react'
 import { supabase } from '@/utils/supabase'
 import { addAccountExpense } from '@/lib/data/actions'
-import { Account } from '@/app/types'
+import { Account, Expense } from '@/app/types'
+
+type ExpenseDraft = Pick<Expense, 'description' | 'amount' | 'expense_date' | 'category'>
+
+/**
+ * Macht das erste Öffnen des Formulars flüssiger: Das allererste Zeichnen der Kategorie-Emojis
+ * (Emoji-Schrift suchen) und der großen Betragsschrift kostet auf dem Handy spürbar Zeit. Das
+ * passiert hier einmal unsichtbar im Leerlauf nach dem Start statt beim ersten Tippen auf Plus.
+ */
+export function warmUpExpenseForm() {
+    const el = document.createElement('div')
+    el.setAttribute('aria-hidden', 'true')
+    el.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;pointer-events:none'
+    el.innerHTML =
+        '<span class="font-medium text-sm">Essen 🍔 Schminki Schminki 💄 Shoppi 🛍️ Freizeit 🎉 Sparen 💰 Sonstiges 📦</span>' +
+        '<span class="amount font-light text-[clamp(2.25rem,12vw,3rem)]">0,00 1234567890</span>'
+    document.body.appendChild(el)
+    el.getBoundingClientRect() // Layout + Text-Shaping jetzt erzwingen
+    requestAnimationFrame(() => el.remove())
+}
 import { Loader2, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
-export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?: Account[], onRefresh?: () => void }) {
+export default function AddExpenseForm({ accounts = [], onRefresh, onOptimisticAdd }: {
+    accounts?: Account[],
+    onRefresh?: () => void,
+    // Normale Budget-Ausgabe sofort anzeigen; `save` speichert und wirft bei Fehler (Meldung = Text für alert)
+    onOptimisticAdd?: (draft: ExpenseDraft, save: () => Promise<void>) => void
+}) {
     const formRef = useRef<HTMLFormElement>(null)
     const [loading, setLoading] = useState(false)
     const [date, setDate] = useState<Date | undefined>(new Date())
@@ -55,6 +79,30 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     onRefresh?.()
                 }
                 setLoading(false)
+                return
+            }
+
+            // NORMALE AUSGABE: sofort anzeigen, im Hintergrund speichern (Sparkonto-Zahlungen
+            // unten bleiben beim alten Ablauf, weil sie vorher das Guthaben prüfen)
+            if (onOptimisticAdd && !category.startsWith('account:')) {
+                const draft: ExpenseDraft = { description, amount, expense_date, category }
+                formRef.current?.reset()
+                setDate(new Date())
+                setLoading(false)
+                onOptimisticAdd(draft, async () => {
+                    // Sitzung lokal lesen statt getUser() (spart eine Runde zu Supabase Auth);
+                    // die Datenbank prüft den Nutzer beim Speichern ohnehin selbst (RLS).
+                    const { data: { session } } = await supabase.auth.getSession()
+                    const user = session?.user
+                    if (!user) throw new Error('Fehler: Nicht eingeloggt')
+                    const { error: insertError } = await supabase
+                        .from('expenses')
+                        .insert([{ ...draft, user_id: user.id, account_id: null }])
+                    if (insertError) {
+                        console.error('Error inserting expense:', insertError)
+                        throw new Error('Fehler beim Speichern.')
+                    }
+                })
                 return
             }
 
