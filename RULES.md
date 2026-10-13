@@ -12,6 +12,9 @@ Hier werden wichtige Regeln, Architektur-Entscheidungen und Best Practices für 
 - **Girokonto-Berechnung:** Die Berechnung erfolgt *tagesgenau* ("Bottom-Up" Ansatz via `calculateGirokontoTimeline`). Das bedeutet, Einnahmen und Ausgaben werden Tag für Tag iteriert, nicht einfach nur in Monats- oder Wochenblocks geschätzt.
 - **Wochen-Budget:** Die Umrechnung von fixen Monatsbudgets auf Wochenbudgets basiert in der Regel (wo anwendbar) auf dem Faktor `4.33`.
 - **Datenkonsistenz:** Analyse-Charts und Metriken müssen immer mit den exakten täglichen Berechnungen des Girokontos synchronisiert sein.
+- **Umbuchungen sind keine Ausgaben.** Girokonto-Zeilen mit `transfer_id` oder Kategorie `Umbuchung`/`Manuelle Buchung`
+  bewegen den Girokonto-Stand (`calculateGirokontoTimeline` → `transfer_val`), zählen aber weder im Wochenbudget noch
+  in irgendeiner Analyse. Erkennung nur über `isTransferExpense` / `isSpendingExpense` in `utils/transfer.ts`.
 
 ## 🛠️ Technologien
 - **Framework:** Next.js, React, TypeScript.

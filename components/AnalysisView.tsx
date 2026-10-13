@@ -13,7 +13,8 @@ import { de } from 'date-fns/locale'
 
 import { Expense, FixedCost, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
-import { isBudgetRelevantExpense } from '@/utils/funAccount'
+import { buildWealthSeries } from '@/utils/financeHelpers'
+import { isSpendingExpense, isTransferExpense } from '@/utils/transfer'
 
 type Props = {
     expenses: Expense[]
@@ -49,6 +50,9 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
     const [customStartDate, setCustomStartDate] = useState<Date | null>(null)
 
     const { total, cashflowData12M, cashflowDataWeekly, cashflowDataDaily90, cashflowDataYearly, wealthData } = useMemo(() => {
+        // Umbuchungen/manuelle Buchungen sind Ausgleich zwischen eigenen Konten, keine Ausgabe (Entscheidung 13.10.).
+        const spending = expenses.filter((e) => !isTransferExpense(e))
+
         // Determine Anchor Date (The "End" of our analysis window)
         // If Custom Start is set, End = Start + Range Interval
         // If Custom Start is NULL, End = Now (showing history going back from now)
@@ -82,7 +86,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
         const start = startOfWeek(now, { weekStartsOn: 1 })
         const end = endOfWeek(now, { weekStartsOn: 1 })
 
-        const currentWeekExpenses = expenses.filter(e => {
+        const currentWeekExpenses = spending.filter(e => {
             const date = new Date(e.expense_date || e.created_at)
             return isWithinInterval(date, { start, end })
         })
@@ -140,10 +144,11 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
             fullTimeline.forEach(t => {
                 const key = keyFn(t)
                 if (!map[key]) {
-                    map[key] = { key, income: 0, expenses: 0, count: 0, label: labelFn(t), ...extraFn(t) }
+                    map[key] = { key, income: 0, expenses: 0, transfers: 0, count: 0, label: labelFn(t), ...extraFn(t) }
                 }
                 map[key].income += t.income_val
                 map[key].expenses += (t.expense_val + t.fixed_cost_val)
+                map[key].transfers += t.transfer_val
                 map[key].count++
             })
             // Sort by key string chronologically (requires YYYY-MM prefixes or timestamp strings)
@@ -184,7 +189,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
         // --- 3. STRUCTURE DATA (Current Month) ---
         const totalFixed = fixedCosts.reduce((acc, fc) => acc + Number(fc.amount), 0)
 
-        const currentMonthVariable = expenses.filter(e => {
+        const currentMonthVariable = spending.filter(e => {
             const d = new Date(e.expense_date || e.created_at)
             return getMonthKey(d) === currentMonthKey
         }).reduce((acc, e) => acc + Number(e.amount), 0)
@@ -199,7 +204,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
 
         // Top Categories (Current Month)
         const catMap: Record<string, number> = {}
-        expenses.filter(e => {
+        spending.filter(e => {
             const d = new Date(e.expense_date || e.created_at)
             return getMonthKey(d) === currentMonthKey
         }).forEach(e => {
@@ -214,51 +219,17 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
 
         // --- 4. WEALTH DATA (Net Worth over Time) & GIROKONTO AUTOMATION ---
 
-        // Build monthlyNetFlow from our timeline grouped monthly data!
-        const monthlyNetFlow: Record<string, number> = {}
-        let cumulativeNetCashflow = 0
-
-        // Let's use the explicit group we have with keys
+        // Vermögen: heutiger Stand aus Girokonto + Konten, rückwärts nur echte Flüsse (Umbuchungen neutral).
         const fullMonthlyGroups = groupBy(
             t => format(t.date, 'yyyy-MM'),
             t => format(t.date, 'MMM yy', { locale: de })
         )
-
-        fullMonthlyGroups.forEach(m => {
-            const net = m.income - m.expenses
-            monthlyNetFlow[m.key] = net
-            cumulativeNetCashflow += net
-        })
-
-        // Override 'savings' account with cumulative logic
-        const modifiedAccounts = accounts.map(acc => {
-            if (acc.type === 'savings') {
-                return { ...acc, amount: cumulativeNetCashflow }
-            }
-            return acc
-        })
-        let calculatedCurrentWealth = modifiedAccounts.reduce((acc, a) => acc + Number(a.amount), 0)
-
-        // Build Wealth Series Backwards
-        const wealthSeries: any[] = []
-        let runningWealth = calculatedCurrentWealth
-
-        const allMonths = Object.keys(monthlyNetFlow).sort()
-
-        for (let i = allMonths.length - 1; i >= 0; i--) {
-            const mKey = allMonths[i]
-            const mDate = new Date(mKey + '-01')
-
-            wealthSeries.unshift({
-                year: format(mDate, 'MMM yy', { locale: de }),
-                monthKey: mKey,
-                assets: runningWealth,
-                debt: 0
-            })
-
-            // Subtract this month's net flow to get to the previous month's boundary
-            runningWealth -= monthlyNetFlow[mKey]
-        }
+        const wealthSeries = buildWealthSeries(fullMonthlyGroups, accounts).map(p => ({
+            year: format(new Date(p.monthKey + '-01'), 'MMM yy', { locale: de }),
+            monthKey: p.monthKey,
+            assets: p.assets,
+            debt: 0
+        }))
 
         return {
             pieData,
@@ -353,7 +324,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
         yPos += 8
 
         const categories: Record<string, number> = {}
-        expenses.forEach(e => {
+        expenses.filter((e) => !isTransferExpense(e)).forEach(e => {
             const cat = e.category || 'Sonstiges'
             categories[cat] = (categories[cat] || 0) + Number(e.amount)
         })
@@ -573,7 +544,7 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
                     const cells = days.map(day => {
                         const spent = expenses.filter(e => {
                             const d = new Date(e.expense_date || e.created_at)
-                            return isSameDay(d, day) && isBudgetRelevantExpense(e)
+                            return isSameDay(d, day) && isSpendingExpense(e)
                         }).reduce((s, e) => s + Number(e.amount), 0)
                         weekSpent += spent
                         const isFuture = day > today && !isSameDay(day, today)

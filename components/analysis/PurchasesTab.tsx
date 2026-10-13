@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { subMonths } from 'date-fns'
 import { ChevronDown } from 'lucide-react'
 import { Expense, ReceiptItem, Product } from '@/app/types'
+import { isTransferExpense } from '@/utils/transfer'
 
 /**
  * Analyse-Tab "Einkäufe": Kuchendiagramm der Ausgaben nach Quelle.
@@ -79,6 +80,7 @@ export default function PurchasesTab({ expenses, receiptItems, products }: Props
         let fallbackIdx = 0
 
         for (const expense of expenses) {
+            if (isTransferExpense(expense)) continue // Umbuchungen sind keine Einkäufe
             const amount = Number(expense.amount)
             if (amount <= 0) continue // Transfers/negative Buchungen verzerren den Kuchen nicht
 

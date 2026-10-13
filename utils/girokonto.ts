@@ -1,6 +1,7 @@
 import { addDays, format, getDaysInMonth, getDaysInYear } from 'date-fns'
 import { Expense, IncomeSource, FixedCost } from '@/app/types'
 import { isBudgetRelevantExpense } from './funAccount'
+import { isTransferExpense } from './transfer'
 
 export interface TimelineEntry {
     date: Date;
@@ -10,6 +11,8 @@ export interface TimelineEntry {
     income_val: number;
     fixed_cost_val: number;
     expense_val: number;
+    /** Umbuchungen/manuelle Buchungen des Tages (+ = vom Girokonto weg). Bewegen den Kontostand, sind aber keine Ausgabe. */
+    transfer_val: number;
 }
 
 export function calculateGirokontoTimeline(
@@ -53,11 +56,14 @@ export function calculateGirokontoTimeline(
     const timeline: TimelineEntry[] = []
 
     const expensesByDay: Record<string, number> = {}
+    const transfersByDay: Record<string, number> = {}
     // Account-paid expenses (savings/fun) are budget-neutral: the money already
     // left the budget via the linked fixed cost, so counting them here would double-count.
+    // Umbuchungen bewegen den Kontostand, werden aber getrennt gefuehrt (keine Ausgabe in den Analysen).
     expenses.filter(isBudgetRelevantExpense).forEach(e => {
         const key = format(new Date(e.expense_date || e.created_at), 'yyyy-MM-dd')
-        expensesByDay[key] = (expensesByDay[key] || 0) + Number(e.amount)
+        const bucket = isTransferExpense(e) ? transfersByDay : expensesByDay
+        bucket[key] = (bucket[key] || 0) + Number(e.amount)
     })
 
     while (simDate <= now) {
@@ -122,12 +128,13 @@ export function calculateGirokontoTimeline(
         // 3. Tagesbudget = Einnahmen(Tageswerte) - Fixkosten(Tageswerte)
         const tagesbudget = totalDailyIncome - totalDailyFixedCosts
 
-        // 4. Variable Ausgaben an Tag X
+        // 4. Variable Ausgaben und Umbuchungen an Tag X
         const dayKey = format(simDate, 'yyyy-MM-dd')
         const dayExpenses = expensesByDay[dayKey] || 0
+        const dayTransfers = transfersByDay[dayKey] || 0
 
-        // 5. Tagesergebnis = Tagesbudget - variable Ausgaben an Tag X
-        const tagesergebnis = tagesbudget - dayExpenses
+        // 5. Tagesergebnis = Tagesbudget - variable Ausgaben - Umbuchungen an Tag X
+        const tagesergebnis = tagesbudget - dayExpenses - dayTransfers
 
         // 6. Girokonto_Neu = Girokonto_Alt + Tagesergebnis
         girokontoBalance += tagesergebnis
@@ -140,7 +147,8 @@ export function calculateGirokontoTimeline(
             tagesergebnis: tagesergebnis,
             income_val: totalDailyIncome,
             fixed_cost_val: totalDailyFixedCosts,
-            expense_val: dayExpenses
+            expense_val: dayExpenses,
+            transfer_val: dayTransfers
         })
 
         simDate = addDays(simDate, 1)

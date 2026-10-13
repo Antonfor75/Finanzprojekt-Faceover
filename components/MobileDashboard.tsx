@@ -27,7 +27,7 @@ import { FunGroup } from '@/app/types'
 import { DatePicker } from '@/components/ui/date-picker'
 // import DashboardHealth from './DashboardHealth' // REMOVED
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
-import { isBudgetRelevantExpense } from '@/utils/funAccount'
+import { expenseEditPatch, historyPdfCells, isSpendingExpense, isTransferExpense } from '@/utils/transfer'
 
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -233,12 +233,8 @@ export default function MobileDashboard({
             return
         }
 
-        await supabase.from('expenses').update({
-            description: description || category,
-            amount,
-            expense_date,
-            category
-        }).eq('id', id)
+        // Manuelle Buchungen / alte Umbuchungen behalten ihre Kategorie (sonst würden sie still zur Ausgabe).
+        await supabase.from('expenses').update(expenseEditPatch(existing, { description, amount, expense_date, category })).eq('id', id)
         onUpdate?.()
     }
 
@@ -349,9 +345,10 @@ export default function MobileDashboard({
 
     // Expenses for CURRENT WEEK ONLY
     // Account-paid expenses (savings/fun) are budget-neutral and excluded.
+    // Umbuchungen/manuelle Buchungen zählen nicht (Entscheidung 13.10.: kein Verbrauch, nur Kontostand).
     const relevantExpensesThisWeek = expenses.filter(e => {
         const d = new Date(e.expense_date || e.created_at)
-        return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }) && isBudgetRelevantExpense(e)
+        return isWithinInterval(d, { start: currentWeekStart, end: currentWeekEnd }) && isSpendingExpense(e)
     })
 
     const totalSpentThisWeek = relevantExpensesThisWeek.reduce((acc, curr) => acc + Number(curr.amount), 0)
@@ -379,6 +376,7 @@ export default function MobileDashboard({
             const start = startOfWeek(date, { weekStartsOn: 1 })
             const key = start.toISOString()
             if (!groups[key]) groups[key] = { start, total: 0, count: 0 }
+            if (isTransferExpense(e)) return // Umbuchungen: keine Ausgabe, zählen weder in Summe noch Anzahl
             groups[key].total += Number(e.amount)
             groups[key].count += 1
         })
@@ -393,6 +391,7 @@ export default function MobileDashboard({
             const date = getDate(e)
             const key = format(date, 'yyyy-MM-dd')
             if (!groups[key]) groups[key] = { date, total: 0, count: 0 }
+            if (isTransferExpense(e)) return // Umbuchungen: keine Ausgabe, zählen weder in Summe noch Anzahl
             groups[key].total += Number(e.amount)
             groups[key].count += 1
         })
@@ -440,7 +439,7 @@ export default function MobileDashboard({
                 weekKeys.push(key)
             }
             grouped[key].expenses.push(e)
-            grouped[key].total += Number(e.amount)
+            if (!isTransferExpense(e)) grouped[key].total += Number(e.amount) // Umbuchungen: keine Ausgabe
         })
 
         weekKeys.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
@@ -451,11 +450,7 @@ export default function MobileDashboard({
             const groupWeekNum = format(group.start, 'w', { locale: de })
             const groupIsOverBudget = group.total > weeklyBudget
             group.expenses.forEach(e => {
-                tableBody.push([
-                    format(getDate(e), 'dd.MM.yyyy'),
-                    e.description || e.category || 'Ausgabe',
-                    `€${e.amount.toFixed(2)}`
-                ])
+                tableBody.push([format(getDate(e), 'dd.MM.yyyy'), ...historyPdfCells(e)])
             })
             tableBody.push([
                 {
@@ -534,9 +529,9 @@ export default function MobileDashboard({
         prevStart.setDate(prevStart.getDate() - 28)
         const prevSpend = expenses.filter(e => {
             const d = getDate(e)
-            // isBudgetRelevantExpense statt nur 'Konto:'-Prefix, damit der 4-Wochen-Schnitt
+            // isSpendingExpense statt nur 'Konto:'-Prefix, damit der 4-Wochen-Schnitt
             // dieselbe Basis hat wie die aktuelle Woche (Fun-/Konto-Zahlungen ausgenommen).
-            return d >= prevStart && d < currentWeekStart && (e.category || 'Sonstiges') === topCat && isBudgetRelevantExpense(e)
+            return d >= prevStart && d < currentWeekStart && (e.category || 'Sonstiges') === topCat && isSpendingExpense(e)
         }).reduce((s, e) => s + Number(e.amount), 0)
         const avgPrev = prevSpend / 4
         if (avgPrev <= 0) return null
@@ -892,7 +887,11 @@ export default function MobileDashboard({
                                                         {expense.category && <span className="eyebrow">{expense.category}</span>}
                                                     </div>
                                                     <div className="flex items-center gap-3">
-                                                        <span className="amount text-base text-foreground">{expense.amount < 0 ? '+' : '−'}€{Math.abs(expense.amount).toFixed(2)}</span>
+                                                        {isTransferExpense(expense) ? (
+                                                            <span className="amount text-base text-muted-foreground" title="Umbuchung – keine Ausgabe">⇄ €{Math.abs(expense.amount).toFixed(2)}</span>
+                                                        ) : (
+                                                            <span className="amount text-base text-foreground">{expense.amount < 0 ? '+' : '−'}€{Math.abs(expense.amount).toFixed(2)}</span>
+                                                        )}
                                                         <div className="flex gap-1">
                                                             <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
                                                                 <Pencil className="w-4 h-4" strokeWidth={1.75} />
@@ -1025,6 +1024,9 @@ export default function MobileDashboard({
                                 <option value="Freizeit">Freizeit 🎉</option>
                                 <option value="Sparen">Sparen 💰</option>
                                 <option value="Sonstiges">Sonstiges 📦</option>
+                                {editingExpense && isTransferExpense(editingExpense) && editingExpense.category && (
+                                    <option value={editingExpense.category}>{editingExpense.category} ⇄</option>
+                                )}
                             </select>
                         </div>
                         <input type="hidden" name="description" value="" />

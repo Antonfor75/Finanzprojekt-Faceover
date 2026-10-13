@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
     validateTransferInput, planTransfer, roundCents, directionFromGiroAmount,
-    giroExpenseAmount, funEffect, TRANSFER_CATEGORY, MANUAL_CATEGORY,
+    giroExpenseAmount, funEffect, TRANSFER_CATEGORY, MANUAL_CATEGORY, isTransferExpense, isSpendingExpense, expenseEditPatch, historyPdfCells,
     type TransferInput, type TransferPlan,
 } from './transfer'
 
@@ -94,5 +94,60 @@ describe('Hilfsfunktionen', () => {
         for (const d of ['from_giro', 'to_giro'] as const) {
             expect(-giroExpenseAmount(d, 8) + funEffect(d, 8)).toBe(0)
         }
+    })
+})
+
+describe('Umbuchungen sind keine Ausgaben', () => {
+    it.each([
+        [{ category: 'Umbuchung', transfer_id: 't1' }, true],
+        [{ category: 'Umbuchung', transfer_id: null }, true],           // alte Zeile ohne transfer_id
+        [{ category: 'Manuelle Buchung', transfer_id: null }, true],    // E2: Girokonto-Ausgleich
+        [{ category: 'Essen', transfer_id: 't2' }, true],               // Kategorie umbenannt, transfer_id bleibt
+        [{ category: 'Essen', transfer_id: null }, false],
+        [{ category: undefined, transfer_id: undefined }, false],
+    ])('isTransferExpense(%o) = %s', (e, want) => expect(isTransferExpense(e)).toBe(want))
+
+    it.each([
+        [{ category: 'Essen', account_id: null, transfer_id: null }, true],
+        [{ category: 'Umbuchung', account_id: null, transfer_id: 't1' }, false],      // E1: nicht im Wochenbudget
+        [{ category: 'Manuelle Buchung', account_id: null, transfer_id: null }, false],
+        [{ category: 'Freizeit', account_id: 7, transfer_id: null }, false],           // vom Konto bezahlt: wie bisher neutral
+        [{ category: 'Konto: Urlaub', account_id: null, transfer_id: null }, false],   // alte Konto-Zahlung: wie bisher
+    ])('isSpendingExpense(%o) = %s', (e, want) => expect(isSpendingExpense(e)).toBe(want))
+
+    it('Umbuchung aufs Girokonto (negativer Betrag) zählt ebenfalls nicht', () => {
+        const p = plan({ amount: 50, direction: 'to_giro', target: { kind: 'v2', accountId: 1 } })
+        expect(p.giro.amount).toBe(-50)
+        expect(isSpendingExpense({ ...p.giro, account_id: null })).toBe(false)
+    })
+})
+
+describe('Bearbeiten einer Umbuchung/manuellen Buchung', () => {
+    const form = { description: '', amount: 15, expense_date: '2026-10-09', category: 'Essen' } // Dialog kennt die Kategorie nicht -> "Essen"
+    it('manuelle Buchung behält Kategorie und Beschreibung (bleibt keine Ausgabe)', () => {
+        const p = expenseEditPatch({ category: 'Manuelle Buchung', transfer_id: null, description: 'Kontoabgleich' }, form)
+        expect(p).toEqual({ description: 'Kontoabgleich', amount: 15, expense_date: '2026-10-09', category: 'Manuelle Buchung' })
+        expect(isTransferExpense(p)).toBe(true)
+    })
+    it('alte Umbuchung ohne transfer_id ebenso', () => {
+        expect(expenseEditPatch({ category: 'Umbuchung', transfer_id: null, description: 'Kino' }, form).category).toBe('Umbuchung')
+    })
+    it('normale Ausgabe wird wie bisher übernommen', () => {
+        expect(expenseEditPatch({ category: 'Freizeit', transfer_id: null, description: 'Kino' }, form))
+            .toEqual({ description: 'Essen', amount: 15, expense_date: '2026-10-09', category: 'Essen' })
+    })
+})
+
+describe('Historie-PDF', () => {
+    it('normale Ausgabe: Beschreibung und Betrag', () => {
+        expect(historyPdfCells({ description: 'Lidl', category: 'Essen', amount: 3.41, transfer_id: null }))
+            .toEqual(['Lidl', '€3.41'])
+    })
+
+    it('Umbuchung und Manuelle Buchung sind gekennzeichnet und zählen nicht zur Wochensumme', () => {
+        expect(historyPdfCells({ description: 'Ausgleich', category: TRANSFER_CATEGORY, amount: 50, transfer_id: 'tid-1' }))
+            .toEqual(['Umbuchung (nicht in der Summe): Ausgleich', '€50.00'])
+        expect(historyPdfCells({ description: '', category: MANUAL_CATEGORY, amount: -20, transfer_id: null }))
+            .toEqual(['Manuelle Buchung (nicht in der Summe)', '€-20.00'])
     })
 })

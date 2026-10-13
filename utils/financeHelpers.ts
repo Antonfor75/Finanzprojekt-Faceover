@@ -71,3 +71,23 @@ export function calculateMonthlyBudget(
     }, 0)
     return totalIncome + distributions
 }
+
+export type MonthFlow = { key: string; income: number; expenses: number; transfers: number }
+
+/**
+ * Vermögensverlauf je Monat (rückwärts vom heutigen Stand).
+ * Heute: Girokonto (Summe aller Monatsflüsse inkl. Umbuchungen) als Sparkonto-Wert plus die übrigen Konten.
+ * Rückwärts zählt nur der echte Fluss (Einnahmen − Ausgaben): Umbuchungen verschieben Geld nur
+ * zwischen eigenen Konten und erscheinen deshalb nicht als Verlust (RULES.md).
+ */
+export function buildWealthSeries(months: MonthFlow[], accounts: { type?: string | null; amount: number | string }[]): { monthKey: string; assets: number }[] {
+    const sorted = [...months].sort((a, b) => a.key.localeCompare(b.key))
+    const giro = sorted.reduce((s, m) => s + m.income - m.expenses - m.transfers, 0)
+    let running = accounts.reduce((s, a) => s + (a.type === 'savings' ? giro : Number(a.amount)), 0)
+    const series: { monthKey: string; assets: number }[] = []
+    for (let i = sorted.length - 1; i >= 0; i--) {
+        series.unshift({ monthKey: sorted[i].key, assets: running })
+        running -= sorted[i].income - sorted[i].expenses
+    }
+    return series
+}

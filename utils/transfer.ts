@@ -9,8 +9,12 @@
  *   positiver Betrag  → Girokonto sinkt (Abbuchen),
  *   negativer Betrag  → Girokonto steigt (Hinzufügen).
  * Sie hat bewusst keine `account_id`, sonst gälte sie als budget-neutral (isBudgetRelevantExpense)
- * und würde das Girokonto gar nicht bewegen.
+ * und würde das Girokonto gar nicht bewegen. In Auswertungen und im Wochenbudget wird sie trotzdem nicht
+ * als Ausgabe gezählt (`isTransferExpense`).
  */
+
+import type { Expense } from '@/app/types'
+import { isBudgetRelevantExpense } from './funAccount'
 
 /** from_giro: vom Girokonto abbuchen (das Spaßkonto bekommt das Geld). to_giro: aufs Girokonto buchen (das Spaßkonto gibt es ab). */
 export type TransferDirection = 'from_giro' | 'to_giro'
@@ -116,4 +120,40 @@ export function planTransfer(input: TransferInput, transferId: string): Transfer
             },
         },
     }
+}
+
+/**
+ * Girokonto-Zeile einer Umbuchung (mit Spaßkonto) oder einer manuellen Buchung (Ausgleich des Kontostands).
+ * Sie bewegt den Girokonto-Stand, ist aber KEINE Ausgabe: in keiner Auswertung, nicht im Wochenbudget.
+ * Erkennung über transfer_id ODER Kategorie, damit auch alte Zeilen und manuelle Buchungen (ohne transfer_id) zählen.
+ */
+export function isTransferExpense(e: Pick<Expense, 'category' | 'transfer_id'>): boolean {
+    return !!e.transfer_id || e.category === TRANSFER_CATEGORY || e.category === MANUAL_CATEGORY
+}
+
+/** Echte Ausgabe aus dem Wochenbudget: budget-relevant (nicht vom Konto bezahlt) und keine Umbuchung. */
+export function isSpendingExpense(e: Pick<Expense, 'account_id' | 'category' | 'transfer_id'>): boolean {
+    return isBudgetRelevantExpense(e) && !isTransferExpense(e)
+}
+
+export type ExpenseEditForm = { description: string; amount: number; expense_date: string; category: string }
+
+/**
+ * Änderungen beim Bearbeiten einer Girokonto-Zeile (ohne transfer_id; die gehen über updateTransfer).
+ * Umbuchungen/manuelle Buchungen behalten Kategorie und Beschreibung: der Dialog kennt diese Kategorien nicht
+ * und würde sie sonst still zu einer normalen Ausgabe machen.
+ */
+export function expenseEditPatch(existing: Pick<Expense, 'category' | 'transfer_id' | 'description'> | undefined, form: ExpenseEditForm) {
+    if (existing && isTransferExpense(existing)) {
+        return { description: form.description || existing.description, amount: form.amount, expense_date: form.expense_date, category: existing.category }
+    }
+    return { description: form.description || form.category, amount: form.amount, expense_date: form.expense_date, category: form.category }
+}
+
+/** Zellen "Beschreibung" und "Betrag" einer Zeile im Historie-PDF; Umbuchungen sind als solche gekennzeichnet. */
+export function historyPdfCells(e: Pick<Expense, 'description' | 'category' | 'amount' | 'transfer_id'>): [string, string] {
+    const amount = `€${Number(e.amount).toFixed(2)}`
+    if (!isTransferExpense(e)) return [e.description || e.category || 'Ausgabe', amount]
+    const label = `${e.category === MANUAL_CATEGORY ? MANUAL_CATEGORY : TRANSFER_CATEGORY} (nicht in der Summe)`
+    return [e.description ? `${label}: ${e.description}` : label, amount]
 }

@@ -2,7 +2,7 @@
 
 import { supabaseAdmin as supabase } from '@/utils/supabase/admin' // Use admin client to bypass RLS if needed, or normal client if user context is enough. Using admin for safety in background tasks.
 import { startOfWeek, endOfWeek, subWeeks, format, isBefore, parseISO, addWeeks } from 'date-fns'
-import { isBudgetRelevantExpense } from '@/utils/funAccount'
+import { isSpendingExpense } from '@/utils/transfer'
 
 export async function processWeeklySavings(userId: string) {
     console.log('--- Checking Weekly Savings ---', userId)
@@ -76,7 +76,7 @@ export async function processWeeklySavings(userId: string) {
             // Sum budget-relevant expenses for this week (account-paid expenses are neutral)
             const weekExpenses = expenses?.filter(e => {
                 const d = new Date(e.expense_date || e.created_at)
-                return d >= weekStart && d <= weekEnd && isBudgetRelevantExpense(e)
+                return d >= weekStart && d <= weekEnd && isSpendingExpense(e)
             }).reduce((sum, e) => sum + Number(e.amount), 0) || 0
 
             const leftover = weeklyNet - weekExpenses

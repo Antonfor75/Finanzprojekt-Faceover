@@ -4,7 +4,8 @@ import {
     calculateSavingsRate,
     calculateWeeklyBudget,
     calculateAvailableWeekly,
-    calculateProjectedMonthlySavings
+    calculateProjectedMonthlySavings,
+    buildWealthSeries
 } from './financeHelpers';
 
 describe('Finance Calculations', () => {
@@ -67,6 +68,25 @@ describe('Finance Calculations', () => {
             const projected = calculateProjectedMonthlySavings(weeklySavings);
             expect(projected).toBe(-433);
         });
+    });
+
+    describe('buildWealthSeries', () => {
+        const months = [
+            { key: '2026-09', income: 1000, expenses: 400, transfers: 0 },
+            { key: '2026-10', income: 1000, expenses: 500, transfers: 300 },
+        ]
+        const accounts = [{ type: 'savings', amount: 0 }, { type: 'fun', amount: 300 }]
+
+        it('heutiger Stand = Girokonto (mit Umbuchungen) + übrige Konten', () => {
+            const series = buildWealthSeries(months, accounts)
+            expect(series.map((p) => p.monthKey)).toEqual(['2026-09', '2026-10'])
+            expect(series[1].assets).toBe(600 + 200 + 300)
+        })
+
+        it('eine Umbuchung erscheint im Verlauf nicht als Vermögensverlust', () => {
+            const series = buildWealthSeries(months, accounts)
+            expect(series[1].assets - series[0].assets).toBe(1000 - 500)
+        })
     });
 
 });

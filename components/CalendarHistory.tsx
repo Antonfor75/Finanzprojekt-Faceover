@@ -6,6 +6,7 @@ import { de } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { Expense } from '@/app/types'
+import { isTransferExpense } from '@/utils/transfer'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -31,7 +32,7 @@ export default function CalendarHistory({ expenses, weeklyBudget, onDayClick }: 
 
     const getDailyTotal = (date: Date) => {
         return expenses
-            .filter(e => isSameDay(new Date(e.expense_date || e.created_at), date))
+            .filter(e => isSameDay(new Date(e.expense_date || e.created_at), date) && !isTransferExpense(e))
             .reduce((acc, curr) => acc + Number(curr.amount), 0)
     }
 
