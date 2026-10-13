@@ -3,14 +3,21 @@
 import { useRef, useState } from 'react'
 import { supabase } from '@/utils/supabase'
 import { addAccountExpense } from '@/lib/data/actions'
-import { Account } from '@/app/types'
+import { Account, Expense } from '@/app/types'
+
+type ExpenseDraft = Pick<Expense, 'description' | 'amount' | 'expense_date' | 'category'>
 import { Loader2, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
-export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?: Account[], onRefresh?: () => void }) {
+export default function AddExpenseForm({ accounts = [], onRefresh, onOptimisticAdd }: {
+    accounts?: Account[],
+    onRefresh?: () => void,
+    // Normale Budget-Ausgabe sofort anzeigen; `save` speichert und wirft bei Fehler (Meldung = Text für alert)
+    onOptimisticAdd?: (draft: ExpenseDraft, save: () => Promise<void>) => void
+}) {
     const formRef = useRef<HTMLFormElement>(null)
     const [loading, setLoading] = useState(false)
     const [date, setDate] = useState<Date | undefined>(new Date())
@@ -55,6 +62,27 @@ export default function AddExpenseForm({ accounts = [], onRefresh }: { accounts?
                     onRefresh?.()
                 }
                 setLoading(false)
+                return
+            }
+
+            // NORMALE AUSGABE: sofort anzeigen, im Hintergrund speichern (Sparkonto-Zahlungen
+            // unten bleiben beim alten Ablauf, weil sie vorher das Guthaben prüfen)
+            if (onOptimisticAdd && !category.startsWith('account:')) {
+                const draft: ExpenseDraft = { description, amount, expense_date, category }
+                formRef.current?.reset()
+                setDate(new Date())
+                setLoading(false)
+                onOptimisticAdd(draft, async () => {
+                    const { data: { user } } = await supabase.auth.getUser()
+                    if (!user) throw new Error('Fehler: Nicht eingeloggt')
+                    const { error: insertError } = await supabase
+                        .from('expenses')
+                        .insert([{ ...draft, user_id: user.id, account_id: null }])
+                    if (insertError) {
+                        console.error('Error inserting expense:', insertError)
+                        throw new Error('Fehler beim Speichern.')
+                    }
+                })
                 return
             }
 

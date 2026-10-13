@@ -1,6 +1,6 @@
 # Performance – Stand und Freigabeliste
 
-Stand: 12.10.2026 · Branch `claude/webapp-performance-audit-55919f` (noch nicht committet)
+Stand: 13.10.2026 · Branch `claude/webapp-performance-audit-55919f` · Runde 1 live seit 12.10. (Commit `925f91d`), Runde 2 (Freigaben) siehe unten
 
 ## Bereits umgesetzt (ohne Änderung an Verhalten, Logik oder Optik)
 
@@ -27,40 +27,28 @@ Stand: 12.10.2026 · Branch `claude/webapp-performance-audit-55919f` (noch nicht
 
 ---
 
-## Zur Freigabe (sinnvoll, aber mit Einfluss)
+## Runde 2 – freigegebene Punkte (13.10.2026)
 
-Bitte einfach die Nummern freigeben oder streichen.
-
-### A – Datenbank & Netzwerk (größter verbleibender Hebel)
-
-| # | Maßnahme | Nutzen | Einfluss / Risiko |
-|---|---|---|---|
-| A1 | **Indizes auf `user_id`** für `expenses`, `fixed_costs`, `accounts`, `settings`, `income_sources`, `products` (+ `expenses(transfer_id)`) per handgeschriebener Migration | Abfragen bleiben schnell, wenn mehr Nutzer/Daten dazukommen | Datenbankänderung, muss in Supabase angewendet werden; sonst kein Risiko |
-| A2 | **Start-Jobs bündeln** (Wochensparen, Spaßkonto-Feeds, Verteilkonten) in eine Server Action statt 5–6 Abfragen nacheinander aus dem Browser | Spürbar schnellerer Start, Verteilkonten-Logik läuft sicherer auf dem Server | Ändert Ablauf der Buchungslogik → gründlich testen |
-| A3 | **Spaßkonto-Saldo** im Hauptladevorgang mitladen (1 Abfrage mit Join statt 2 Runden) | Kachel erscheint sofort statt nachzuflackern | Abfrage-Umbau, braucht Test mit echter DB |
-| A4 | **Nur geänderte Tabelle neu laden** nach dem Speichern statt aller 7 Tabellen | Speichern fühlt sich schneller an | Änderung am Datenfluss |
-| A5 | **Optimistische Updates**: neue Ausgabe sofort anzeigen, im Hintergrund speichern | Gefühlt „sofort“ | UX-Änderung: bei Fehler springt der Wert zurück |
-| A6 | `receipt_items` und `products` erst laden, wenn Einkäufe/Bon-Details geöffnet werden | Weniger Daten beim Start | Kurzer Ladeindikator beim ersten Öffnen |
-| A7 | Nur benötigte Spalten statt `select('*')` | Weniger Daten | Gefahr, dass ein Feld vergessen wird |
-| A8 | Middleware für `/` streichen oder `getClaims()` statt `getUser()` | Ein Auth-Aufruf weniger pro Seitenaufruf | Sitzungs-Refresh-Verhalten ändert sich; `getClaims` braucht asymmetrische JWT-Keys |
-| A9 | Vercel-Functions-Region (`vercel.json`) auf die Supabase-Region legen (z. B. `fra1`) | Server Actions schneller | Erst Supabase-Region prüfen |
-
-### B – PWA / Laden
-
-| # | Maßnahme | Nutzen | Einfluss / Risiko |
-|---|---|---|---|
-| B1 | Leeren `fetch`-Handler im Service-Worker entfernen | Jede Navigation minimal schneller | Ältere Android-Chrome-Versionen könnten die „Installieren“-Option anders anbieten |
-| B2 | Echtes Offline-Caching (App-Shell + letzte Daten sofort anzeigen, z. B. `@serwist/next`) | App öffnet sofort, auch im Funkloch | Größere Änderung; kurzzeitig veraltete Zahlen sichtbar; Cache beim Logout löschen |
-| B3 | Schriften Geist Mono + Manrope mit `preload: false` | Erster Seitenaufbau minimal schneller | Beträge/Überschriften können kurz in Ersatzschrift erscheinen |
-
-### C – Aufräumen (kein Nutzer-Tempo, aber Deploy/Ordnung/Datenschutz)
-
-| # | Maßnahme | Hinweis |
+| # | Status | Umsetzung |
 |---|---|---|
-| C1 | **`scripts/userdata.json` aus dem Repo entfernen** | Enthält echte Nutzerdaten (User-ID, Salden). Ggf. auch aus der Git-Historie tilgen, falls das Repo öffentlich ist/wird |
-| C2 | Ungenutzte Bilder löschen: `app-icon-original.png` (7,9 MB), `head-icon.png`, `floral_bg.png`, `two_roses_bg.png`, Next-Vorlagen-SVGs, `manifest.json.old` | Werden nirgends verwendet |
-| C3 | `app-icon.png` (505 KB) auf 512×512 verlustarm verkleinern | Icon sieht gleich aus, lädt schneller |
-| C4 | Log-/Debug-Dateien im Hauptordner löschen, `playwright-report/` + `test-results/` aus Git nehmen, `.gitignore` ergänzen | Reine Ordnung |
-| C5 | `e2e/main-flow.spec.ts` reparieren (aktuelle Texte, `data-testid` oder `data-tour`, Test-Account in `.env`) | Damit der echte Login-Flow automatisch getestet wird |
-| C6 | `dotenv`, `postgres`, `drizzle-orm`, `shadcn` nach `devDependencies` | Schnellere Installation, kein Einfluss aufs Bundle |
-| C7 | `SettingsOverlay.tsx` (2049 Zeilen) und `MobileDashboard.tsx` in kleinere Komponenten aufteilen | Wartbarkeit, etwas flüssigeres Tippen |
+| A1 | ✅ umgesetzt, in Supabase eingespielt | 9 Indizes auf `user_id` (`drizzle/0009_user_id_indexes.sql`, `scripts/apply-0009-user-id-indexes.mjs`, erst Dry-Run, dann live). `expenses(transfer_id)` gab es schon. |
+| A2 | ✅ | `runStartupJobs` (`app/actions/startup.ts`): Wochensparen, Spaßkonto-Feeds, Verteilkonten in **einer** Server-Anfrage; Verteilkonten-Logik unverändert in `utils/distributions.ts` (mit Tests). Demo läuft lokal weiter. |
+| A3 | ✅ | Spaßkonto-Kachel wird parallel zum Hauptladen geholt (`lib/data/funSummary.ts`) → kein Nachflackern. Gleiche Abfragen wie vorher (kein Join nötig). |
+| A4 | ✅ | Nach Ausgabe anlegen/ändern/löschen werden nur `expenses` (+ ggf. Konten/Artikel) neu geladen, sonst wie bisher alles. |
+| A5 | ✅ | Neue normale Ausgabe erscheint sofort, Formular schließt sofort; Fehler → Meldung, Eintrag verschwindet wieder. Sparkonto-Zahlungen bleiben beim alten Ablauf (Guthabenprüfung vorher). |
+| A6 | ✅ | `receipt_items`/`products` erst beim Öffnen der Historie; Einkäufe-Tab zeigt so lange einen Ladekreis. |
+| A7 | ⏸ bewusst nicht gemacht | Geprüft: Die App braucht fast alle Spalten; übrig bliebe nur `user_id` (~1–2 KB nach gzip). Das würde den Backup-Inhalt im PDF-Report verändern — Nutzen zu klein für das Risiko. |
+| A8 | ✅ | Middleware nutzt `getClaims()` statt `getUser()` (fällt bei symmetrischem JWT-Schlüssel selbst auf `getUser()` zurück → kein Risiko). |
+| A9 | ❌ abgelehnt | – |
+| B1 | ✅ | In B2 aufgegangen (Service-Worker hat jetzt einen echten Fetch-Handler). |
+| B2 | ✅ | Service-Worker cacht nur eigene statische Dateien (`/_next/static` + zuletzt geladene Seite, nur auf der echten Domain). Letzter Datenstand liegt pro Nutzer im Gerät und wird beim Öffnen sofort angezeigt, dann aktualisiert; beim Abmelden gelöscht. Offline-Start getestet (Server aus → App startet). |
+| B3 | ❌ abgelehnt | – |
+| C1 | ✅ | `scripts/userdata.json` gelöscht + in `.gitignore`. **Achtung:** Repo ist öffentlich, die Datei steckt noch in der Git-Historie (Commit `6831a7f`) → Tilgen braucht Force-Push, nur nach ausdrücklicher Freigabe. |
+| C2 | ✅ | 10 ungenutzte Dateien in `public/` gelöscht (u. a. 7,9 MB `app-icon-original.png`). |
+| C3 | ✅ | `app-icon.png` verlustfrei neu komprimiert (505 → 471 KB, pixelidentisch). Mehr ginge nur verlustbehaftet. |
+| C4 | ✅ | Log-/Debug-Dateien gelöscht, `playwright-report/` + `test-results/` aus Git, `.gitignore` ergänzt. |
+| C5 | ✅ | `e2e/main-flow.spec.ts` neu (aktuelle Oberfläche); läuft mit `TEST_EMAIL`/`TEST_PASSWORD` in `.env`, sonst übersprungen. Gleicher Ablauf zusätzlich als Demo-Test (`e2e/dashboard-demo.spec.ts`, läuft immer). |
+| C6 | ✅ | `dotenv`, `postgres`, `drizzle-orm`, `shadcn` → `devDependencies`. |
+| C7 | ✅ | `SettingsOverlay.tsx` 2051 → 358 Zeilen (`components/settings/*`: je Bereich Hook + Ansicht, Report, Backup); `MobileDashboard.tsx` 1131 → 931 Zeilen (`components/dashboard/*`: Historie, PDF). Zustand bleibt wo er war → Eingaben bleiben beim Zurückgehen erhalten wie vorher. |
+
+**Geprüft (Runde 2):** 151 Unit-Tests grün (neu: Verteilkonten, Daten-Zwischenspeicher), Build ok, E2E 5/5 grün (+ Login-Test übersprungen, kein Testkonto), keine neuen Lint-Befunde, Startpaket unverändert 236 KB gzip. Alter und neuer Stand nebeneinander (Demo): alle Ansichten inkl. Einstellungen-Unterseiten, Tippen in Formularen und Historie/Analyse **DOM-identisch**; alle drei PDF-Exporte funktionieren.

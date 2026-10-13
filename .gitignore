@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# playwright
+/playwright-report/
+/test-results/
+/blob-report/
+
+# lokale Debug-/Log-Ausgaben und Nutzerdaten-Exporte (nie einchecken)
+/*.log
+/*_log.txt
+/*_error*.txt
+/lint*.txt
+/schema_*.json
+/scripts/userdata*.json

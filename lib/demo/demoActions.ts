@@ -1,6 +1,7 @@
 // Lokale Nachbauten der Server Actions für den Demo-Modus. Gleiche Regeln wie
 // die echten Actions in app/actions/*, aber gegen den localStorage-Client.
 import { getDemoClient, type Row } from './demoClient'
+import { processMonthlyDistributions } from '@/utils/distributions'
 import type { BulkImportPayload } from '@/app/actions/import'
 import type { ConnectionStatus } from '@/app/actions/emailConnection'
 import {
@@ -85,6 +86,13 @@ export async function processFunAccountFeeds() {
 
 export async function processWeeklySavings() {
     return { success: true }
+}
+
+// Gleiche Bündelung wie app/actions/startup.ts: Wochensparen und Feeds sind in der
+// Demo Leerläufe, die Verteilkonten laufen gegen den localStorage-Client.
+export async function runStartupJobs() {
+    const distributed = await processMonthlyDistributions(db() as unknown as Parameters<typeof processMonthlyDistributions>[0])
+    return { changed: distributed }
 }
 
 // --- Spaßkonto mit Gruppen ---------------------------------------------------

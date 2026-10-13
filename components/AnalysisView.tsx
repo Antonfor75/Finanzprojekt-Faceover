@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid, ReferenceLine, BarChart, Bar } from 'recharts'
-import { Download } from 'lucide-react'
+import { Download, Loader2 } from 'lucide-react'
 
 import CashflowTab from './analysis/CashflowTab'
 import PurchasesTab from './analysis/PurchasesTab'
@@ -23,6 +23,8 @@ type Props = {
     currentGiroBalance: number
     receiptItems?: ReceiptItem[]
     products?: Product[]
+    /** Bon-Artikel werden noch nachgeladen (Einkäufe-Tab zeigt so lange einen Ladekreis) */
+    receiptsLoading?: boolean
     /** Bereits berechnete Simulation (MobileDashboard) — spart die erneute Tagesrechnung. */
     girokontoTimeline?: GirokontoTimelineResult
 }
@@ -43,7 +45,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 // Helper for wealth calculation
 const getMonthKey = (date: Date) => format(date, 'yyyy-MM')
 
-export default function AnalysisView({ expenses, budget, fixedCosts, accounts, incomeSources, currentGiroBalance, receiptItems = [], products = [], girokontoTimeline }: Props) {
+export default function AnalysisView({ expenses, budget, fixedCosts, accounts, incomeSources, currentGiroBalance, receiptItems = [], products = [], receiptsLoading = false, girokontoTimeline }: Props) {
     const [analysisTab, setAnalysisTab] = useState<'cashflow' | 'purchases'>('cashflow')
     // Lifted state from CashflowTab
     const [cashflowRange, setCashflowRange] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly')
@@ -558,13 +560,17 @@ export default function AnalysisView({ expenses, budget, fixedCosts, accounts, i
                 So yes, we should just let the content flow. 
             */}
             <div className="flex-1 space-y-8">
-                {analysisTab === 'purchases' && (
+                {analysisTab === 'purchases' && (receiptsLoading ? (
+                    <div className="w-full flex items-center justify-center py-24">
+                        <Loader2 className="w-7 h-7 animate-spin text-primary" strokeWidth={1.75} />
+                    </div>
+                ) : (
                     <PurchasesTab
                         expenses={expenses}
                         receiptItems={receiptItems}
                         products={products}
                     />
-                )}
+                ))}
 
                 {/* Wochen-Heatstrip: Farbintensität = Tagesausgaben relativ zum Tagesbudget */}
                 {analysisTab === 'cashflow' && (() => {

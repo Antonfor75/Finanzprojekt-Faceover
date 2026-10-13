@@ -8,6 +8,7 @@ import * as savings from '@/app/actions/savings'
 import * as importActions from '@/app/actions/import'
 import * as email from '@/app/actions/emailConnection'
 import * as transfers from '@/app/actions/transfers'
+import * as startup from '@/app/actions/startup'
 
 // Der Demo-Nachbau wird nur in der Demo nachgeladen und steckt so nicht im Paket der echten App.
 type DemoActions = typeof import('@/lib/demo/demoActions')
@@ -30,6 +31,7 @@ export const addAccountExpense = route(funAccount.addAccountExpense, 'addAccount
 export const processFunAccountFeeds = route(funAccount.processFunAccountFeeds, 'processFunAccountFeeds')
 
 export const processWeeklySavings = route(savings.processWeeklySavings, 'processWeeklySavings')
+export const runStartupJobs = route(startup.runStartupJobs, 'runStartupJobs')
 
 export const getOrCreateFunAccountV2 = route(funGroups.getOrCreateFunAccountV2, 'getOrCreateFunAccountV2')
 export const renameFunAccountV2 = route(funGroups.renameFunAccountV2, 'renameFunAccountV2')
