@@ -8,8 +8,7 @@ import { ArrowUpRight, Settings, List, Plus, Home, TrendingUp, TrendingDown, Cal
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, getDaysInMonth } from 'date-fns'
 import { supabase } from '@/utils/supabase'
 
-import AddExpenseForm from './AddExpenseForm'
-import HistoryView from './dashboard/HistoryView'
+import AddExpenseForm, { warmUpExpenseForm } from './AddExpenseForm'
 import { ViewLoading } from './dashboard/ViewLoading'
 import { downloadExpensesPdf } from './dashboard/expensesPdf'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -36,14 +35,17 @@ const loadGirokontoView = () => import('./GirokontoView')
 const loadSettingsOverlay = () => import('./SettingsOverlay')
 const loadFunAccountHub = () => import('./FunAccountHub')
 const loadFunAccountView = () => import('./FunAccountView')
+const loadHistoryView = () => import('./dashboard/HistoryView')
 
 const GirokontoView = dynamic(loadGirokontoView, { ssr: false, loading: ViewLoading })
 const SettingsOverlay = dynamic(loadSettingsOverlay, { ssr: false, loading: ViewLoading })
 const FunAccountHub = dynamic(loadFunAccountHub, { ssr: false, loading: ViewLoading })
 const FunAccountView = dynamic(loadFunAccountView, { ssr: false, loading: ViewLoading })
+// Historie (Kalender/Liste) ist für das schnelle Eintragen auf der Startseite nicht nötig
+const HistoryView = dynamic(loadHistoryView, { ssr: false, loading: ViewLoading })
 
 function preloadSubViews() {
-    for (const load of [loadAnalysisView, loadGirokontoView, loadSettingsOverlay, loadFunAccountHub, loadFunAccountView]) {
+    for (const load of [loadHistoryView, loadAnalysisView, loadGirokontoView, loadSettingsOverlay, loadFunAccountHub, loadFunAccountView]) {
         load().catch(() => {}) // Fehler hier egal: beim Öffnen wird erneut geladen
     }
 }
@@ -169,6 +171,16 @@ export default function MobileDashboard({
         setFunRefresh(n => n + 1)
     }
 
+    // Eintrag-Formular vorwärmen (Emoji-/Betragsschrift), sobald der Browser nach dem Start Luft hat
+    useEffect(() => {
+        if (typeof window.requestIdleCallback === 'function') {
+            const id = window.requestIdleCallback(warmUpExpenseForm, { timeout: 1500 })
+            return () => window.cancelIdleCallback(id)
+        }
+        const t = setTimeout(warmUpExpenseForm, 500)
+        return () => clearTimeout(t)
+    }, [])
+
     // Unteransichten im Leerlauf nach dem ersten Anzeigen vorladen
     useEffect(() => {
         if (typeof window.requestIdleCallback === 'function') {
@@ -190,9 +202,17 @@ export default function MobileDashboard({
     useEffect(() => {
         console.log('--- Init Dashboard ---')
         loadTheme()
-        runStartupJobs()
+        // Erst wenn die Startseite steht und der Browser Luft hat — die Jobs sollen nicht mit
+        // dem Laden der Daten und dem ersten Eintragen um Netz und CPU konkurrieren.
+        const run = () => runStartupJobs()
             .then(result => { if (result.changed) onUpdate?.() })
             .catch(err => console.error('Start-Jobs fehlgeschlagen:', err))
+        if (typeof window.requestIdleCallback === 'function') {
+            const id = window.requestIdleCallback(run, { timeout: 3000 })
+            return () => window.cancelIdleCallback(id)
+        }
+        const t = setTimeout(run, 1500)
+        return () => clearTimeout(t)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []) // Run ONCE on mount. onUpdate dependency caused infinite loop.
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { preconnect } from 'react-dom'
 import { supabase } from '@/utils/supabase'
 import LoginScreen from '@/components/LoginScreen'
 import PrivacyUpdateNotice from '@/components/legal/PrivacyUpdateNotice'
@@ -20,6 +21,8 @@ import {
 // Das Dashboard-Paket lädt parallel zur Anmeldung und zu den Supabase-Abfragen, statt
 // vorher den Seitenstart zu blockieren. Der Ladezustand sieht aus wie "Lade Finanzen".
 const loadDashboard = () => import('@/components/MobileDashboard')
+// Schon beim Laden dieses Moduls anstoßen (vor dem ersten Rendern), nicht erst im Effekt.
+if (typeof window !== 'undefined') loadDashboard().catch(() => {}) // Fehler zeigt dynamic() beim Rendern
 const MobileDashboard = dynamic(loadDashboard, {
   ssr: false,
   loading: () => (
@@ -34,6 +37,9 @@ export default function Home() {
   // Falls man per Client-Navigation aus der Demo hierher kommt: die echte App
   // läuft IMMER im Live-Modus — noch bevor irgendein Datenzugriff passiert.
   useState(() => disableDemoMode())
+  // Verbindung zu Supabase (DNS + TCP + TLS) schon aufbauen, während das JavaScript lädt —
+  // die erste Datenabfrage kann dann sofort losschicken. Steht als <link> im HTML-Kopf.
+  preconnect(process.env.NEXT_PUBLIC_SUPABASE_URL!, { crossOrigin: 'anonymous' })
   const router = useRouter()
   const [session, setSession] = useState<any>(null)
   const [data, setData] = useState<DashboardData | null>(null)
@@ -54,7 +60,6 @@ export default function Home() {
   // 1. AUTH & SESSION
   useEffect(() => {
     let mounted = true
-    loadDashboard().catch(() => {}) // sofort mitladen; Fehler zeigt dynamic() beim Rendern
 
     // Timeout safety for Auth check (max 5 seconds)
     const authTimeout = setTimeout(() => {

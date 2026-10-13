@@ -6,6 +6,23 @@ import { addAccountExpense } from '@/lib/data/actions'
 import { Account, Expense } from '@/app/types'
 
 type ExpenseDraft = Pick<Expense, 'description' | 'amount' | 'expense_date' | 'category'>
+
+/**
+ * Macht das erste Öffnen des Formulars flüssiger: Das allererste Zeichnen der Kategorie-Emojis
+ * (Emoji-Schrift suchen) und der großen Betragsschrift kostet auf dem Handy spürbar Zeit. Das
+ * passiert hier einmal unsichtbar im Leerlauf nach dem Start statt beim ersten Tippen auf Plus.
+ */
+export function warmUpExpenseForm() {
+    const el = document.createElement('div')
+    el.setAttribute('aria-hidden', 'true')
+    el.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;pointer-events:none'
+    el.innerHTML =
+        '<span class="font-medium text-sm">Essen 🍔 Schminki Schminki 💄 Shoppi 🛍️ Freizeit 🎉 Sparen 💰 Sonstiges 📦</span>' +
+        '<span class="amount font-light text-[clamp(2.25rem,12vw,3rem)]">0,00 1234567890</span>'
+    document.body.appendChild(el)
+    el.getBoundingClientRect() // Layout + Text-Shaping jetzt erzwingen
+    requestAnimationFrame(() => el.remove())
+}
 import { Loader2, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
@@ -73,7 +90,10 @@ export default function AddExpenseForm({ accounts = [], onRefresh, onOptimisticA
                 setDate(new Date())
                 setLoading(false)
                 onOptimisticAdd(draft, async () => {
-                    const { data: { user } } = await supabase.auth.getUser()
+                    // Sitzung lokal lesen statt getUser() (spart eine Runde zu Supabase Auth);
+                    // die Datenbank prüft den Nutzer beim Speichern ohnehin selbst (RLS).
+                    const { data: { session } } = await supabase.auth.getSession()
+                    const user = session?.user
                     if (!user) throw new Error('Fehler: Nicht eingeloggt')
                     const { error: insertError } = await supabase
                         .from('expenses')

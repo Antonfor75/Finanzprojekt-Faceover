@@ -52,3 +52,20 @@ Stand: 13.10.2026 · Branch `claude/webapp-performance-audit-55919f` · Runde 1 
 | C7 | ✅ | `SettingsOverlay.tsx` 2051 → 358 Zeilen (`components/settings/*`: je Bereich Hook + Ansicht, Report, Backup); `MobileDashboard.tsx` 1131 → 931 Zeilen (`components/dashboard/*`: Historie, PDF). Zustand bleibt wo er war → Eingaben bleiben beim Zurückgehen erhalten wie vorher. |
 
 **Geprüft (Runde 2):** 151 Unit-Tests grün (neu: Verteilkonten, Daten-Zwischenspeicher), Build ok, E2E 5/5 grün (+ Login-Test übersprungen, kein Testkonto), keine neuen Lint-Befunde, Startpaket unverändert 236 KB gzip. Alter und neuer Stand nebeneinander (Demo): alle Ansichten inkl. Einstellungen-Unterseiten, Tippen in Formularen und Historie/Analyse **DOM-identisch**; alle drei PDF-Exporte funktionieren.
+
+## Runde 3 – Startseite zuerst (13.10.2026)
+
+Ziel: Angemeldet öffnen → so schnell wie möglich eine Ausgabe eintragen; alles andere lädt im Hintergrund.
+
+| # | Änderung | Gemessen |
+|---|---|---|
+| 1 | Middleware nur noch für Server Actions (`Next-Action`-Header) und `/api`, nicht mehr beim Seitenaufruf | Live: erste Antwort mit Sitzung ~195 ms statt ~95 ms ohne Middleware → **~100 ms pro Öffnen gespart**; lokal 150–190 ms → 10–14 ms |
+| 2 | `preconnect` zu Supabase im HTML-Kopf der Startseite | Verbindungsaufbau (DNS+TCP+TLS) ~75–95 ms am PC, im Mobilfunk eher 150–300 ms → läuft jetzt parallel zum JS-Laden |
+| 3 | Start-Jobs erst im Leerlauf (spätestens nach 3 s) | Laufen nicht mehr gleichzeitig mit Laden/Eintragen (Start ~3 s später als vorher) |
+| 4 | Historie (Kalender/Liste) aus dem Startpaket, wird im Leerlauf vorgeladen; Dashboard-Code startet schon beim Laden der Seite | kein messbarer Unterschied bis zur Startseite (dominiert vom Netz) |
+| 5 | Speichern liest die Sitzung lokal statt `getUser()` | Tippen auf Speichern → Anfrage raus: **819 → 361 ms** (Median, Handy-Simulation, erstes Öffnen) |
+| 6 | Eintrag-Formular im Leerlauf „vorwärmen“ (Emoji- und Betragsschrift einmal unsichtbar zeichnen) | erstes Zeichnen der Kategorie-Emojis kostet sonst 330–830 ms (gedrosselt) beim ersten Tippen auf Plus; erstes Öffnen Median 1085 → 766 ms |
+
+Messaufbau: Produktions-Build lokal, Chromium als Handy (CPU 4× gedrosselt, 150 ms Latenz, 1,6 Mbit/s), angemeldete Nutzerin mit 550 Ausgaben (nachgestellt), je 6 Durchläufe, Median. Werte auf diesem Rechner streuen stark (±300 ms); Startseite bis bedienbar war in Basis und Neu gleich (erstes Öffnen ~5,4 s, erneutes ~1,4 s — vom Laden des JavaScripts im langsamen Netz bestimmt, nach dem Deploy hilft hier der Service-Worker aus Runde 2).
+
+Geprüft und bewusst **nicht** geändert: Einblend-Animation ohne `filter`, Formular-Hintergrund ohne Unschärfe, Emoji-Schriften in der Schriftliste — kein messbarer Gewinn über dem Rauschen, bzw. sichtbare Änderung.
