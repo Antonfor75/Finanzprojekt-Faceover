@@ -13,7 +13,8 @@ Alle Pläne für Web-App, Handy-App „Mein Cashflow“ und Chefansicht liegen i
 ## Halb ausgeführt
 
 - [Web-App: Kassenbon-Auswertung mit Gemini](2026-10-20-webapp-kassenbon-gemini.md) (Web + Chefansicht): Gebaut sind Scan-Ansicht, Startseiten-Kachel und Agent-Feld wie in der Handy-App, dazu Server Actions mit Gemini (Flash bis 60 s, danach Flash-Lite). Die Auswertung läuft auf dem Server weiter, auch bei ausgeschaltetem Bildschirm oder geschlossener Seite. Offene Bons liegen in `pending_receipts`, ihr Bild im privaten Bucket `receipt-scans`, beides wird beim Speichern oder Verwerfen gelöscht. Freischaltung je Konto über `app_metadata.receipt_scan`, Schalter in der Chefansicht-App und in `/admin`. Tests grün, Build grün. Migration 0010 ist live, `chef-admin` deployt, Chefansicht v0.1.4 per OTA und als APK ausgerollt.
-  **Fehlt noch:** `GEMINI_API_KEY` lokal + Vercel setzen, Web-Änderungen committen und live bringen (`/push-web-app`), echter Test mit einem Bon.
+  Seit 2026-10-20 live auf main (Commit 7a5abbf), `GEMINI_API_KEY` auf Vercel gesetzt, Testkonten freigeschaltet.
+  **Fehlt noch:** ein echter Scan über die Live-Seite mit einem Testkonto, danach echte Personen in der Chefansicht freischalten.
 
 - [Web-App professionalisieren](2026-10-08-webapp-professionalisierung.md) (Web + Chefansicht): Impressum, Datenschutzerklärung, Datenschutz-Häkchen bei der Registrierung und „Konto löschen“ sind gebaut. Dazu kommen ein Demo-Modus unter `/demo` mit Beispieldaten nur im Browser und eine geführte Tour. Einladungscodes gelten jetzt für mehrere Personen, im Web-Admin und in der Chefansicht. Alles ist live (main, Migration 0008, Chef-APK installiert).
   **Fehlt noch:** eine echte Registrierung mit einem Mehrfach-Code, ein paralleler Einlöse-Test und der Live-Check, ob sich die Login-Seite scrollen lässt.

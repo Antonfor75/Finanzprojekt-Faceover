@@ -7,7 +7,8 @@
 > Gebaut: `app/actions/receiptScan.ts`, `utils/receiptScan/*`, `components/receipt/*`, `lib/receiptScanStorage.ts`,
 > Migration `drizzle/0010_pending_receipts.sql` (+ `scripts/apply-0010-pending-receipts.mjs`), Datenschutz-Abschnitt.
 > **Erledigt 2026-10-20:** Migration 0010 live, `chef-admin` deployt, Chefansicht v0.1.4 (OTA + APK).
-> **Offen:** `GEMINI_API_KEY` setzen, Web-Änderungen committen + live gehen, echter Bon-Test.
+> **Live seit 2026-10-20** (main 7a5abbf, Key auf Vercel). Ein Testbon (Lidl) wurde lokal geprüft: Flash las alles richtig, Flash-Lite verrutschte Preise.
+> **Offen:** echter Scan über die Live-Seite, danach echte Personen freischalten.
 
 **Ziel:** Die Web-App bekommt denselben Bon-Ablauf wie die Handy-App „Mein Cashflow“:
 Foto/Bild/PDF → Auswertung → Prüfen & Korrigieren → Speichern als Ausgabe mit Artikeln.
