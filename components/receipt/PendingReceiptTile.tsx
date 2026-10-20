@@ -23,6 +23,7 @@ const fmtDay = (iso: string) => {
  * (wie components/PendingReceiptTile.tsx der Handy-App). Zeigt immer den neuesten offenen Bon mit
  * "Freigeben"; "Ignorieren" holt den nächsten nach vorn, "Verwerfen" fragt vorher nach.
  * Ein Tipp auf die Kachel öffnet die Scan-Seite zum Prüfen.
+ * Ist nichts offen und nichts in Arbeit, zeigt sie gar nichts — das Scannen startet über das Plus.
  */
 export default function PendingReceiptTile({ onSaved, onOpen }: Props) {
     const rows = usePendingReceipts()
@@ -138,14 +139,6 @@ export default function PendingReceiptTile({ onSaved, onOpen }: Props) {
         )
     }
 
-    return (
-        <div className="surface p-4 flex flex-col gap-2">
-            <p className="text-xs text-muted-foreground">Offene Bons</p>
-            <p className="text-sm text-foreground">Keine offenen Bons</p>
-            <button onClick={() => onOpen(null)} className="press flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold bg-muted text-foreground">
-                <ScanLine className="w-3.5 h-3.5" strokeWidth={1.75} />
-                Bon scannen
-            </button>
-        </div>
-    )
+    // Nichts offen und nichts in Arbeit: die Startseite sieht aus wie ohne Kassenbon-Scan.
+    return null
 }

@@ -613,15 +613,15 @@ export default function MobileDashboard({
 
                         {/* STATS */}
                         <div className="w-full grid grid-cols-2 gap-2.5 mt-9">
-                            {/* Mit Kassenbon-Scan steht hier (wie in der Handy-App) die Kachel der offenen Bons */}
-                            {receiptScan ? (
+                            {/* Kassenbon-Scan: nur wenn ein Bon offen ist oder gerade gelesen wird, erscheint hier
+                                eine Zusatz-Kachel über den üblichen. Sonst sieht die Startseite aus wie ohne Scan. */}
+                            {receiptScan && (
                                 <PendingReceiptTile onSaved={() => onUpdate?.(['expenses', 'receipts'])} onOpen={openScanner} />
-                            ) : (
-                                <div className="surface p-4">
-                                    <p className="text-xs text-muted-foreground">Ausgegeben</p>
-                                    <p className="amount text-lg text-foreground mt-1">€{totalSpentThisWeek.toFixed(2)}</p>
-                                </div>
                             )}
+                            <div className="surface p-4">
+                                <p className="text-xs text-muted-foreground">Ausgegeben</p>
+                                <p className="amount text-lg text-foreground mt-1">€{totalSpentThisWeek.toFixed(2)}</p>
+                            </div>
                             <div className="surface p-4">
                                 <p className="text-xs text-muted-foreground">Wochenbudget</p>
                                 <p className="amount text-lg text-foreground mt-1">€{weeklyBudget.toFixed(2)}</p>
@@ -857,17 +857,6 @@ export default function MobileDashboard({
                     >
                         <List className="w-6 h-6" strokeWidth={1.75} />
                     </button>
-
-                    {/* Beleg-Scanner — wie in der Handy-App in der Hauptleiste, nur für freigeschaltete Konten */}
-                    {receiptScan && (
-                        <button
-                            onClick={() => openScanner(null)}
-                            aria-label="Bon scannen"
-                            className="press flex-1 h-14 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors duration-250 ease-[var(--ease-out-strong)]"
-                        >
-                            <ScanLine className="w-6 h-6" strokeWidth={1.75} />
-                        </button>
-                    )}
 
                     {/* Center: auf der Startseite Ausgabe hinzufügen, sonst zurück zur Startseite */}
                     <button
