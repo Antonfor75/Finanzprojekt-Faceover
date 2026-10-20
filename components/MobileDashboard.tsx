@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { loadTheme } from '@/utils/theme'
 import { runStartupJobs } from '@/lib/data/actions'
@@ -23,6 +23,7 @@ import { calculateGirokontoTimeline } from '@/utils/girokonto'
 import { expenseEditPatch, isSpendingExpense, isTransferExpense } from '@/utils/transfer'
 import { preloadPdf, withPdf } from '@/lib/pdf'
 import { useReceiptScanEnabled } from '@/utils/receiptScan/useReceiptScanEnabled'
+import { parseShareStatus, type ShareStatus } from '@/utils/receiptScan/shareTarget'
 
 import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 
@@ -47,6 +48,7 @@ const HistoryView = dynamic(loadHistoryView, { ssr: false, loading: ViewLoading 
 // Kassenbon-Scan (nur freigeschaltete Konten) — erst laden, wenn die Funktion freigeschaltet ist
 const ReceiptScanView = dynamic(() => import('./receipt/ReceiptScanView'), { ssr: false, loading: ViewLoading })
 const PendingReceiptTile = dynamic(() => import('./receipt/PendingReceiptTile'), { ssr: false })
+const ShareReceiver = dynamic(() => import('./receipt/ShareReceiver'), { ssr: false })
 
 function preloadSubViews() {
     for (const load of [loadHistoryView, loadAnalysisView, loadGirokontoView, loadSettingsOverlay, loadFunAccountHub, loadFunAccountView]) {
@@ -129,6 +131,14 @@ export default function MobileDashboard({
     const [showScanner, setShowScanner] = useState(false)
     const [scanPendingId, setScanPendingId] = useState<string | null>(null)
     const openScanner = (id: string | null) => { setScanPendingId(id); setShowScanner(true) }
+    // Bon aus einer anderen App geteilt (?share=…): ShareReceiver erst dann nachladen
+    const [sharedStatus, setSharedStatus] = useState<ShareStatus | null>(null)
+    useEffect(() => {
+        const status = parseShareStatus(window.location.search)
+        if (status) setSharedStatus(status)
+    }, [])
+    const openSharedReceipt = useCallback((id: string) => { setScanPendingId(id); setShowScanner(true) }, [])
+    const closeShareReceiver = useCallback(() => setSharedStatus(null), [])
 
     // Artikel (Bon-Positionen) nach Ausgabe gruppiert — optionale Zusatzinfo.
     const itemsByExpense = useMemo(() => {
@@ -971,6 +981,9 @@ export default function MobileDashboard({
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Bon aus einer anderen App geteilt (Web Share Target) */}
+            {sharedStatus && <ShareReceiver status={sharedStatus} onOpen={openSharedReceipt} onDone={closeShareReceiver} />}
 
             {/* Beleg-Scanner (Vollbild) */}
             {showScanner && (

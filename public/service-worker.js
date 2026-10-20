@@ -25,11 +25,24 @@ self.addEventListener('activate', (event) => {
 // dort würde der Cache alten Code ausliefern. Also nur auf der echten Domain cachen.
 const IS_LOCAL = ['localhost', '127.0.0.1', '[::1]'].includes(self.location.hostname)
 
+// "Teilen" aus anderen Apps (Web Share Target, siehe utils/receiptScan/shareTarget.ts):
+// Android schickt die Dateien per POST an SHARE_PATH. Sie gehen hier in IndexedDB und die Seite
+// holt sie sich dort ab — so sieht der Server die (oft 3–12 MB großen) Dateien nie.
+// Die Namen müssen zu utils/receiptScan/shareTarget.ts passen (shareTarget.test.ts prüft das).
+const SHARE_PATH = '/share-receipt'
+const SHARE_FIELD = 'files'
+const SHARE_DB = 'cashflow-share'
+const SHARE_STORE = 'files'
+
 self.addEventListener('fetch', (event) => {
-    if (IS_LOCAL) return
     const request = event.request
-    if (request.method !== 'GET') return
     const url = new URL(request.url)
+    if (request.method === 'POST' && url.origin === self.location.origin && url.pathname === SHARE_PATH) {
+        event.respondWith(receiveShare(request))
+        return
+    }
+    if (IS_LOCAL) return
+    if (request.method !== 'GET') return
     if (url.origin !== self.location.origin) return
 
     if (url.pathname.startsWith('/_next/static/')) {
@@ -40,6 +53,41 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(networkFirst(request))
     }
 })
+
+function shareRedirect(status) {
+    return Response.redirect(new URL('/?share=' + status, self.location.origin).href, 303)
+}
+
+async function receiveShare(request) {
+    try {
+        const form = await request.formData()
+        const files = form.getAll(SHARE_FIELD).filter((f) => typeof f !== 'string')
+        if (files.length === 0) return shareRedirect('empty')
+        await storeShared(files)
+        return shareRedirect('ok')
+    } catch {
+        return shareRedirect('error')
+    }
+}
+
+// Ersetzt, was vom letzten Teilen noch liegt; Einträge: { file, savedAt }
+function storeShared(files) {
+    return new Promise((resolve, reject) => {
+        const open = indexedDB.open(SHARE_DB, 1)
+        open.onupgradeneeded = () => open.result.createObjectStore(SHARE_STORE, { autoIncrement: true })
+        open.onerror = () => reject(open.error)
+        open.onsuccess = () => {
+            const db = open.result
+            const tx = db.transaction(SHARE_STORE, 'readwrite')
+            const store = tx.objectStore(SHARE_STORE)
+            store.clear()
+            const savedAt = Date.now()
+            for (const file of files) store.add({ file, savedAt })
+            tx.oncomplete = () => { db.close(); resolve() }
+            tx.onerror = tx.onabort = () => { db.close(); reject(tx.error) }
+        }
+    })
+}
 
 async function cacheFirst(request) {
     const cache = await caches.open(STATIC_CACHE)
