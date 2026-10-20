@@ -1,6 +1,7 @@
 // Alle Tabellen mit Nutzerdaten, Kinder vor Eltern (Fremdschlüssel). Muss zur
 // Liste USER_TABLES in der chef-admin Edge Function passen.
 export const USER_TABLES = [
+    'pending_receipts',
     'receipt_items',
     'rewe_receipts',
     'product_aliases',

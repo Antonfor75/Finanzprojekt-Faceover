@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from '@/utils/supabase/admin'
 import { assertAdmin } from '@/utils/adminGuard'
+import { removeAllReceiptImages } from '@/lib/receiptScanStorage'
 
 export async function getUsers() {
     try {
@@ -17,6 +18,24 @@ export async function getUsers() {
         return { success: true, users }
     } catch (error: any) {
         return { success: false, error: error.message }
+    }
+}
+
+/**
+ * Kassenbon-Scan (Gemini) für ein Konto ein-/ausschalten. Steht in app_metadata, das nur die
+ * Service-Role ändern kann — der Nutzer selbst nicht. GoTrue führt app_metadata zusammen,
+ * provider/providers bleiben also erhalten. Gleiche Aktion wie "setReceiptScan" in der
+ * chef-admin Edge Function der Chefansicht-App.
+ */
+export async function setReceiptScan(userId: string, enabled: boolean) {
+    try {
+        await assertAdmin()
+        if (!userId) throw new Error('userId fehlt.')
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { app_metadata: { receipt_scan: enabled } })
+        if (error) throw new Error(error.message)
+        return { success: true as const }
+    } catch (error) {
+        return { success: false as const, error: error instanceof Error ? error.message : 'Unbekannter Fehler' }
     }
 }
 
@@ -45,6 +64,7 @@ export async function createUser(email: string, password: string) {
 // Muss identisch zu USER_TABLES in der Chefansicht-App bleiben
 // (supabase/functions/chef-admin/index.ts) — Web und App loeschen dasselbe.
 const USER_TABLES = [
+    'pending_receipts',
     'receipt_items',
     'rewe_receipts',
     'product_aliases',
@@ -65,6 +85,8 @@ const USER_TABLES = [
 
 /** Loescht alle Daten eines Users, laesst den Account selbst stehen. */
 async function wipeUserData(userId: string) {
+    // Bonbilder offener Kassenbons (Storage) zuerst — die Zeilen dazu verschwinden gleich mit.
+    await removeAllReceiptImages(userId).catch((e) => console.warn('Bonbilder löschen:', e))
     // Nacheinander, nicht parallel: die Reihenfolge Kinder-vor-Eltern haelt nur so.
     for (const table of USER_TABLES) {
         const { error } = await supabaseAdmin.from(table).delete().eq('user_id', userId)

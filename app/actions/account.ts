@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { supabaseAdmin } from '@/utils/supabase/admin'
 import { wipeUserRows } from '@/utils/accountDeletion'
+import { removeAllReceiptImages } from '@/lib/receiptScanStorage'
 import { ADMIN_EMAIL } from '@/utils/adminGuard'
 
 type Result = { success: true } | { success: false; error: string }
@@ -26,6 +27,7 @@ export async function deleteOwnAccount(confirmEmail: string): Promise<Result> {
             return { success: false, error: 'Die eingegebene E-Mail stimmt nicht mit deinem Konto überein.' }
         }
 
+        await removeAllReceiptImages(user.id).catch((e) => console.warn('Bonbilder löschen:', e))
         await wipeUserRows(supabaseAdmin, user.id)
 
         // Personenbezug an Einladungscodes entfernen; die Nutzung selbst zählt weiter.

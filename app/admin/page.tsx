@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
-import { getUsers, createUser, deleteUserData as deleteUser, resetUserData as resetUser } from '@/app/actions/admin'
+import { getUsers, createUser, deleteUserData as deleteUser, resetUserData as resetUser, setReceiptScan } from '@/app/actions/admin'
 import InviteCodePanel from '@/components/admin/InviteCodePanel'
 import PasswordInput from '@/components/PasswordInput'
 import { MIN_PASSWORD_LENGTH } from '@/utils/authRules'
-import { Plus, Users, LogOut, Check, ShieldAlert, RefreshCcw, Calculator, Loader2, AlertCircle } from 'lucide-react'
+import { Plus, Users, LogOut, Check, ShieldAlert, RefreshCcw, Calculator, Loader2, AlertCircle, ScanLine } from 'lucide-react'
 
 // Hardcoded Admin Email
 const ADMIN_EMAIL = 'chef@anton.de'
@@ -250,6 +250,23 @@ export default function AdminPage() {
                                     <span className="font-bold text-lg break-all pr-20">{user.email}</span>
                                     <span className="text-xs text-gray-400 font-mono mt-1 break-all">ID: {user.id}</span>
                                     <span className="text-xs text-gray-400">Erstellt: {new Date(user.created_at).toLocaleDateString()}</span>
+
+                                    {/* Kassenbon-Scan (Gemini) nur für freigeschaltete Konten */}
+                                    {user.email !== ADMIN_EMAIL && (
+                                        <button
+                                            onClick={async () => {
+                                                const next = user.app_metadata?.receipt_scan !== true
+                                                const res = await setReceiptScan(user.id, next)
+                                                if (res.success) await fetchUsers()
+                                                else alert('Fehler: ' + res.error)
+                                            }}
+                                            aria-pressed={user.app_metadata?.receipt_scan === true}
+                                            className={`mt-3 self-start flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold border-2 transition-colors ${user.app_metadata?.receipt_scan === true ? 'bg-green-100 border-green-600 text-green-700' : 'bg-white border-gray-300 text-gray-500'}`}
+                                        >
+                                            <ScanLine className="w-4 h-4" />
+                                            Kassenbon-Scan: {user.app_metadata?.receipt_scan === true ? 'an' : 'aus'}
+                                        </button>
+                                    )}
 
                                     {/* Action Buttons — auf Touch immer sichtbar, am Desktop erst bei Hover */}
                                     {user.email !== ADMIN_EMAIL && (

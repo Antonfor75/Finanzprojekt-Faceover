@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { loadTheme } from '@/utils/theme'
 import { runStartupJobs } from '@/lib/data/actions'
-import { ArrowUpRight, Settings, List, Plus, Home, TrendingUp, TrendingDown, CalendarClock, Check, ChevronRight, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Settings, List, Plus, Home, TrendingUp, TrendingDown, CalendarClock, Check, ChevronRight, Sparkles, ScanLine } from 'lucide-react'
 import { startOfWeek, endOfWeek, format, isSameDay, isWithinInterval, getDaysInMonth } from 'date-fns'
 import { supabase } from '@/utils/supabase'
 
@@ -22,6 +22,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { calculateGirokontoTimeline } from '@/utils/girokonto'
 import { expenseEditPatch, isSpendingExpense, isTransferExpense } from '@/utils/transfer'
 import { preloadPdf, withPdf } from '@/lib/pdf'
+import { useReceiptScanEnabled } from '@/utils/receiptScan/useReceiptScanEnabled'
 
 import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 
@@ -43,6 +44,9 @@ const FunAccountHub = dynamic(loadFunAccountHub, { ssr: false, loading: ViewLoad
 const FunAccountView = dynamic(loadFunAccountView, { ssr: false, loading: ViewLoading })
 // Historie (Kalender/Liste) ist für das schnelle Eintragen auf der Startseite nicht nötig
 const HistoryView = dynamic(loadHistoryView, { ssr: false, loading: ViewLoading })
+// Kassenbon-Scan (nur freigeschaltete Konten) — erst laden, wenn die Funktion freigeschaltet ist
+const ReceiptScanView = dynamic(() => import('./receipt/ReceiptScanView'), { ssr: false, loading: ViewLoading })
+const PendingReceiptTile = dynamic(() => import('./receipt/PendingReceiptTile'), { ssr: false })
 
 function preloadSubViews() {
     for (const load of [loadHistoryView, loadAnalysisView, loadGirokontoView, loadSettingsOverlay, loadFunAccountHub, loadFunAccountView]) {
@@ -120,6 +124,11 @@ export default function MobileDashboard({
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
     const [expandedExpenseId, setExpandedExpenseId] = useState<number | null>(null)
     const [showAddSheet, setShowAddSheet] = useState(false)
+    // Kassenbon-Scan: nur sichtbar, wenn in der Chefansicht freigeschaltet (app_metadata.receipt_scan)
+    const receiptScan = useReceiptScanEnabled()
+    const [showScanner, setShowScanner] = useState(false)
+    const [scanPendingId, setScanPendingId] = useState<string | null>(null)
+    const openScanner = (id: string | null) => { setScanPendingId(id); setShowScanner(true) }
 
     // Artikel (Bon-Positionen) nach Ausgabe gruppiert — optionale Zusatzinfo.
     const itemsByExpense = useMemo(() => {
@@ -604,10 +613,15 @@ export default function MobileDashboard({
 
                         {/* STATS */}
                         <div className="w-full grid grid-cols-2 gap-2.5 mt-9">
-                            <div className="surface p-4">
-                                <p className="text-xs text-muted-foreground">Ausgegeben</p>
-                                <p className="amount text-lg text-foreground mt-1">€{totalSpentThisWeek.toFixed(2)}</p>
-                            </div>
+                            {/* Mit Kassenbon-Scan steht hier (wie in der Handy-App) die Kachel der offenen Bons */}
+                            {receiptScan ? (
+                                <PendingReceiptTile onSaved={() => onUpdate?.(['expenses', 'receipts'])} onOpen={openScanner} />
+                            ) : (
+                                <div className="surface p-4">
+                                    <p className="text-xs text-muted-foreground">Ausgegeben</p>
+                                    <p className="amount text-lg text-foreground mt-1">€{totalSpentThisWeek.toFixed(2)}</p>
+                                </div>
+                            )}
                             <div className="surface p-4">
                                 <p className="text-xs text-muted-foreground">Wochenbudget</p>
                                 <p className="amount text-lg text-foreground mt-1">€{weeklyBudget.toFixed(2)}</p>
@@ -844,6 +858,17 @@ export default function MobileDashboard({
                         <List className="w-6 h-6" strokeWidth={1.75} />
                     </button>
 
+                    {/* Beleg-Scanner — wie in der Handy-App in der Hauptleiste, nur für freigeschaltete Konten */}
+                    {receiptScan && (
+                        <button
+                            onClick={() => openScanner(null)}
+                            aria-label="Bon scannen"
+                            className="press flex-1 h-14 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors duration-250 ease-[var(--ease-out-strong)]"
+                        >
+                            <ScanLine className="w-6 h-6" strokeWidth={1.75} />
+                        </button>
+                    )}
+
                     {/* Center: auf der Startseite Ausgabe hinzufügen, sonst zurück zur Startseite */}
                     <button
                         data-tour="add-button"
@@ -940,6 +965,15 @@ export default function MobileDashboard({
                         <DialogDescription className="sr-only">Trage eine neue Ausgabe ein.</DialogDescription>
                     </DialogHeader>
                     <div className="max-w-md mx-auto w-full">
+                        {receiptScan && (
+                            <button
+                                onClick={() => { setShowAddSheet(false); openScanner(null) }}
+                                className="press w-full flex items-center justify-center gap-2 mb-4 py-3.5 rounded-xl font-semibold text-sm bg-muted text-foreground"
+                            >
+                                <ScanLine className="w-4 h-4" strokeWidth={1.75} />
+                                Bon scannen
+                            </button>
+                        )}
                         <AddExpenseForm
                             accounts={initialAccounts}
                             onRefresh={() => { setShowAddSheet(false); onUpdate?.() }}
@@ -948,6 +982,22 @@ export default function MobileDashboard({
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Beleg-Scanner (Vollbild) */}
+            {showScanner && (
+                <div className="fixed inset-0 z-[70] bg-background">
+                    <ReceiptScanView
+                        pendingId={scanPendingId}
+                        onPendingChange={setScanPendingId}
+                        onBack={() => {
+                            // Nur die Ansicht schließen: offene Bons und laufende Auswertungen bleiben bestehen.
+                            setShowScanner(false)
+                            setScanPendingId(null)
+                        }}
+                        onSaved={() => onUpdate?.(['expenses', 'receipts'])}
+                    />
+                </div>
+            )}
 
         </div>
     )

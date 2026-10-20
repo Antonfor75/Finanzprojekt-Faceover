@@ -1,4 +1,4 @@
-import { integer, pgTable, serial, text, numeric, timestamp, boolean, uuid, unique, index } from 'drizzle-orm/pg-core';
+import { integer, pgTable, serial, text, numeric, timestamp, boolean, uuid, unique, index, jsonb } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const expensesTable = pgTable('expenses', {
@@ -153,6 +153,25 @@ export const productAliasesTable = pgTable('product_aliases', {
 }, (t) => [
     unique('product_aliases_user_alias_unique').on(t.user_id, t.alias_normalized),
 ]);
+
+// Offene Bons des Kassenbon-Scans (Gemini, nur mit app_metadata.receipt_scan) — von der
+// Aufnahme bis zum Speichern/Verwerfen, danach wird die Zeile samt Bild gelöscht. Bilder im
+// privaten Storage-Bucket "receipt-scans". Kein INSERT per RLS, nur über Server Actions. Migration 0010.
+export const pendingReceiptsTable = pgTable('pending_receipts', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
+    status: text('status').notNull().default('reading'), // 'reading' | 'ready' | 'failed'
+    started_at: timestamp('started_at', { withTimezone: true }),
+    finished_at: timestamp('finished_at', { withTimezone: true }),
+    skipped_at: timestamp('skipped_at', { withTimezone: true }),
+    image_paths: text('image_paths').array().notNull().default(sql`'{}'`),
+    result: jsonb('result'), // { store, date, total, category, items, ok, model }
+    findings: jsonb('findings').notNull().default(sql`'[]'::jsonb`),
+    edits: jsonb('edits').notNull().default(sql`'{}'::jsonb`), // von Hand geänderte Felder
+    error: text('error'),
+    message: text('message'),
+}, (t) => [index('pending_receipts_user_id_idx').on(t.user_id)]);
 
 // Spaßkonto v2: ein Konto pro User, mit optionalen Gruppen (Events/Zeiträume) statt
 // fester Kontenliste. Getrennt von accountsTable (type='fun'), da Struktur/Zeitmodell

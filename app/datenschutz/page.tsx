@@ -47,6 +47,14 @@ export default function DatenschutzPage() {
                     REWE-Kassenbons und speichert Datum, Betrag, Bon-Text und Artikel. Du kannst die
                     Verbindung jederzeit in den Einstellungen trennen; die Zugangsdaten werden dann gelöscht.
                 </p>
+                <h3>Optional: Kassenbon-Scan (nur für freigeschaltete Konten)</h3>
+                <p>
+                    Ist der Kassenbon-Scan für dein Konto freigeschaltet und fotografierst du einen Bon oder
+                    lädst ein Bild/PDF hoch, wird die Datei zur Auswertung an Google (Gemini API) geschickt.
+                    Zurück kommen Laden, Datum, Betrag und Artikel, die du vor dem Speichern prüfst. Das Bild
+                    liegt nur so lange in der Datenbank, wie der Bon offen ist: Beim Speichern oder Verwerfen
+                    wird es gelöscht. Gespeichert bleiben nur die Ausgabe und die Artikel.
+                </p>
                 <h3>Technische Daten beim Aufruf</h3>
                 <p>
                     Beim Aufruf der Seite verarbeitet der Hosting-Anbieter technisch notwendige Daten
@@ -69,6 +77,9 @@ export default function DatenschutzPage() {
                     <li>
                         REWE-Bon-Import: Art. 6 Abs. 1 lit. b DSGVO, nur wenn du ihn selbst einschaltest.
                     </li>
+                    <li>
+                        Kassenbon-Scan: Art. 6 Abs. 1 lit. b DSGVO, nur wenn du selbst einen Bon scannst.
+                    </li>
                 </ul>
             </section>
 
@@ -84,6 +95,12 @@ export default function DatenschutzPage() {
                         <strong>Vercel</strong> (Vercel Inc., USA) — Hosting und Auslieferung der Web-App.
                         Eine Übermittlung in die USA ist möglich; sie stützt sich auf das EU-US Data Privacy
                         Framework bzw. EU-Standardvertragsklauseln (Art. 45, 46 DSGVO).
+                    </li>
+                    <li>
+                        <strong>Google</strong> (Google LLC / Google Ireland Ltd.) — Gemini API, nur für den
+                        Kassenbon-Scan freigeschalteter Konten. Für Nutzer im EWR gelten die Datenregeln des
+                        bezahlten Dienstes: Die Bons werden nicht zum Training von Google-Modellen verwendet.
+                        Eine Übermittlung in die USA ist möglich (EU-US Data Privacy Framework, Art. 45 DSGVO).
                     </li>
                 </ul>
             </section>

@@ -19,6 +19,10 @@ const manrope = Manrope({
   subsets: ["latin"],
 });
 
+// Server Actions laufen in der Funktion der Seite. Der Kassenbon-Scan wartet bis zu 60 s auf
+// Gemini Flash und danach bis zu 30 s auf Flash-Lite (utils/receiptScan/gemini.ts), daher etwas Luft.
+export const maxDuration = 120
+
 export const metadata: Metadata = {
   title: "Finanzen App",
   description: "Tracke deine Ausgaben",
