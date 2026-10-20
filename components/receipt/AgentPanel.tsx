@@ -17,7 +17,7 @@ export type AgentView = {
 }
 
 /** So lange braucht Gemini meist für einen Bon — nur für die Fortschrittsanzeige. */
-const EXPECTED_MS = 9000
+const EXPECTED_MS = 3000
 
 const fmtSeconds = (ms: number) => `${Math.max(0, Math.round(ms / 1000))} s`
 
@@ -49,8 +49,8 @@ export default function AgentPanel({ state, onCancel, onRetry }: Props) {
     const pct = state.status === 'done' ? 100 : running ? Math.round(95 * (1 - Math.exp(-elapsed / EXPECTED_MS))) : 0
     const label = running
         ? elapsed < 1500 ? 'Bild wird übergeben …'
-            : elapsed < 60_000 ? 'Gemini liest den Bon …'
-            : 'Gemini Flash ist ausgelastet — Flash-Lite springt ein …'
+            : elapsed < 30_000 ? 'Gemini liest den Bon …'
+            : 'Gemini ist ausgelastet — ein zweites Modell springt ein …'
         : 'Beleg geprüft'
 
     return (

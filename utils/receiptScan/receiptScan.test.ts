@@ -223,13 +223,13 @@ describe('extractReceipt', () => {
         expect(calls).toHaveLength(2)
     })
 
-    it('Flash bekommt 60 s, das Ersatzmodell 30 s', async () => {
+    it('Flash bekommt 60 s, Flash-Lite 30 s', async () => {
         const waits: number[] = []
         const real = AbortSignal.timeout
         AbortSignal.timeout = ((ms: number) => { waits.push(ms); return real.call(AbortSignal, ms) }) as typeof AbortSignal.timeout
         try {
             const { fn } = fakeFetch([{ status: 503 }, { status: 200, body: okBody(answer()) }])
-            await extractReceipt([file], { apiKey: 'k', models: ['flash', 'lite'], fetch: fn })
+            await extractReceipt([file], { apiKey: 'k', models: ['gemini-flash-latest', 'gemini-flash-lite-latest'], fetch: fn })
         } finally {
             AbortSignal.timeout = real
         }
@@ -282,6 +282,6 @@ describe('extractReceipt', () => {
 
     it('Modellliste aus der Umgebung', () => {
         expect(modelsFromEnv(' a , b ')).toEqual(['a', 'b'])
-        expect(modelsFromEnv('')).toEqual(['gemini-flash-latest', 'gemini-flash-lite-latest'])
+        expect(modelsFromEnv('')).toEqual(['gemini-flash-lite-latest', 'gemini-flash-latest'])
     })
 })

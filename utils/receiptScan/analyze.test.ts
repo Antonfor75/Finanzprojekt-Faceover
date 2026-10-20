@@ -60,6 +60,9 @@ describe('analyzeReceipt', () => {
         expect(calls).toHaveLength(2)
         expect(calls[1]?.followUp?.previousAnswer).toBe(JSON.stringify(WRONG))
         expect(calls[1]?.followUp?.feedback).toContain('6,23 €')
+        // Erste Lesung mit den Standard-Modellen (Flash-Lite zuerst), Nachprüfung mit Flash zuerst.
+        expect(calls[0]?.models).toBeUndefined()
+        expect(calls[1]?.models?.[0]).toBe('gemini-flash-latest')
         expect(out.review).toBe('improved')
         expect(out.result.items.find((i) => i.nameRaw === 'Schokobrötchen')?.totalPrice).toBe(0.65)
         expect(out.findings[0].code).toBe('self_corrected')

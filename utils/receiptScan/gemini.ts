@@ -11,17 +11,23 @@ import { RECEIPT_CATEGORIES } from './fields'
  */
 
 /**
- * Flash liest deutlich genauer (im Test: schräg fotografierter Lidl-Bon komplett richtig, Flash-Lite
- * hat dort Preise verrutscht), ist aber bei Überlast langsam. Deshalb bekommt Flash bis zu 60 s,
- * danach springt Flash-Lite ein (größeres Kontingent, antwortet meist in wenigen Sekunden).
- * Per GEMINI_MODELS (Komma-Liste) änderbar.
+ * Lesen: Flash-Lite zuerst. Mit der Reihenfolge-Regel im Prompt las es alle Testbons richtig
+ * (npm run eval:receipts, 7/7), antwortet in 1–2 s und hat das größere Tageskontingent. Ist es
+ * erschöpft oder überlastet, springt Flash ein. Per GEMINI_MODELS (Komma-Liste) änderbar.
  */
-export const DEFAULT_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest']
+export const DEFAULT_MODELS = ['gemini-flash-lite-latest', 'gemini-flash-latest']
+
+/**
+ * Selbstkorrektur (nur bei Summen-Abweichung, utils/receiptScan/analyze.ts): das genauere Flash
+ * prüft nach; ist es überlastet, versucht es Flash-Lite. Per GEMINI_REVIEW_MODELS änderbar.
+ */
+export const DEFAULT_REVIEW_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest']
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models'
-/** Wartezeit für das erste (genauere) Modell, danach für jedes Ersatzmodell. */
-export const FIRST_TIMEOUT_MS = 60_000
-export const FALLBACK_TIMEOUT_MS = 30_000
+/** Wartezeit je Modell: Flash ist bei Überlast langsam und bekommt mehr Zeit als Flash-Lite. */
+export const FLASH_TIMEOUT_MS = 60_000
+export const LITE_TIMEOUT_MS = 30_000
+export const timeoutFor = (model: string) => (model.includes('lite') ? LITE_TIMEOUT_MS : FLASH_TIMEOUT_MS)
 
 export type GeminiFile = { mimeType: string; base64: string }
 
@@ -112,10 +118,12 @@ export function buildRequestBody(files: GeminiFile[], followUp?: FollowUp) {
     }
 }
 
-export function modelsFromEnv(value: string | undefined = process.env.GEMINI_MODELS): string[] {
+export function modelsFromEnv(value: string | undefined = process.env.GEMINI_MODELS, fallback: string[] = DEFAULT_MODELS): string[] {
     const list = (value ?? '').split(',').map((m) => m.trim()).filter(Boolean)
-    return list.length > 0 ? list : DEFAULT_MODELS
+    return list.length > 0 ? list : fallback
 }
+
+export const reviewModelsFromEnv = () => modelsFromEnv(process.env.GEMINI_REVIEW_MODELS, DEFAULT_REVIEW_MODELS)
 
 type FetchLike = (url: string, init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal }) => Promise<{
     ok: boolean
@@ -158,8 +166,8 @@ export async function extractReceipt(
     let lastQuota = false
     let timedOut = false
 
-    for (const [i, model] of (opts.models ?? modelsFromEnv()).entries()) {
-        let wait = opts.timeoutMs ?? (i === 0 ? FIRST_TIMEOUT_MS : FALLBACK_TIMEOUT_MS)
+    for (const model of opts.models ?? modelsFromEnv()) {
+        let wait = opts.timeoutMs ?? timeoutFor(model)
         if (opts.deadlineAt !== undefined) wait = Math.min(wait, opts.deadlineAt - Date.now())
         if (wait < 5000) { timedOut = true; break } // keine Zeit mehr für einen sinnvollen Versuch
         let res: Awaited<ReturnType<FetchLike>>

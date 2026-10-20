@@ -1,4 +1,4 @@
-import { extractReceipt, type GeminiFile, type GeminiUsage } from './gemini'
+import { extractReceipt, reviewModelsFromEnv, type GeminiFile, type GeminiUsage } from './gemini'
 import { itemsTotal, validateAnswer, type Finding, type ReceiptResult } from './fields'
 
 /**
@@ -67,6 +67,7 @@ export async function analyzeReceipt(
     try {
         second = await extract(files, {
             deadlineAt: opts.deadlineAt,
+            models: reviewModelsFromEnv(), // das genauere Flash prüft nach
             followUp: { previousAnswer: first.text, feedback: reviewFeedback(reading1.result) },
         })
     } catch {

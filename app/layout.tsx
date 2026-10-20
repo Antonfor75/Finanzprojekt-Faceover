@@ -19,8 +19,8 @@ const manrope = Manrope({
   subsets: ["latin"],
 });
 
-// Server Actions laufen in der Funktion der Seite. Der Kassenbon-Scan wartet bis zu 60 s auf
-// Gemini Flash, danach bis zu 30 s auf Flash-Lite, und fragt bei Summen-Abweichung einmal nach
+// Server Actions laufen in der Funktion der Seite. Der Kassenbon-Scan liest mit Flash-Lite (bis 30 s,
+// sonst Flash bis 60 s) und lässt bei Summen-Abweichung Flash einmal nachprüfen
 // (utils/receiptScan/analyze.ts, Budget 165 s) — daher 180 s.
 export const maxDuration = 180
 
