@@ -99,7 +99,8 @@ export const emailConnectionsTable = pgTable('email_connections', {
     import_since: timestamp('import_since', { withTimezone: true }),
 });
 
-// REWE-E-Mail-Import ist eingestellt (Code entfernt 2026-10-20); Tabellen bleiben, bis die Daten gelöscht sind.
+// REWE-E-Mail-Import ist eingestellt (Code entfernt, Daten gelöscht 2026-10-20); die leeren Tabellen
+// email_connections und rewe_receipts können bei Gelegenheit per Migration entfallen.
 // Dedup + Audit für importierte REWE-eBon-Mails. message_id (RFC822) ist der Idempotenz-Schlüssel.
 export const reweReceiptsTable = pgTable('rewe_receipts', {
     id: serial('id').primaryKey(),
