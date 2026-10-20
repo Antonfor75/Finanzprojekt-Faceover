@@ -50,7 +50,7 @@ describe('Demo-Client', () => {
     })
 
     it('unbekannte Tabelle ergibt einen Fehler statt eines Netzaufrufs', async () => {
-        const { data, error } = await db.from('email_connections').select('*')
+        const { data, error } = await db.from('gibt_es_nicht').select('*')
         expect(data).toBeNull()
         expect(error?.message).toMatch(/Demo/)
     })

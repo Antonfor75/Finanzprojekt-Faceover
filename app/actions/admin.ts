@@ -72,7 +72,6 @@ export async function createUser(email: string, password: string) {
 const USER_TABLES = [
     'pending_receipts',
     'receipt_items',
-    'rewe_receipts',
     'product_aliases',
     'products',
     'fun_group_expenses',
@@ -81,7 +80,6 @@ const USER_TABLES = [
     'fun_accounts_v2',
     'account_transactions',
     'budget_logs',
-    'email_connections',
     'expenses',
     'fixed_costs',
     'accounts',

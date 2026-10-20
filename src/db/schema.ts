@@ -83,37 +83,7 @@ export const budgetLogsTable = pgTable('budget_logs', {
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
 }, (t) => [index('budget_logs_user_id_idx').on(t.user_id)]); // drizzle/0009
 
-// Verbundene E-Mail-Postfächer für den automatischen REWE-Import (ein Postfach pro User).
-// Das Secret (App-Passwort bzw. später OAuth-Refresh-Token) wird AES-256-GCM-verschlüsselt gespeichert.
-export const emailConnectionsTable = pgTable('email_connections', {
-    id: serial('id').primaryKey(),
-    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    user_id: uuid('user_id').default(sql`auth.uid()`).notNull().unique(),
-    provider: text('provider').notNull().default('imap'), // 'imap' jetzt, 'oauth' später
-    email_address: text('email_address').notNull(),
-    secret_encrypted: text('secret_encrypted').notNull(), // verschlüsseltes App-Passwort / Refresh-Token
-    status: text('status').notNull().default('connected'), // 'connected' | 'error'
-    last_sync_at: timestamp('last_sync_at', { withTimezone: true }),
-    last_error: text('last_error'),
-    // Startdatum für den Import: NULL = alle Bons, sonst nur Bons ab diesem Datum.
-    import_since: timestamp('import_since', { withTimezone: true }),
-});
-
-// REWE-E-Mail-Import ist eingestellt (Code entfernt, Daten gelöscht 2026-10-20); die leeren Tabellen
-// email_connections und rewe_receipts können bei Gelegenheit per Migration entfallen.
-// Dedup + Audit für importierte REWE-eBon-Mails. message_id (RFC822) ist der Idempotenz-Schlüssel.
-export const reweReceiptsTable = pgTable('rewe_receipts', {
-    id: serial('id').primaryKey(),
-    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
-    message_id: text('message_id').notNull().unique(), // Idempotenz-Schlüssel gegen Doppel-Import
-    receipt_date: text('receipt_date'), // ISO-String des Bon-Datums
-    total_amount: numeric('total_amount'),
-    expense_id: integer('expense_id'), // Verweis auf die erzeugte Ausgabe
-    raw_subject: text('raw_subject'),
-    raw_text: text('raw_text'), // zeilenweiser eBon-Text für die KI-Auswertung auf dem Handy
-    imported_at: timestamp('imported_at', { withTimezone: true }).defaultNow().notNull(),
-}, (t) => [index('rewe_receipts_user_id_idx').on(t.user_id)]); // drizzle/0009
+// email_connections und rewe_receipts (REWE-E-Mail-Import) wurden 2026-10-20 entfernt — drizzle/0011.
 
 // Artikelzeilen zu einer Ausgabe — optionale Zusatzinfo (aus Bon-Import oder später manuell).
 // Hängt bewusst an expense_id (nicht an rewe_receipts), damit manuelle Artikel und
