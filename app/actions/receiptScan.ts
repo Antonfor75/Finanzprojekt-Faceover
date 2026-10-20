@@ -169,6 +169,16 @@ export async function analyzePendingReceipt(id: string): Promise<Result<PendingR
     return { ok: true, data: data as PendingReceiptRow }
 }
 
+/**
+ * Ist der Scan für dieses Konto (noch) freigeschaltet? Frisch vom Auth-Server — die Sitzung im
+ * Browser kennt eine Abschaltung in der Chefansicht erst nach der nächsten Token-Erneuerung.
+ * Wird nur von Konten aufgerufen, deren Sitzung "freigeschaltet" sagt.
+ */
+export async function getReceiptScanAccess(): Promise<boolean> {
+    const auth = await currentUser(true)
+    return !('error' in auth)
+}
+
 /** Laufende Auswertung abbrechen — der Bon bleibt offen und wird von Hand ausgefüllt. */
 export async function cancelPendingReceipt(id: string): Promise<Result<PendingReceiptRow>> {
     const auth = await currentUser(false)

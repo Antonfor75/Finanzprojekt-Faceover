@@ -3,14 +3,12 @@
 import { getDemoClient, type Row } from './demoClient'
 import { processMonthlyDistributions } from '@/utils/distributions'
 import type { BulkImportPayload } from '@/app/actions/import'
-import type { ConnectionStatus } from '@/app/actions/emailConnection'
 import {
     planTransfer, validateTransferInput, directionFromGiroAmount, giroExpenseAmount, funEffect, roundCents,
     type TransferInput, type TransferDirection,
 } from '@/utils/transfer'
 
 const db = () => getDemoClient()
-const NOT_IN_DEMO = 'In der Demo nicht verfügbar — leg dir ein Konto an, um diese Funktion zu nutzen.'
 
 async function getAccount(id: number) {
     const { data } = await db().from('accounts').select('*').eq('id', id).single()
@@ -214,24 +212,6 @@ export async function bulkImportAll(payload: BulkImportPayload) {
         results.accounts = payload.accounts.length
     }
     return { success: true, results }
-}
-
-// --- REWE-Postfach: braucht einen Server, gibt es in der Demo nicht -----------
-
-export async function getEmailConnectionStatus(): Promise<ConnectionStatus> {
-    return { connected: false }
-}
-
-export async function saveEmailConnection() {
-    return { success: false, error: NOT_IN_DEMO }
-}
-
-export async function runReweSyncNow() {
-    return { success: false as const, error: NOT_IN_DEMO }
-}
-
-export async function deleteEmailConnection() {
-    return { success: false, error: NOT_IN_DEMO }
 }
 
 // --- Umbuchungen Girokonto <-> Spaßkonto ---------------------------------------

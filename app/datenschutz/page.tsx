@@ -40,13 +40,6 @@ export default function DatenschutzPage() {
                     Spaßkonto-Gruppen, Einstellungen sowie — falls genutzt — Kassenbon-Artikel.
                     Diese Daten sind nur für dich sichtbar (technisch abgesichert über Row-Level-Security).
                 </p>
-                <h3>Optional: REWE-Bon-Import per E-Mail</h3>
-                <p>
-                    Wenn du den Import aktivierst, werden die Zugangsdaten zu deinem E-Mail-Postfach
-                    verschlüsselt gespeichert. Die App liest damit ausschließlich E-Mails mit digitalen
-                    REWE-Kassenbons und speichert Datum, Betrag, Bon-Text und Artikel. Du kannst die
-                    Verbindung jederzeit in den Einstellungen trennen; die Zugangsdaten werden dann gelöscht.
-                </p>
                 <h3>Optional: Kassenbon-Scan (nur für freigeschaltete Konten)</h3>
                 <p>
                     Ist der Kassenbon-Scan für dein Konto freigeschaltet und fotografierst du einen Bon oder
@@ -73,9 +66,6 @@ export default function DatenschutzPage() {
                     <li>
                         Sicherer und stabiler Betrieb (Server-Logs, Sitzungsverwaltung): Art. 6 Abs. 1 lit. f
                         DSGVO — berechtigtes Interesse an einem funktionierenden, sicheren Dienst.
-                    </li>
-                    <li>
-                        REWE-Bon-Import: Art. 6 Abs. 1 lit. b DSGVO, nur wenn du ihn selbst einschaltest.
                     </li>
                     <li>
                         Kassenbon-Scan: Art. 6 Abs. 1 lit. b DSGVO, nur wenn du selbst einen Bon scannst.

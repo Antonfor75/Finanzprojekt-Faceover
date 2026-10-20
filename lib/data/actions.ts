@@ -6,7 +6,6 @@ import * as funAccount from '@/app/actions/funAccount'
 import * as funGroups from '@/app/actions/funGroups'
 import * as savings from '@/app/actions/savings'
 import * as importActions from '@/app/actions/import'
-import * as email from '@/app/actions/emailConnection'
 import * as transfers from '@/app/actions/transfers'
 import * as startup from '@/app/actions/startup'
 
@@ -22,7 +21,6 @@ function route<F extends (...args: any[]) => Promise<any>>(live: F, local: keyof
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-export type { ConnectionStatus } from '@/app/actions/emailConnection'
 
 export const addFunAccount = route(funAccount.addFunAccount, 'addFunAccount')
 export const depositToFunAccount = route(funAccount.depositToFunAccount, 'depositToFunAccount')
@@ -52,7 +50,3 @@ export const createTransfer = route(transfers.createTransfer, 'createTransfer')
 export const updateTransfer = route(transfers.updateTransfer, 'updateTransfer')
 export const deleteTransfer = route(transfers.deleteTransfer, 'deleteTransfer')
 
-export const saveEmailConnection = route(email.saveEmailConnection, 'saveEmailConnection')
-export const getEmailConnectionStatus = route(email.getEmailConnectionStatus, 'getEmailConnectionStatus')
-export const runReweSyncNow = route(email.runReweSyncNow, 'runReweSyncNow')
-export const deleteEmailConnection = route(email.deleteEmailConnection, 'deleteEmailConnection')

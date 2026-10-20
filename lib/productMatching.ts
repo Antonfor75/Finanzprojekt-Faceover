@@ -3,8 +3,8 @@ import { normalizeProductName, prettyProductName, similarity, SIMILARITY_THRESHO
 
 /**
  * Ordnet Bon-Rohnamen kanonischen Produkten zu (store-übergreifend) — der DB-Teil
- * des Matchings. Läuft im Sync-Kontext mit supabaseAdmin, daher explizites userId
- * (Muster wie lib/reweSync.ts).
+ * des Matchings. Läuft serverseitig mit supabaseAdmin, daher explizites userId
+ * (Muster wie die Server Actions mit supabaseAdmin).
  *
  * Ablauf pro Name: normalisieren → exakter Alias-Treffer → sonst Fuzzy gegen
  * bestehende Produkte (Alias wird gelernt) → sonst neues Produkt + Alias.

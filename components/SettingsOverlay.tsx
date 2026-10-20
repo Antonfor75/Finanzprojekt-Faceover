@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { applyTheme, loadTheme, getSavedTheme, THEMES } from '@/utils/theme'
-import { ChevronRight, LogOut, Download, Upload, FileText, HelpCircle, ShoppingBag, Sparkles } from 'lucide-react'
+import { ChevronRight, LogOut, Download, Upload, FileText, HelpCircle, Sparkles } from 'lucide-react'
 import ImportWizard from '@/components/ImportWizard'
 import HelpModal from '@/components/HelpModal'
 import AccountLegalSection from '@/components/legal/AccountLegalSection'
@@ -11,14 +11,12 @@ import { preloadPdf, withPdf } from '@/lib/pdf'
 import FunAccountHub from '@/components/FunAccountHub'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
 import { Button } from '@/components/ui/button'
-import { useReweConnection } from '@/components/settings/useReweConnection'
 import { useIncomeEditor } from '@/components/settings/useIncomeEditor'
 import { useAccountEditor } from '@/components/settings/useAccountEditor'
 import { useFixedCostEditor } from '@/components/settings/useFixedCostEditor'
 import AccountsView from '@/components/settings/AccountsView'
 import FixedCostsView from '@/components/settings/FixedCostsView'
 import IncomeView from '@/components/settings/IncomeView'
-import ReweConnectView from '@/components/settings/ReweConnectView'
 import { downloadFullReport } from '@/components/settings/fullReport'
 import { restoreBackup } from '@/components/settings/restoreBackup'
 
@@ -40,9 +38,6 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [showFixedCosts, setShowFixedCosts] = useState(false)
     const [showFunHub, setShowFunHub] = useState(false)
 
-    // REWE / Gmail-Verbindung
-    const [showReweConnect, setShowReweConnect] = useState(false)
-
     // Income Sources State
     const [showIncome, setShowIncome] = useState(false)
 
@@ -50,11 +45,9 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // Accounts State
     const [showAccounts, setShowAccounts] = useState(false)
 
-    const rewe = useReweConnection(onUpdate)
     const incomeEditor = useIncomeEditor(onUpdate)
     const accountEditor = useAccountEditor(accounts, fixedCosts, onUpdate)
     const fixedCostEditor = useFixedCostEditor(fixedCosts, onUpdate)
-    const reweStatus = rewe.reweStatus
 
     const [currentTheme, setCurrentTheme] = useState('rose')
 
@@ -171,10 +164,6 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
         return <IncomeView editor={incomeEditor} onBack={() => setShowIncome(false)} incomeSources={incomeSources} budget={budget} />
     }
 
-    // --- REWE / GMAIL CONNECT SUB-VIEW ---
-    if (showReweConnect) {
-        return <ReweConnectView rewe={rewe} onBack={() => setShowReweConnect(false)} />
-    }
 
     // --- MAIN SETTINGS VIEW ---
     return (
@@ -269,32 +258,6 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                             <span className="text-base font-semibold text-foreground">Spaßkonto</span>
                         </div>
                         <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
-                    </button>
-                </div>
-
-                {/* Automatik */}
-                <div className="flex flex-col mb-10">
-                    <p className="eyebrow mb-2">Automatik</p>
-
-                    <button
-                        onClick={() => setShowReweConnect(true)}
-                        className="ledger-row w-full text-left group cursor-pointer"
-                    >
-                        <div className="flex items-center gap-3">
-                            <ShoppingBag className="w-5 h-5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-                            <div className="flex flex-col">
-                                <span className="text-base font-semibold text-foreground">REWE Import</span>
-                                <span className="text-xs text-muted-foreground mt-0.5">
-                                    {reweStatus?.connected ? `Verbunden · ${reweStatus.email_address}` : 'Postfach verbinden'}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            {reweStatus?.connected && (
-                                <span className={`w-2 h-2 rounded-full ${reweStatus.status === 'error' ? 'bg-[var(--chart-neg-heavy)]' : 'bg-[var(--chart-pos)]'}`} />
-                            )}
-                            <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
-                        </div>
                     </button>
                 </div>
 

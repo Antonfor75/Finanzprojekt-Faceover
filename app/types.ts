@@ -71,19 +71,6 @@ export type IncomeSource = {
     user_id?: string
 }
 
-export type EmailConnection = {
-    id: number
-    created_at?: string
-    user_id?: string
-    provider: 'imap' | 'oauth'
-    email_address: string
-    // secret_encrypted wird NIE ans Frontend gegeben
-    status: 'connected' | 'error'
-    last_sync_at?: string | null
-    last_error?: string | null
-    import_since?: string | null // null = alle Bons, sonst Startdatum
-}
-
 export type ReceiptItem = {
     id: number
     created_at?: string
@@ -95,7 +82,7 @@ export type ReceiptItem = {
     unit?: 'stk' | 'kg' | null
     unit_price?: number | null
     total_price: number
-    source: 'rewe' | 'manual'
+    source: 'rewe' | 'manual' // 'rewe' = früherer E-Mail-Import (eingestellt), Daten bleiben
 }
 
 export type Product = {
@@ -104,18 +91,6 @@ export type Product = {
     user_id?: string
     name: string
     category?: string | null
-}
-
-export type ReweReceipt = {
-    id: number
-    created_at?: string
-    user_id?: string
-    message_id: string
-    receipt_date?: string | null
-    total_amount?: number | null
-    expense_id?: number | null
-    raw_subject?: string | null
-    imported_at?: string
 }
 
 // Spaßkonto v2: ein Konto pro User, optionale Gruppen mit Zeitraum.

@@ -33,6 +33,12 @@ export async function setReceiptScan(userId: string, enabled: boolean) {
         if (!userId) throw new Error('userId fehlt.')
         const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { app_metadata: { receipt_scan: enabled } })
         if (error) throw new Error(error.message)
+        if (!enabled) {
+            // Ausgeschaltet: offene Bons samt Fotos weg — sie ließen sich ohnehin nicht mehr öffnen.
+            await removeAllReceiptImages(userId)
+            const { error: delError } = await supabaseAdmin.from('pending_receipts').delete().eq('user_id', userId)
+            if (delError) throw new Error(delError.message)
+        }
         return { success: true as const }
     } catch (error) {
         return { success: false as const, error: error instanceof Error ? error.message : 'Unbekannter Fehler' }
