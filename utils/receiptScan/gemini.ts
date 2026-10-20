@@ -51,7 +51,8 @@ export const RECEIPT_PROMPT = [
     `- kategorie: genau eine aus: ${RECEIPT_CATEGORIES.join(', ')}. Supermarkt, Bäcker, Restaurant, Imbiss → Essen; Drogerie, Kosmetik → Schminki Schminki; Kleidung, Elektronik, Haushalt → Shoppi; Kino, Sport, Ausflug, Bar → Freizeit; sonst Sonstiges.`,
     '- artikel: jede gekaufte Position in Bon-Reihenfolge: name so wie auf dem Bon, menge (Stückzahl oder kg, sonst 1), einheit ("kg" bei Gewicht, sonst "stk"), preis = Zeilenpreis in Euro.',
     '  Pfand-Rückgabe, Rabatte und Coupons sind eigene Zeilen mit negativem preis.',
-    '  Mehrfachkauf steht oft als "Einzelpreis x Anzahl" unter oder neben dem Artikel (z. B. "0,79 x 2" und rechts "1,58"): dann menge = 2 und preis = 1,58. Jeder Artikel hat seinen eigenen Preis aus seiner Zeile; der Gesamtbetrag gehört zu keinem Artikel.',
+    '  Die Preise rechts stehen in derselben Reihenfolge wie die Artikel: der 1. Preis gehört zum 1. Artikel, der 2. zum 2. usw. Bei schräg fotografierten Bons wirkt die Preisspalte oft um eine Zeile verschoben — zuordnen nach Reihenfolge, nicht nach Höhe.',
+    '  Mehrfachkauf steht als "Einzelpreis x Anzahl" (z. B. "0,79 x 2" mit Zeilenpreis "1,58") in der Zeile des Artikels oder direkt darunter: dann menge = 2 und preis = 1,58. Jeder Artikel hat genau einen Preis; der Gesamtbetrag gehört zu keinem Artikel.',
     '  Summen-, Zwischensummen-, Zahlungs-, Steuer- und Rückgeldzeilen sind KEINE Artikel.',
 ].join('\n')
 
@@ -83,15 +84,26 @@ export const RECEIPT_SCHEMA = {
     propertyOrdering: ['ist_kassenbon', 'laden', 'datum', 'summe', 'kategorie', 'artikel'],
 }
 
-export function buildRequestBody(files: GeminiFile[]) {
+/** Rückfrage nach einer ersten Antwort: das Modell sieht seine Antwort und einen konkreten Prüfhinweis. */
+export type FollowUp = { previousAnswer: string; feedback: string }
+
+export function buildRequestBody(files: GeminiFile[], followUp?: FollowUp) {
     return {
-        contents: [{
-            role: 'user',
-            parts: [
-                ...files.map((f) => ({ inlineData: { mimeType: f.mimeType, data: f.base64 } })),
-                { text: RECEIPT_PROMPT },
-            ],
-        }],
+        contents: [
+            {
+                role: 'user',
+                parts: [
+                    ...files.map((f) => ({ inlineData: { mimeType: f.mimeType, data: f.base64 } })),
+                    { text: RECEIPT_PROMPT },
+                ],
+            },
+            ...(followUp
+                ? [
+                    { role: 'model', parts: [{ text: followUp.previousAnswer }] },
+                    { role: 'user', parts: [{ text: followUp.feedback }] },
+                ]
+                : []),
+        ],
         generationConfig: {
             temperature: 0,
             responseMimeType: 'application/json',
@@ -127,25 +139,36 @@ function answerText(body: unknown): string | null {
  */
 export async function extractReceipt(
     files: GeminiFile[],
-    opts: { apiKey?: string; models?: string[]; fetch?: FetchLike; timeoutMs?: number } = {},
-): Promise<{ answer: Record<string, unknown>; model: string; modelVersion?: string; usage?: GeminiUsage }> {
+    opts: {
+        apiKey?: string
+        models?: string[]
+        fetch?: FetchLike
+        timeoutMs?: number
+        /** Zeitpunkt (ms), bis zu dem spätestens fertig sein muss — kürzt die Wartezeit je Modell. */
+        deadlineAt?: number
+        followUp?: FollowUp
+    } = {},
+): Promise<{ answer: Record<string, unknown>; text: string; model: string; modelVersion?: string; usage?: GeminiUsage }> {
     const apiKey = opts.apiKey ?? process.env.GEMINI_API_KEY
     if (!apiKey) throw new GeminiError('Die Bon-Auswertung ist noch nicht eingerichtet (GEMINI_API_KEY fehlt).', 'config')
     if (files.length === 0) throw new GeminiError('Kein Bild zum Auswerten.', 'failed')
 
     const doFetch = opts.fetch ?? (fetch as unknown as FetchLike)
-    const body = JSON.stringify(buildRequestBody(files))
+    const body = JSON.stringify(buildRequestBody(files, opts.followUp))
     let lastQuota = false
     let timedOut = false
 
     for (const [i, model] of (opts.models ?? modelsFromEnv()).entries()) {
+        let wait = opts.timeoutMs ?? (i === 0 ? FIRST_TIMEOUT_MS : FALLBACK_TIMEOUT_MS)
+        if (opts.deadlineAt !== undefined) wait = Math.min(wait, opts.deadlineAt - Date.now())
+        if (wait < 5000) { timedOut = true; break } // keine Zeit mehr für einen sinnvollen Versuch
         let res: Awaited<ReturnType<FetchLike>>
         try {
             res = await doFetch(`${ENDPOINT}/${model}:generateContent`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
                 body,
-                signal: AbortSignal.timeout(opts.timeoutMs ?? (i === 0 ? FIRST_TIMEOUT_MS : FALLBACK_TIMEOUT_MS)),
+                signal: AbortSignal.timeout(wait),
             })
         } catch (err) {
             const timeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')
@@ -181,7 +204,7 @@ export async function extractReceipt(
             const parsed = JSON.parse(text)
             if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('kein Objekt')
             const modelVersion = (json as { modelVersion?: string })?.modelVersion
-            return { answer: parsed as Record<string, unknown>, model, modelVersion, usage: usageOf(json) }
+            return { answer: parsed as Record<string, unknown>, text, model, modelVersion, usage: usageOf(json) }
         } catch {
             throw new GeminiError('Die Antwort von Gemini war nicht lesbar.', 'failed')
         }

@@ -37,6 +37,15 @@ describe('validateAnswer', () => {
         expect(findings.map((f) => f.code)).toEqual(['items_dropped'])
     })
 
+    it('krumme Menge ohne kg ist ein verlesener Preis → Menge 1', () => {
+        const { result } = validateAnswer(answer({ artikel: [
+            { name: 'Schokodonut', menge: 0.79, einheit: 'stk', preis: 0.59 },
+            { name: 'Ingwer', menge: 0.134, einheit: 'kg', preis: 0.8 },
+        ] }), NOW)
+        expect(result.items[0]).toMatchObject({ quantity: 1, unitPrice: null })
+        expect(result.items[1]).toMatchObject({ quantity: 0.134, unit: 'kg' })
+    })
+
     it('meldet eine abweichende Artikelsumme nur als Warnung', () => {
         const { result, findings } = validateAnswer(answer({ summe: 9.99 }), NOW)
         expect(result.ok).toBe(true)
@@ -129,7 +138,7 @@ describe('deriveFields', () => {
 describe('offene Bons', () => {
     const now = Date.parse('2026-10-20T12:00:00Z')
 
-    it('hängende Auswertung gilt nach 3 Minuten als unterbrochen', () => {
+    it('hängende Auswertung gilt nach 4 Minuten als unterbrochen', () => {
         expect(isStale(row({ status: 'reading', started_at: '2026-10-20T11:59:00Z' }), now)).toBe(false)
         expect(isStale(row({ status: 'reading', started_at: '2026-10-20T11:50:00Z' }), now)).toBe(true)
         expect(isStale(row({ status: 'ready', started_at: '2026-10-20T11:50:00Z' }), now)).toBe(false)
@@ -252,6 +261,18 @@ describe('extractReceipt', () => {
     it('unlesbare Antwort → failed', async () => {
         const { fn } = fakeFetch([{ status: 200, body: { candidates: [{ content: { parts: [{ text: 'kein json' }] } }] } }])
         await expect(extractReceipt([file], { apiKey: 'x', models: ['a'], fetch: fn })).rejects.toMatchObject({ kind: 'failed' })
+    })
+
+    it('Rückfrage: eigene Antwort + Hinweis als weitere Gesprächsrunden', () => {
+        const body = buildRequestBody([file], { previousAnswer: '{"summe":3.41}', feedback: 'Prüfe deine Antwort' })
+        expect(body.contents.map((c) => c.role)).toEqual(['user', 'model', 'user'])
+        expect(body.contents[1].parts[0]).toEqual({ text: '{"summe":3.41}' })
+    })
+
+    it('Frist kürzt die Wartezeit; ohne Restzeit kein Aufruf', async () => {
+        const { fn, calls } = fakeFetch([])
+        await expect(extractReceipt([file], { apiKey: 'k', models: ['a'], fetch: fn, deadlineAt: Date.now() + 1000 })).rejects.toThrow(/zu lange/)
+        expect(calls).toHaveLength(0)
     })
 
     it('mehrere Seiten gehen in eine Anfrage', () => {

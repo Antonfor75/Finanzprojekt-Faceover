@@ -6,9 +6,10 @@ import { createClient } from '@/utils/supabase/server'
 import { supabaseAdmin } from '@/utils/supabase/admin'
 import { createProductMatcher } from '@/lib/productMatching'
 import { RECEIPT_BUCKET as BUCKET, removeReceiptImages as removeImages } from '@/lib/receiptScanStorage'
-import { extractReceipt, GeminiError, type GeminiFile } from '@/utils/receiptScan/gemini'
+import { GeminiError, type GeminiFile } from '@/utils/receiptScan/gemini'
+import { analyzeReceipt } from '@/utils/receiptScan/analyze'
 import {
-    hasReceiptScan, parseAmountInput, validateAnswer, RECEIPT_CATEGORIES,
+    hasReceiptScan, parseAmountInput, RECEIPT_CATEGORIES,
     type Fields, type PendingReceiptRow,
 } from '@/utils/receiptScan/fields'
 
@@ -31,6 +32,8 @@ const ALLOWED_TYPES: Record<string, string> = {
     'application/pdf': 'pdf',
 }
 const NOT_ENABLED = 'Der Kassenbon-Scan ist für dein Konto nicht freigeschaltet.'
+/** Zeit für Lesen + Selbstkorrektur, mit Luft bis maxDuration = 180 s (app/layout.tsx). */
+const ANALYSIS_BUDGET_MS = 165_000
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error })
@@ -66,6 +69,7 @@ async function loadRow(userId: string, id: string): Promise<PendingReceiptRow | 
  * verfällt dieses Ergebnis (Abgleich über started_at).
  */
 async function runAnalysis(userId: string, id: string, startedAt: string): Promise<void> {
+    const deadlineAt = Date.now() + ANALYSIS_BUDGET_MS
     const row = await loadRow(userId, id)
     if (!row) return
     const imagePaths = ownImagePaths(userId, row)
@@ -79,8 +83,8 @@ async function runAnalysis(userId: string, id: string, startedAt: string): Promi
             if (error || !data) throw new GeminiError('Das Bild des Bons ist nicht mehr da.', 'failed')
             files.push({ mimeType: data.type || 'image/jpeg', base64: Buffer.from(await data.arrayBuffer()).toString('base64') })
         }
-        const { answer, model, usage } = await extractReceipt(files)
-        const { result, findings } = validateAnswer(answer)
+        // Bis kurz vor dem Zeitlimit der Funktion (maxDuration in app/layout.tsx) — inkl. Selbstkorrektur.
+        const { result, findings, model, usage } = await analyzeReceipt(files, { deadlineAt })
         patch = {
             status: 'ready',
             result: { ...result, model, usage },

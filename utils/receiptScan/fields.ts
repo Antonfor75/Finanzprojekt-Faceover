@@ -152,12 +152,14 @@ export function validateAnswer(answer: Record<string, unknown>, now: Date = new 
         const price = asNumber(e.preis)
         if (!name || price === null || price === 0 || isNonItemName(name)) { dropped++; continue }
         const q = asNumber(e.menge)
-        const quantity = q !== null && q > 0 ? q : 1
+        const unit = e.einheit === 'kg' ? 'kg' : null
+        // Krumme Mengen gibt es nur bei Gewichtsware; sonst hat das Modell einen Preis ("0,79") als Menge gelesen.
+        const quantity = q !== null && q > 0 && (unit === 'kg' || Number.isInteger(q)) ? q : 1
         const totalPrice = round2(price)
         items.push({
             nameRaw: name,
             quantity,
-            unit: e.einheit === 'kg' ? 'kg' : null,
+            unit,
             unitPrice: quantity !== 1 ? round2(totalPrice / quantity) : null,
             totalPrice,
         })
@@ -235,7 +237,7 @@ export function parseAmountInput(value: string): number {
 // ---------------------------------------------------------------- Zustand und Reihenfolge
 
 /** Länger als das hier "liest" ein Bon nicht — sonst ist die Auswertung abgebrochen (Seite geschlossen, Zeitlimit). */
-export const STALE_READING_MS = 3 * 60 * 1000
+export const STALE_READING_MS = 4 * 60 * 1000
 
 /** Ist die Auswertung hängen geblieben? Dann darf man neu starten oder selbst eintragen. */
 export function isStale(row: Pick<PendingReceiptRow, 'status' | 'started_at' | 'created_at'>, now: number = Date.now()): boolean {
