@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { applyTheme, loadTheme, getSavedTheme, THEMES } from '@/utils/theme'
-import { ChevronRight, LogOut, Download, Upload, FileText, HelpCircle, Sparkles } from 'lucide-react'
+import { ChevronRight, LogOut, Download, Upload, FileText, HelpCircle, Sparkles, Users } from 'lucide-react'
 import ImportWizard from '@/components/ImportWizard'
 import HelpModal from '@/components/HelpModal'
 import AccountLegalSection from '@/components/legal/AccountLegalSection'
 // Set worker source for pdfjs
 import { preloadPdf, withPdf } from '@/lib/pdf'
 import FunAccountHub from '@/components/FunAccountHub'
+import FriendLinkScreen from '@/components/sharing/FriendLinkScreen'
+import { isDemoMode } from '@/lib/data/mode'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
 import { Button } from '@/components/ui/button'
 import { useIncomeEditor } from '@/components/settings/useIncomeEditor'
@@ -37,6 +39,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     const [showHelp, setShowHelp] = useState(false)
     const [showFixedCosts, setShowFixedCosts] = useState(false)
     const [showFunHub, setShowFunHub] = useState(false)
+    const [showFriendLink, setShowFriendLink] = useState(false)
 
     // Income Sources State
     const [showIncome, setShowIncome] = useState(false)
@@ -143,6 +146,11 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- ACCOUNTS SUB-VIEW ---
     if (showAccounts) {
         return <AccountsView editor={accountEditor} onBack={() => setShowAccounts(false)} accounts={accounts} fixedCosts={fixedCosts} />
+    }
+
+    // --- GEMEINSAM TEILEN (Freund verknüpfen) ---
+    if (showFriendLink) {
+        return <FriendLinkScreen onBack={() => setShowFriendLink(false)} />
     }
 
     // --- SPASSKONTO (GRUPPEN) SUB-VIEW ---
@@ -259,6 +267,19 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </div>
                         <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
                     </button>
+
+                    {!isDemoMode() && (
+                        <button
+                            onClick={() => setShowFriendLink(true)}
+                            className="ledger-row w-full text-left group cursor-pointer"
+                        >
+                            <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4 text-partner" strokeWidth={1.75} />
+                                <span className="text-base font-semibold text-foreground">Gemeinsam teilen</span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
+                        </button>
+                    )}
                 </div>
 
                 {/* Design */}

@@ -24,6 +24,12 @@ import { calculateGirokontoTimeline } from '@/utils/girokonto'
 import { expenseEditPatch, isSpendingExpense, isTransferExpense } from '@/utils/transfer'
 import { preloadPdf, withPdf } from '@/lib/pdf'
 import { useReceiptScanEnabled } from '@/utils/receiptScan/useReceiptScanEnabled'
+import { isDemoMode } from '@/lib/data/mode'
+import { actGetFriendState, actRespondFriendRequest, actMarkSharesSeen } from '@/app/actions/sharing'
+import FriendRequestLetter from '@/components/sharing/FriendRequestLetter'
+import SharesChangedBanner from '@/components/sharing/SharesChangedBanner'
+import { bannerFor, letterFor, settle } from '@/components/sharing/friendLinkModel'
+import type { FriendState } from '@/utils/sharing/types'
 
 import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 
@@ -225,6 +231,36 @@ export default function MobileDashboard({
         return () => clearTimeout(t)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []) // Run ONCE on mount. onUpdate dependency caused infinite loop.
+
+    // --- GETEILTE EINKÄUFE: Brief (eingehende Anfrage) und Hinweis-Banner beim Start ---
+    // Ein Fehler (z. B. offline) darf das Dashboard nicht stören: dann gibt es einfach weder Brief noch Banner.
+    const [friendState, setFriendState] = useState<FriendState | null>(null)
+    useEffect(() => {
+        if (isDemoMode()) return
+        let cancelled = false
+        settle(actGetFriendState()).then(res => {
+            if (cancelled) return
+            if (res.ok) setFriendState(res.data)
+            else console.warn('Freundschaftsstand nicht geladen:', res.error)
+        })
+        return () => { cancelled = true }
+    }, [])
+    const letter = friendState ? letterFor(friendState) : null
+    const sharesBanner = friendState ? bannerFor(friendState) : null
+
+    const answerLetter = async (accept: boolean): Promise<string | null> => {
+        if (!letter) return null
+        const res = await settle(actRespondFriendRequest(letter.id, accept))
+        if (!res.ok) return res.error
+        setFriendState(res.data)
+        return null
+    }
+
+    const openSharedChanges = () => {
+        setFriendState(s => (s ? { ...s, unseenShares: 0 } : s))
+        setView('history')
+        settle(actMarkSharesSeen()).then(res => { if (!res.ok) console.warn('Als gesehen markieren fehlgeschlagen:', res.error) })
+    }
 
     // --- CALCULATE GIROKONTO BALANCE (Dynamic Net Cashflow) ---
     // Einmal rechnen und an Girokonto- und Analyse-Ansicht weiterreichen. Die Simulation
@@ -591,6 +627,10 @@ export default function MobileDashboard({
 
     return (
         <div id="dashboard-container" className="fixed inset-0 h-[100dvh] w-screen overflow-hidden relative transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-foreground">
+
+            {sharesBanner && (
+                <SharesChangedBanner count={sharesBanner.count} friendHandle={sharesBanner.friendHandle} onOpen={openSharedChanges} />
+            )}
 
             {/* === ENTRY VIEW: FOKUS-RING (Konzept A) + INSIGHTS (Konzept B) === */}
             {view === 'entry' && (
@@ -983,6 +1023,11 @@ export default function MobileDashboard({
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Eingehende Freundschaftsanfrage als Brief (Vollbild) */}
+            {letter && (
+                <FriendRequestLetter key={letter.id} request={letter} ownHandle={friendState?.handle} onAnswer={answerLetter} />
+            )}
 
             {/* Beleg-Scanner (Vollbild) */}
             {showScanner && (
