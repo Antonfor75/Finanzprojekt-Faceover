@@ -31,6 +31,7 @@ import SharesChangedBanner from '@/components/sharing/SharesChangedBanner'
 import { bannerFor, letterFor, settle } from '@/components/sharing/friendLinkModel'
 import type { FriendState } from '@/utils/sharing/types'
 import { groupItemsByExpense } from '@/utils/receiptItems'
+import { redirectToShare } from '@/components/sharing/shareSheetModel'
 
 import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 
@@ -249,6 +250,12 @@ export default function MobileDashboard({
 
     // Teilen-Fenster: die Ausgabe, die gerade geteilt wird (Stand beim Öffnen, danach der frische aus der Liste).
     const [shareExpense, setShareExpense] = useState<Expense | null>(null)
+    // Löschen/Ändern einer geteilten Ausgabe und „Teilen“ im Verlauf: ohne geladenen Freund Meldung statt wirkungslosem Tipp.
+    const requestShare = (expense: Expense) => {
+        const r = redirectToShare(expense, !!friend, 'delete')
+        if (r.open) setShareExpense(expense)
+        else if (r.message) alert(r.message)
+    }
     const shareTarget = shareExpense ? (serverExpenses.find(e => e.id === shareExpense.id) ?? shareExpense) : null
     const letter = friendState ? letterFor(friendState) : null
     const sharesBanner = friendState ? bannerFor(friendState) : null
@@ -300,7 +307,7 @@ export default function MobileDashboard({
         // Geteilte Ausgabe: Betrag und Datum nur über „Teilung ändern“ (sonst weicht die Kopie des Partners ab).
         if (existing?.shared_purchase_id && (Number(existing.amount) !== amount || existing.expense_date.slice(0, 10) !== expense_date.slice(0, 10))) {
             const blocked = sharedExpenseGuard(existing, 'update-amount')
-            if (blocked) { alert(blocked); setShareExpense(existing); return } // danach gleich „Teilung ändern“ öffnen
+            if (blocked) { alert(blocked); if (redirectToShare(existing, !!friend, 'update-amount').open) setShareExpense(existing); return } // danach gleich „Teilung ändern“ öffnen
         }
 
         if (existing?.transfer_id) {
@@ -879,7 +886,7 @@ export default function MobileDashboard({
                     products={products}
                     receiptsLoading={receiptsLoading}
                     friend={friend}
-                    onShare={setShareExpense}
+                    onShare={requestShare}
                 />
             )}
 

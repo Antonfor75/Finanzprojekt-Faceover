@@ -4,7 +4,7 @@ import type { ShareItem, SharedPurchase } from '@/utils/sharing/types'
 import {
     allToOwner, amountsFor, boardLayout, buildSaveInput, columnCents, deleteConfirmText, initialSplit, itemsForBoard,
     itemsMismatch, moveItem, parseEuroInput, roleIn, shareAction, shareActionLabel, shareItemsFromReceipt,
-    shareSheetTitle, splitFromAmountInput, splitFromItems, splitFromPercent, splitFromViewPercent, swimClass, unshareConfirmText, viewPercent,
+    redirectToShare, shareSheetTitle, splitFromAmountInput, splitFromItems, splitFromPercent, splitFromViewPercent, swimClass, unshareConfirmText, viewPercent,
 } from './shareSheetModel'
 
 const exp = (over: Partial<Expense> = {}): Expense => ({
@@ -84,6 +84,23 @@ describe('Texte', () => {
         expect(unshareConfirmText('partner', 'anton')).toContain('ganz bei anton')
         expect(unshareConfirmText('partner', 'anton')).toContain('bei dir verschwindet')
         expect(deleteConfirmText('lena')).toContain('bei dir und bei lena')
+    })
+})
+
+describe('redirectToShare', () => {
+    it('öffnet das Fenster, wenn der Freund bekannt ist', () => {
+        expect(redirectToShare({ shared_purchase_id: 'sp1' }, true, 'delete')).toEqual({ open: true })
+    })
+    it('meldet sich statt still nichts zu tun, wenn der Freund fehlt', () => {
+        expect(redirectToShare({ shared_purchase_id: 'sp1' }, false, 'delete')).toEqual({
+            open: false, message: 'Geteilte Ausgabe – bitte über „Für beide löschen“ entfernen.',
+        })
+        expect(redirectToShare({ shared_purchase_id: 'sp1' }, false, 'update-amount')).toEqual({
+            open: false, message: 'Geteilte Ausgabe – Betrag über „Teilung ändern“ anpassen.',
+        })
+    })
+    it('hat bei nicht geteilter Ausgabe ohne Freund keine Meldung', () => {
+        expect(redirectToShare({ shared_purchase_id: null }, false, 'delete')).toEqual({ open: false, message: null })
     })
 })
 
@@ -173,6 +190,10 @@ describe('initialSplit', () => {
     })
     it('nimmt vor dem Laden den Gesamtbetrag einer schon geteilten Ausgabe aus share_total', () => {
         expect(initialSplit(exp({ shared_purchase_id: 'sp1', amount: 11.69, share_total: 19.48 }), null).totalCents).toBe(1948)
+    })
+    it('nimmt nach "Verbindung trennen" (share_total bleibt, keine Teilung mehr) den eigenen Betrag', () => {
+        const e = exp({ shared_purchase_id: null, amount: 11.69, share_total: 19.48, share_note: 'Geteilt mit lena' })
+        expect(initialSplit(e, null).totalCents).toBe(1169)
     })
     it('übernimmt den gespeicherten Prozentwert', () => {
         const r = initialSplit(exp({ shared_purchase_id: 'sp1', amount: 11.69 }), sp())

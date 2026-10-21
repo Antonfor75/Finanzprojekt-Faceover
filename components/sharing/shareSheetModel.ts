@@ -2,6 +2,7 @@ import type { Expense, ReceiptItem } from '@/app/types'
 import { isSpendingExpense } from '@/utils/transfer'
 import { initialItems, partnerCentsForItems, partnerCentsForPercent, splitCents, toCents } from '@/utils/sharing/split'
 import { visibleReceiptItems } from '@/utils/receiptItems'
+import { sharedExpenseGuard } from '@/utils/sharing/display'
 import type { ItemOwner, SaveShareInput, SharedPurchase, ShareItem, ShareMode } from '@/utils/sharing/types'
 
 /**
@@ -37,6 +38,19 @@ export const shareActionLabel = (a: ShareAction): string => (a === 'change' ? 'T
 
 export const shareSheetTitle = (description: string, a: ShareAction): string =>
     a === 'change' ? `${description} Teilung ändern` : `${description} teilen`
+
+/**
+ * Löschen bzw. Betrag ändern einer geteilten Ausgabe führt ins Teilen-Fenster. Ist der Freund (noch) nicht geladen,
+ * öffnet sich nichts: dann kommt stattdessen die Meldung, damit der Tipp nie wirkungslos bleibt.
+ */
+export function redirectToShare(
+    e: Pick<Expense, 'shared_purchase_id'>,
+    hasFriend: boolean,
+    op: 'delete' | 'update-amount',
+): { open: true } | { open: false; message: string | null } {
+    if (hasFriend) return { open: true }
+    return { open: false, message: sharedExpenseGuard(e, op) }
+}
 
 export function unshareConfirmText(role: ShareRole, friendHandle: string): string {
     return role === 'creator'
@@ -124,10 +138,11 @@ export function splitFromAmountInput(totalCents: number, role: ShareRole, field:
 }
 
 /** Startwerte: neu 50 / 50, sonst der gespeicherte Stand der Teilung. */
-export function initialSplit(expense: Pick<Expense, 'id' | 'amount' | 'share_total'>, sp: SharedPurchase | null): { role: ShareRole; totalCents: number; split: SplitState } {
+export function initialSplit(expense: Pick<Expense, 'id' | 'amount' | 'share_total' | 'shared_purchase_id'>, sp: SharedPurchase | null): { role: ShareRole; totalCents: number; split: SplitState } {
     if (!sp) {
-        // Eine schon geteilte Ausgabe trägt in `amount` nur den eigenen Anteil; der Gesamtbetrag steht in share_total.
-        const totalCents = toCents(expense.share_total ?? expense.amount)
+        // Eine bestehende Teilung (wird noch geladen) trägt in `amount` nur den eigenen Anteil; der Gesamtbetrag steht in share_total.
+        // Nach "Verbindung trennen" bleibt share_total stehen, die Ausgabe ist aber nicht mehr geteilt: dann zählt `amount`.
+        const totalCents = toCents(expense.shared_purchase_id ? (expense.share_total ?? expense.amount) : expense.amount)
         return { role: 'creator', totalCents, split: splitFromPercent(totalCents, 50) }
     }
     const totalCents = toCents(sp.total)
