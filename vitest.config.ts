@@ -5,6 +5,6 @@ export default defineConfig({
     // Gleicher Alias wie in tsconfig.json ("@/*" -> Repo-Root), damit auch Server-Actions testbar sind.
     resolve: { alias: { '@': path.resolve(__dirname) } },
     test: {
-        exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/.git/**', 'e2e/**/*'],
+        exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/.git/**', 'e2e/**/*', 'tests/db/**'], // tests/db: nur über npm run test:db (echte DB)
     },
 });

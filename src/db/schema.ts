@@ -227,4 +227,25 @@ export const inviteCodeRedemptionsTable = pgTable('invite_code_redemptions', {
     index('invite_code_redemptions_code_idx').on(t.code_id),
 ]);
 
+// Geteilte Einkäufe: Kontoname (eindeutig, a-z 0-9 . _, 3-20 Zeichen) und Freundschaften.
+// Geschrieben wird nur über die SECURITY-DEFINER-Funktionen (set_my_handle, send_friend_request,
+// ...), RLS erlaubt nur Lesen der eigenen Zeilen. FKs auf auth.users stehen nur in der Migration 0012.
+export const profilesTable = pgTable('profiles', {
+    user_id: uuid('user_id').primaryKey(),
+    handle: text('handle').notNull().unique(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const friendshipsTable = pgTable('friendships', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    requester_id: uuid('requester_id').notNull(),
+    addressee_id: uuid('addressee_id').notNull(),
+    status: text('status').notNull(), // 'pending' | 'accepted'
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    responded_at: timestamp('responded_at', { withTimezone: true }),
+}, (t) => [
+    index('friendships_requester_idx').on(t.requester_id),
+    index('friendships_addressee_idx').on(t.addressee_id),
+]);
+
 // public.users table removed. Using auth.users instead.

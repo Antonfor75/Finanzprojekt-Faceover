@@ -43,6 +43,13 @@
       "when": 1785312000000,
       "tag": "0005_invite_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792569600000,
+      "tag": "0012_friendships",
+      "breakpoints": true
     }
   ]
 }

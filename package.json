@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
+    "test:db": "vitest run --config vitest.db.config.ts",
     "eval:receipts": "vitest run --config vitest.eval.config.ts",
     "test:e2e": "playwright test"
   },
