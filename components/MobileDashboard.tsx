@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { loadFunSummary, type FunSummary } from '@/lib/data/funSummary'
 import type { DashboardRefresh } from '@/lib/data/dashboardData'
+import { sharedExpenseGuard } from '@/utils/sharing/display'
 import { addFunGroupExpense, updateTransfer, deleteTransfer } from '@/lib/data/actions'
 import { DatePicker } from '@/components/ui/date-picker'
 // import DashboardHealth from './DashboardHealth' // REMOVED
@@ -254,6 +255,13 @@ export default function MobileDashboard({
         // Umbuchung Girokonto <-> Spaßkonto: beide Seiten bekommen denselben Betrag. Das Vorzeichen
         // (Abbuchen/Hinzufügen) bleibt erhalten, die Kategorie bleibt "Umbuchung".
         const existing = expenses.find(e => e.id === id)
+
+        // Geteilte Ausgabe: Betrag und Datum nur über „Teilung ändern“ (sonst weicht die Kopie des Partners ab).
+        if (existing?.shared_purchase_id && (Number(existing.amount) !== amount || existing.expense_date.slice(0, 10) !== expense_date.slice(0, 10))) {
+            const blocked = sharedExpenseGuard(existing, 'update-amount')
+            if (blocked) { alert(blocked); return }
+        }
+
         if (existing?.transfer_id) {
             const result = await updateTransfer(existing.transfer_id, {
                 amount: Math.abs(amount),
@@ -273,6 +281,10 @@ export default function MobileDashboard({
     const deleteExpenseLocal = async (id: number) => {
         // 1. Get the expense to check for linked account
         const { data: expense } = await supabase.from('expenses').select('*').eq('id', id).single()
+
+        // Geteilte Ausgabe: nicht still nur die eigene Kopie löschen, sondern über „Für beide löschen“.
+        const blocked = expense ? sharedExpenseGuard(expense, 'delete') : null
+        if (blocked) { alert(blocked); return }
 
         // Umbuchung Girokonto <-> Spaßkonto: beide Seiten zusammen löschen (Spaßkonto-Saldo wird korrigiert)
         if (expense?.transfer_id) {

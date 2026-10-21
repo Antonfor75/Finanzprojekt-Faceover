@@ -1,3 +1,5 @@
+import type { ShareMode } from '@/utils/sharing/types'
+
 export type Expense = {
     id: number
     created_at: string
@@ -8,6 +10,11 @@ export type Expense = {
     account_id?: number | null
     /** Gesetzt bei Umbuchungen Girokonto <-> Spaßkonto; verbindet beide Seiten. */
     transfer_id?: string | null
+    /** Geteilter Einkauf (drizzle/0013): Teilung, voller Bon-Betrag, Modus und Hinweistext. Bleiben nach dem Trennen bis auf die Teilungs-ID stehen. */
+    shared_purchase_id?: string | null
+    share_total?: number | null // numeric → kommt als String zurück, Number(...) beim Konsumieren
+    share_mode?: ShareMode | null
+    share_note?: string | null
     user_id?: string
 }
 
@@ -83,6 +90,8 @@ export type ReceiptItem = {
     unit_price?: number | null
     total_price: number
     source: 'rewe' | 'manual' // 'rewe' = früherer E-Mail-Import (eingestellt), Daten bleiben
+    shared_purchase_id?: string | null // geteilter Einkauf (drizzle/0013)
+    shared_away?: boolean // Artikel gehört nach dem Teilen dem Partner (nicht in meiner Analyse)
 }
 
 export type Product = {
