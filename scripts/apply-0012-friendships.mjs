@@ -58,24 +58,22 @@ async function check(db) {
 class Rollback extends Error {}
 
 try {
-    if (dryRun) {
-        try {
-            await sql.begin(async (tx) => {
-                await runMigration(tx)
-                if (!(await check(tx))) throw new Error('Prüfung fehlgeschlagen')
-                throw new Rollback()
-            })
-        } catch (e) {
-            if (!(e instanceof Rollback)) throw e
-        }
-        console.log('\nROLLBACK — Dry-Run fertig, alles zurückgerollt, die DB ist unverändert.')
-    } else {
-        await sql.begin(runMigration)
-        if (!(await check(sql))) throw new Error('Prüfung nach dem Einspielen fehlgeschlagen')
-        // Schema-Cache von PostgREST neu laden, sonst kennt die API die Tabelle nicht.
-        await sql`NOTIFY pgrst, 'reload schema'`
-        console.log('\nEingespielt, Schema-Cache neu geladen.')
+    // Prüfung und Schema-Reload laufen INNERHALB der Transaktion: schlägt die Prüfung fehl, wird nichts übernommen.
+    // (NOTIFY wird erst beim COMMIT zugestellt, im Dry-Run also nie.)
+    try {
+        await sql.begin(async (tx) => {
+            await runMigration(tx)
+            if (!(await check(tx))) throw new Error('Prüfung fehlgeschlagen')
+            // Schema-Cache von PostgREST neu laden, sonst kennt die API die Tabellen nicht.
+            await tx`NOTIFY pgrst, 'reload schema'`
+            if (dryRun) throw new Rollback()
+        })
+    } catch (e) {
+        if (!(e instanceof Rollback)) throw e
     }
+    console.log(dryRun
+        ? '\nROLLBACK — Dry-Run fertig, alles zurückgerollt, die DB ist unverändert.'
+        : '\nEingespielt, Schema-Cache neu geladen.')
 } finally {
     await sql.end()
 }

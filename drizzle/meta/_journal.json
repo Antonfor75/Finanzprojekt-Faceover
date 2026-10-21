@@ -50,6 +50,13 @@
       "when": 1792569600000,
       "tag": "0012_friendships",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792656000000,
+      "tag": "0013_shared_purchases",
+      "breakpoints": true
     }
   ]
 }

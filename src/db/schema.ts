@@ -11,6 +11,11 @@ export const expensesTable = pgTable('expenses', {
     account_id: integer('account_id'), // Optional link to an account
     transfer_id: uuid('transfer_id'), // verbindet beide Seiten einer Umbuchung Girokonto <-> Spaßkonto (utils/transfer.ts)
     user_id: uuid('user_id').default(sql`auth.uid()`).notNull(),
+    // Geteilte Einkäufe (drizzle/0013): FK auf shared_purchases ON DELETE SET NULL, per SQL angelegt (kein Drizzle-FK, wie bei profiles/friendships).
+    shared_purchase_id: uuid('shared_purchase_id'),
+    share_total: numeric('share_total', { precision: 12, scale: 2 }), // voller Bon-Betrag der Teilung
+    share_mode: text('share_mode'), // 'percent' | 'amount' | 'items'
+    share_note: text('share_note'), // "Geteilt mit <name>" bzw. "Von <name> geteilt"
 }, (t) => [index('expenses_user_id_idx').on(t.user_id)]); // drizzle/0009
 
 export const fixedCostsTable = pgTable('fixed_costs', {
@@ -100,6 +105,8 @@ export const receiptItemsTable = pgTable('receipt_items', {
     unit_price: numeric('unit_price'),
     total_price: numeric('total_price').notNull(), // negativ erlaubt (Pfand-Rückgabe/Rabatt)
     source: text('source').notNull().default('rewe'), // 'rewe' | 'manual' | später 'lidl' …
+    shared_purchase_id: uuid('shared_purchase_id'), // geteilter Einkauf (drizzle/0013); FK ON DELETE SET NULL per SQL
+    shared_away: boolean('shared_away').notNull().default(false), // Artikel gehört nach dem Teilen dem Partner (nicht in meiner Analyse)
 }, (t) => [
     index('receipt_items_user_expense_idx').on(t.user_id, t.expense_id),
 ]);
@@ -246,6 +253,31 @@ export const friendshipsTable = pgTable('friendships', {
 }, (t) => [
     index('friendships_requester_idx').on(t.requester_id),
     index('friendships_addressee_idx').on(t.addressee_id),
+]);
+
+// Geteilte Einkäufe (drizzle/0013): eine Zeile pro Teilung, Beträge in Euro (Rechnung in Cent in den RPCs save_share/unshare/…).
+// Geschrieben wird nur über SECURITY-DEFINER-Funktionen; RLS erlaubt nur Lesen für creator/partner.
+export const sharedPurchasesTable = pgTable('shared_purchases', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    creator_id: uuid('creator_id').notNull(),
+    partner_id: uuid('partner_id').notNull(),
+    creator_expense_id: integer('creator_expense_id').notNull(),
+    partner_expense_id: integer('partner_expense_id').notNull(),
+    description: text('description'),
+    expense_date: text('expense_date'),
+    category: text('category'),
+    total: numeric('total', { precision: 12, scale: 2 }).notNull(),
+    mode: text('mode').notNull(), // 'percent' | 'amount' | 'items'
+    partner_percent: numeric('partner_percent'),
+    partner_amount: numeric('partner_amount', { precision: 12, scale: 2 }).notNull(),
+    items: jsonb('items').notNull().default(sql`'[]'::jsonb`), // ShareItem[] (utils/sharing/types.ts)
+    updated_by: uuid('updated_by'),
+    updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+    creator_seen_at: timestamp('creator_seen_at', { withTimezone: true }),
+    partner_seen_at: timestamp('partner_seen_at', { withTimezone: true }),
+}, (t) => [
+    index('shared_purchases_creator_idx').on(t.creator_id),
+    index('shared_purchases_partner_idx').on(t.partner_id),
 ]);
 
 // public.users table removed. Using auth.users instead.

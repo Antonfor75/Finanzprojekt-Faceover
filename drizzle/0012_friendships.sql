@@ -57,7 +57,7 @@ GRANT ALL ON TABLE "friendships" TO service_role;
 -- Interne Hilfen (nicht für Clients): sperren beide Konten in fester Reihenfolge (kein Deadlock),
 -- bauen den Zustand für ein Konto und nehmen eine Anfrage an.
 CREATE OR REPLACE FUNCTION public.friend_lock(p_a uuid, p_b uuid) RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
 	PERFORM pg_advisory_xact_lock(hashtext(least(p_a, p_b)::text));
 	PERFORM pg_advisory_xact_lock(hashtext(greatest(p_a, p_b)::text));
@@ -66,7 +66,7 @@ $$;
 --> statement-breakpoint
 -- (bewusst VOLATILE: muss die Änderungen der aufrufenden Funktion im selben Statement sehen)
 CREATE OR REPLACE FUNCTION public.friend_state_for(p_uid uuid) RETURNS jsonb
-LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE sql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 	SELECT jsonb_build_object(
 		'handle', (SELECT pr.handle FROM profiles pr WHERE pr.user_id = p_uid),
 		'friend', (
@@ -94,7 +94,7 @@ LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
 $$;
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION public.friend_accept(p_request_id uuid, p_a uuid, p_b uuid) RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
 	UPDATE friendships SET status = 'accepted', responded_at = now() WHERE id = p_request_id;
 	-- Alle übrigen offenen Anfragen beider Personen (egal ob gestellt oder erhalten) entfallen.
@@ -106,7 +106,7 @@ $$;
 --> statement-breakpoint
 -- Öffentliche Funktionen (für angemeldete Konten).
 CREATE OR REPLACE FUNCTION public.set_my_handle(p_handle text) RETURNS text
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
 	v_uid uuid := auth.uid();
 	v_handle text;
@@ -135,7 +135,7 @@ END;
 $$;
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION public.get_friend_state() RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
 	v_uid uuid := auth.uid();
 BEGIN
@@ -145,7 +145,7 @@ END;
 $$;
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION public.send_friend_request(p_handle text) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
 	v_uid uuid := auth.uid();
 	v_target uuid;
@@ -190,7 +190,7 @@ END;
 $$;
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION public.cancel_friend_request() RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
 	v_uid uuid := auth.uid();
 BEGIN
@@ -202,7 +202,7 @@ END;
 $$;
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION public.respond_friend_request(p_request_id uuid, p_accept boolean) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
 	v_uid uuid := auth.uid();
 	v_requester uuid;
@@ -228,7 +228,7 @@ END;
 $$;
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION public.end_friendship() RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
 	v_uid uuid := auth.uid();
 	v_friend uuid;
