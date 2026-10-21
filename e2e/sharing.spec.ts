@@ -29,25 +29,46 @@ async function openFriendLink(page: Page) {
     await page.getByRole('button', { name: /Gemeinsam teilen/ }).click()
 }
 
-async function setHandleIfAsked(page: Page, handle: string) {
+/** Wartet, bis der Verknüpfen-Bildschirm geladen ist ("Lädt …" vorbei): Namensfeld oder eigener Kontoname. */
+async function friendLinkSettled(page: Page) {
     const field = page.getByLabel('Dein Kontoname')
-    if (await field.isVisible().catch(() => false)) {
+    await expect(field.or(page.locator('[data-testid="own-handle"]'))).toBeVisible({ timeout: 20_000 })
+    return field
+}
+
+async function setHandleIfAsked(page: Page, handle: string) {
+    const field = await friendLinkSettled(page)
+    if (await field.isVisible()) {
         await field.fill(handle)
         await page.getByRole('button', { name: 'Speichern' }).click()
+        await expect(page.locator('[data-testid="own-handle"]')).toBeVisible()
     }
+}
+
+const letterDialog = (page: Page) => page.getByRole('dialog', { name: 'Freundschaftsanfrage' })
+
+/**
+ * Öffnet "Gemeinsam teilen". Ein Brief erscheint erst, wenn der Freundschaftsstand geladen ist, und
+ * verdeckt dann alles: Liegt er vor, wird er abgelehnt und der Weg erneut versucht (wiederholt bis es klappt).
+ */
+async function openFriendLinkClearingLetter(page: Page) {
+    await expect(async () => {
+        if (await letterDialog(page).isVisible()) {
+            await page.getByRole('button', { name: 'Brief öffnen' }).click({ timeout: 2_000 })
+            await page.getByRole('button', { name: 'Ablehnen' }).click({ timeout: 5_000 })
+            await expect(letterDialog(page)).toBeHidden({ timeout: 5_000 })
+        }
+        await page.locator('[data-tour="nav-settings"]').click({ timeout: 2_000 })
+        await page.getByRole('button', { name: /Gemeinsam teilen/ }).click({ timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
+    await friendLinkSettled(page)
 }
 
 /** Räumt über die Oberfläche auf: eine bestehende Verbindung bzw. offene Anfrage lösen. */
 async function cleanUp(page: Page) {
     await page.goto('/')
     await expect(budgetRing(page)).toBeVisible({ timeout: 20_000 })
-    // Ein Brief liegt vor der Startseite: ablehnen, damit die Einstellungen erreichbar sind.
-    const decline = page.getByRole('button', { name: 'Ablehnen' })
-    if (await decline.isVisible().catch(() => false)) {
-        await page.getByRole('button', { name: 'Brief öffnen' }).click()
-        await decline.click()
-    }
-    await openFriendLink(page)
+    await openFriendLinkClearingLetter(page)
     await expect(page.getByText(/Noch nicht verbunden|Anfrage gesendet|Verbunden mit/)).toBeVisible()
     if (await page.getByRole('button', { name: 'Verbindung trennen' }).isVisible()) {
         await page.getByRole('button', { name: 'Verbindung trennen' }).click()
@@ -80,7 +101,10 @@ test.describe('Geteilte Einkäufe: Freund verknüpfen', () => {
             try {
                 if (!page || !email || !password) continue
                 await page.goto('/')
-                if (await page.locator('input[type="email"]').isVisible().catch(() => false)) await login(page, email, password)
+                // Erst abwarten, ob Anmeldemaske oder Startseite erscheint, dann entscheiden
+                const emailField = page.locator('input[type="email"]')
+                await expect(emailField.or(budgetRing(page))).toBeVisible({ timeout: 20_000 })
+                if (await emailField.isVisible()) await login(page, email, password)
                 await cleanUp(page)
             } catch (e) {
                 console.warn('Aufräumen fehlgeschlagen:', e)
@@ -115,7 +139,8 @@ test.describe('Geteilte Einkäufe: Freund verknüpfen', () => {
         await expect(page2.getByText('hat dir eine Taube geschickt')).toBeVisible({ timeout: 20_000 })
         await page2.getByRole('button', { name: 'Brief öffnen' }).click()
         await page2.getByRole('button', { name: 'Annehmen & verbinden' }).click()
-        await expect(budgetRing(page2)).toBeVisible({ timeout: 20_000 })
+        // Der Startseiten-Ring liegt schon hinter dem Brief sichtbar: erst wenn der Brief weg ist, steht die Annahme auf dem Server
+        await expect(letterDialog(page2)).toBeHidden({ timeout: 20_000 })
 
         // Konto 1 sieht nach dem Neuladen die Verbindung
         await page1.reload()
