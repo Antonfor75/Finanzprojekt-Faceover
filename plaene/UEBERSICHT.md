@@ -8,6 +8,8 @@ Alle Pläne für Web-App, Handy-App „Mein Cashflow“ und Chefansicht liegen i
 
 ## Offen
 
+- [Geteilte Einkäufe mit einem Freund](2026-10-21-geteilte-einkaeufe.md) (Web + Handy-App): Zwei Konten verknüpfen sich über einen Kontonamen. Erlaubt ist genau ein Freund, die Anfrage fliegt per Taube, angekommen wird sie als Brief. Ausgaben lassen sich nach Betrag (Balken) oder nach Artikeln (antippen und rüberschwimmen lassen) teilen. Jeder hat dann nur seinen Anteil als Ausgabe, ohne Schulden oder Ausgleich. Beide dürfen ändern. Die Handy-App teilt nur mit Internet und gleicht automatisch ab. Design: `docs/superpowers/specs/2026-10-21-geteilte-einkaeufe-design.md`, UI-Entwürfe A3/B4/C4/D1-Final/E1. Noch nichts umgesetzt.
+
 - [Handy-App: offene Bons im Hintergrund](2026-10-08-handyapp-offene-bons.md) (Cashflow-AndroidApp): Die Qwen-Auswertung läuft weiter, auch wenn man die Scan-Ansicht verlässt. Fertige Bons bleiben als „offen“ gespeichert und lassen sich über eine Startseiten-Kachel freigeben, ignorieren oder verwerfen. Außerdem wird das KI-Protokoll repariert.
 
 ## Halb ausgeführt
