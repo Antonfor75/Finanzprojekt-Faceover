@@ -126,7 +126,7 @@ DECLARE
 	v_items jsonb := '[]'::jsonb;
 	v_creator_handle text;
 	v_partner_handle text;
-	v_now timestamptz := clock_timestamp();
+	v_now timestamptz;
 	v_rows integer;
 BEGIN
 	IF v_uid IS NULL THEN RAISE EXCEPTION 'Nicht angemeldet.'; END IF;
@@ -183,7 +183,8 @@ BEGIN
 		IF v_exp.shared_purchase_id IS NOT NULL THEN
 			RAISE EXCEPTION 'Diese Ausgabe ist inzwischen schon geteilt.';
 		END IF;
-		-- Nicht teilbar: spiegelt isSpendingExpense (utils/transfer.ts) und isBudgetRelevantExpense (utils/funAccount.ts).
+		-- Nicht teilbar: spiegelt isSpendingExpense (utils/transfer.ts) und isBudgetRelevantExpense (utils/funAccount.ts)
+		-- und schließt zusätzlich Beträge <= 0 aus (z. B. negative Ausgaben aus transferFromSavings; sie lassen sich nicht in 0..total teilen).
 		IF v_exp.account_id IS NOT NULL
 			OR coalesce(v_exp.category LIKE 'Konto:%', false)
 			OR v_exp.transfer_id IS NOT NULL
@@ -214,6 +215,8 @@ BEGIN
 	SELECT handle INTO v_creator_handle FROM profiles WHERE user_id = v_creator;
 	SELECT handle INTO v_partner_handle FROM profiles WHERE user_id = v_partner;
 
+	-- Zeitstempel erst jetzt, nach allen Sperren: wer später schreibt, trägt auch den späteren updated_at.
+	v_now := clock_timestamp();
 	IF v_is_new THEN
 		INSERT INTO expenses (user_id, description, amount, expense_date, category)
 		VALUES (v_partner, v_exp.description, v_exp.amount, v_exp.expense_date, v_exp.category)
@@ -344,6 +347,7 @@ $$;
 --> statement-breakpoint
 -- Alles als gesehen markieren (nur für das eigene Konto). clock_timestamp() statt now(): innerhalb einer
 -- Transaktion muss ein späteres Ereignis auch einen späteren Zeitstempel haben.
+-- Der Zeitstempel entsteht erst beim Schreiben der Zeile, also nach dem Warten auf die Zeilensperre einer laufenden save_share.
 CREATE OR REPLACE FUNCTION public.mark_shares_seen() RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
