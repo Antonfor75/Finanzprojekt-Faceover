@@ -14,6 +14,9 @@ import { Expense, FixedCost, Account, IncomeSource, ReceiptItem, Product } from 
 import { ViewLoading } from './ViewLoading'
 import type { GirokontoTimelineResult } from '@/utils/girokonto'
 import { isTransferExpense } from '@/utils/transfer'
+import { shareSubline } from '@/utils/sharing/display'
+import ShareBadge from '@/components/sharing/ShareBadge'
+import { shareAction, shareActionLabel } from '@/components/sharing/shareSheetModel'
 
 const AnalysisView = dynamic(() => import('../AnalysisView'), { ssr: false, loading: ViewLoading })
 
@@ -46,9 +49,13 @@ type HistoryViewProps = {
     receiptItems: ReceiptItem[]
     products: Product[]
     receiptsLoading: boolean
+    /** Verknüpfter Freund (geteilte Einkäufe); null = keiner, dann gibt es kein Teilen. */
+    friend?: { handle: string } | null
+    /** Öffnet das Teilen-Fenster für diese Ausgabe. */
+    onShare?: (expense: Expense) => void
 }
 
-export default function HistoryView({ historyMode, setHistoryMode, viewLevel, handleBackHistory, handleCalendarDayClick, handleWeekClick, handleDayClick, getWeeklyGroups, getDailyGroups, getTransactions, expandedExpenseId, setExpandedExpenseId, setEditingExpense, deleteExpenseLocal, itemsByExpense, generatePDF, expenses, weeklyBudget, currentGiroBalance, girokontoTimeline, initialFixedCosts, initialAccounts, initialIncomeSources, receiptItems, products, receiptsLoading }: HistoryViewProps) {
+export default function HistoryView({ historyMode, setHistoryMode, viewLevel, handleBackHistory, handleCalendarDayClick, handleWeekClick, handleDayClick, getWeeklyGroups, getDailyGroups, getTransactions, expandedExpenseId, setExpandedExpenseId, setEditingExpense, deleteExpenseLocal, itemsByExpense, generatePDF, expenses, weeklyBudget, currentGiroBalance, girokontoTimeline, initialFixedCosts, initialAccounts, initialIncomeSources, receiptItems, products, receiptsLoading, friend = null, onShare }: HistoryViewProps) {
     return (
         <div className="w-full h-full flex flex-col pt-[env(safe-area-inset-top)] px-4 pb-0 max-w-xl mx-auto view-enter">
             {/* Header & Tabs */}
@@ -131,41 +138,60 @@ export default function HistoryView({ historyMode, setHistoryMode, viewLevel, ha
                             getTransactions().map(expense => {
                                 const items = itemsByExpense.get(expense.id)
                                 const isExpanded = expandedExpenseId === expense.id
+                                const action = onShare ? shareAction(expense, !!friend) : null
+                                const expandable = !!items || !!action
+                                const subline = shareSubline(expense)
                                 return (
                                     <div key={expense.id}>
                                         <div
-                                            className={`ledger-row ${items ? 'cursor-pointer' : ''}`}
-                                            onClick={() => { if (items) setExpandedExpenseId(isExpanded ? null : expense.id) }}
+                                            data-testid="history-row"
+                                            className={`ledger-row ${expandable ? 'cursor-pointer' : ''}`}
+                                            onClick={() => { if (expandable) setExpandedExpenseId(isExpanded ? null : expense.id) }}
                                         >
                                             <div className="min-w-0 flex-1 mr-4">
                                                 <div className="flex items-center gap-1.5">
                                                     <p className="font-medium text-foreground truncate">{expense.description}</p>
-                                                    {items && (
+                                                    {expandable && (
                                                         <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} strokeWidth={2} />
                                                     )}
                                                 </div>
                                                 {expense.category && <span className="eyebrow">{expense.category}</span>}
+                                                {expense.share_note && <div className="mt-1 flex"><ShareBadge expense={expense} /></div>}
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 {isTransferExpense(expense) ? (
                                                     <span className="amount text-base text-muted-foreground" title="Umbuchung – keine Ausgabe">⇄ €{Math.abs(expense.amount).toFixed(2)}</span>
                                                 ) : (
-                                                    <span className="amount text-base text-foreground">{expense.amount < 0 ? '+' : '−'}€{Math.abs(expense.amount).toFixed(2)}</span>
+                                                    <div className="flex flex-col items-end">
+                                                        <span data-testid="history-amount" className="amount text-base text-foreground">{expense.amount < 0 ? '+' : '−'}€{Math.abs(expense.amount).toFixed(2)}</span>
+                                                        {subline && <span className="amount text-xs text-muted-foreground">{subline}</span>}
+                                                    </div>
                                                 )}
                                                 <div className="flex gap-1">
-                                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
+                                                    <Button variant="ghost" size="icon" aria-label="Bearbeiten" onClick={(e) => { e.stopPropagation(); setEditingExpense(expense) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
                                                         <Pencil className="w-4 h-4" strokeWidth={1.75} />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" onClick={async (e) => { e.stopPropagation(); if (confirm('Löschen?')) await deleteExpenseLocal(expense.id) }} className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-[var(--chart-neg-heavy)] hover:bg-muted">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        aria-label="Löschen"
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation()
+                                                            // Geteilte Ausgabe: nicht still die eigene Kopie löschen, sondern über das Teilen-Fenster ("Für beide löschen").
+                                                            if (expense.shared_purchase_id && onShare) { onShare(expense); return }
+                                                            if (confirm('Löschen?')) await deleteExpenseLocal(expense.id)
+                                                        }}
+                                                        className="press w-8 h-8 rounded-lg text-muted-foreground hover:text-[var(--chart-neg-heavy)] hover:bg-muted"
+                                                    >
                                                         <Trash2 className="w-4 h-4" strokeWidth={1.75} />
                                                     </Button>
                                                 </div>
                                             </div>
                                         </div>
-                                        {items && isExpanded && (
+                                        {expandable && isExpanded && (
                                             <div className="pl-4 pr-2 pb-3 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                                                {items.map(item => (
-                                                    <div key={item.id} className="flex items-center justify-between text-sm">
+                                                {items?.map(item => (
+                                                    <div key={item.id} data-testid="history-item" className="flex items-center justify-between text-sm">
                                                         <span className="text-muted-foreground truncate mr-3">
                                                             {item.name_raw}
                                                             {item.unit && (
@@ -179,6 +205,16 @@ export default function HistoryView({ historyMode, setHistoryMode, viewLevel, ha
                                                         </span>
                                                     </div>
                                                 ))}
+                                                {action && onShare && (
+                                                    <button
+                                                        type="button"
+                                                        data-testid="share-open"
+                                                        onClick={(e) => { e.stopPropagation(); onShare(expense) }}
+                                                        className="press mt-2 inline-flex h-9 items-center rounded-full bg-partner/15 px-4 text-sm font-semibold text-partner"
+                                                    >
+                                                        {shareActionLabel(action)}
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>

@@ -8,7 +8,11 @@ import { actGetFriendState } from '@/app/actions/sharing'
 import type { FriendState } from '@/utils/sharing/types'
 
 /** Lädt den Freundschaftsstand und zeigt dann FriendLinkView (Einstieg aus den Einstellungen). */
-export default function FriendLinkScreen({ onBack }: { onBack: () => void }) {
+export default function FriendLinkScreen({ onBack, onStateChange }: {
+    onBack: () => void
+    /** Meldet jeden geladenen oder geänderten Stand nach oben (das Dashboard kennt so den verknüpften Freund). */
+    onStateChange?: (state: FriendState) => void
+}) {
     const [state, setState] = useState<FriendState | null>(null)
     const [error, setError] = useState<string | null>(null)
     const [attempt, setAttempt] = useState(0)
@@ -23,6 +27,11 @@ export default function FriendLinkScreen({ onBack }: { onBack: () => void }) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         void load()
     }, [load, attempt])
+
+    // Der Stand geht nach oben, sobald er geladen ist oder sich ändert.
+    useEffect(() => {
+        if (state) onStateChange?.(state)
+    }, [state, onStateChange])
 
     if (state) return <FriendLinkView state={state} onChange={setState} onBack={onBack} />
 

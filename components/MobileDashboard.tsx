@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { loadTheme } from '@/utils/theme'
 import { runStartupJobs } from '@/lib/data/actions'
@@ -30,6 +30,7 @@ import FriendRequestLetter from '@/components/sharing/FriendRequestLetter'
 import SharesChangedBanner from '@/components/sharing/SharesChangedBanner'
 import { bannerFor, letterFor, settle } from '@/components/sharing/friendLinkModel'
 import type { FriendState } from '@/utils/sharing/types'
+import { groupItemsByExpense } from '@/utils/receiptItems'
 
 import { Expense, FixedCost, Settings as SettingsType, Account, IncomeSource, ReceiptItem, Product } from '@/app/types'
 
@@ -54,6 +55,8 @@ const HistoryView = dynamic(loadHistoryView, { ssr: false, loading: ViewLoading 
 // Kassenbon-Scan (nur freigeschaltete Konten) — erst laden, wenn die Funktion freigeschaltet ist
 const ReceiptScanView = dynamic(() => import('./receipt/ReceiptScanView'), { ssr: false, loading: ViewLoading })
 const PendingReceiptTile = dynamic(() => import('./receipt/PendingReceiptTile'), { ssr: false })
+// Teilen-Fenster (nur mit verknüpftem Freund) — erst laden, wenn es geöffnet wird
+const ShareSheet = dynamic(() => import('./sharing/ShareSheet'), { ssr: false })
 
 function preloadSubViews() {
     for (const load of [loadHistoryView, loadAnalysisView, loadGirokontoView, loadSettingsOverlay, loadFunAccountHub, loadFunAccountView]) {
@@ -138,15 +141,8 @@ export default function MobileDashboard({
     const openScanner = (id: string | null) => { setScanPendingId(id); setShowScanner(true) }
 
     // Artikel (Bon-Positionen) nach Ausgabe gruppiert — optionale Zusatzinfo.
-    const itemsByExpense = useMemo(() => {
-        const map = new Map<number, ReceiptItem[]>()
-        for (const item of receiptItems) {
-            const list = map.get(item.expense_id)
-            if (list) list.push(item)
-            else map.set(item.expense_id, [item])
-        }
-        return map
-    }, [receiptItems])
+    // Artikel, die beim Teilen zum Freund gewandert sind (shared_away), erscheinen nicht.
+    const itemsByExpense = useMemo(() => groupItemsByExpense(receiptItems), [receiptItems])
 
     // --- EFFECT: SPASSKONTO-SALDO + aktuelle Gruppe für die Dashboard-Kacheln laden ---
     // Lädt beim Start (außer die Seite hat es schon mitgeladen), wenn der Hub geschlossen
@@ -235,16 +231,25 @@ export default function MobileDashboard({
     // --- GETEILTE EINKÄUFE: Brief (eingehende Anfrage) und Hinweis-Banner beim Start ---
     // Ein Fehler (z. B. offline) darf das Dashboard nicht stören: dann gibt es einfach weder Brief noch Banner.
     const [friendState, setFriendState] = useState<FriendState | null>(null)
+    // Verknüpfter Freund fürs Teilen. Wird beim Start geladen und von „Gemeinsam teilen“ aktuell gehalten
+    // (so steht „Teilen“ nach dem Verknüpfen sofort bereit, ohne zweiten Abruf).
+    const [friend, setFriend] = useState<{ handle: string } | null>(null)
+    const [ownHandle, setOwnHandle] = useState<string | null>(null)
     useEffect(() => {
         if (isDemoMode()) return
         let cancelled = false
         settle(actGetFriendState()).then(res => {
             if (cancelled) return
-            if (res.ok) setFriendState(res.data)
+            if (res.ok) { setFriendState(res.data); setFriend(res.data.friend); setOwnHandle(res.data.handle) }
             else console.warn('Freundschaftsstand nicht geladen:', res.error)
         })
         return () => { cancelled = true }
     }, [])
+    const onFriendStateChange = useCallback((state: FriendState) => { setFriend(state.friend); setOwnHandle(state.handle) }, [])
+
+    // Teilen-Fenster: die Ausgabe, die gerade geteilt wird (Stand beim Öffnen, danach der frische aus der Liste).
+    const [shareExpense, setShareExpense] = useState<Expense | null>(null)
+    const shareTarget = shareExpense ? (serverExpenses.find(e => e.id === shareExpense.id) ?? shareExpense) : null
     const letter = friendState ? letterFor(friendState) : null
     const sharesBanner = friendState ? bannerFor(friendState) : null
 
@@ -295,7 +300,7 @@ export default function MobileDashboard({
         // Geteilte Ausgabe: Betrag und Datum nur über „Teilung ändern“ (sonst weicht die Kopie des Partners ab).
         if (existing?.shared_purchase_id && (Number(existing.amount) !== amount || existing.expense_date.slice(0, 10) !== expense_date.slice(0, 10))) {
             const blocked = sharedExpenseGuard(existing, 'update-amount')
-            if (blocked) { alert(blocked); return }
+            if (blocked) { alert(blocked); setShareExpense(existing); return } // danach gleich „Teilung ändern“ öffnen
         }
 
         if (existing?.transfer_id) {
@@ -873,6 +878,8 @@ export default function MobileDashboard({
                     receiptItems={receiptItems}
                     products={products}
                     receiptsLoading={receiptsLoading}
+                    friend={friend}
+                    onShare={setShareExpense}
                 />
             )}
 
@@ -888,6 +895,7 @@ export default function MobileDashboard({
                             onLogout={handleLogout}
                             onUpdate={onUpdate}
                             expenses={expenses}
+                            onFriendStateChange={onFriendStateChange}
                             onBack={() => setView('entry')}
                         />
                     </div>
@@ -1019,6 +1027,8 @@ export default function MobileDashboard({
                             accounts={initialAccounts}
                             onRefresh={() => { setShowAddSheet(false); onUpdate?.() }}
                             onOptimisticAdd={addExpenseOptimistic}
+                            friend={friend}
+                            onShareRequested={setShareExpense}
                         />
                     </div>
                 </DialogContent>
@@ -1040,9 +1050,23 @@ export default function MobileDashboard({
                             setShowScanner(false)
                             setScanPendingId(null)
                         }}
-                        onSaved={() => onUpdate?.(['expenses', 'receipts'])}
+                        onSaved={(saved) => { onUpdate?.(['expenses', 'receipts']); if (saved) setShareExpense(saved) }}
+                        friend={friend}
                     />
                 </div>
+            )}
+
+            {/* Ausgabe mit dem Freund teilen bzw. die Teilung ändern */}
+            {shareTarget && friend && (
+                <ShareSheet
+                    key={shareTarget.id}
+                    expense={shareTarget}
+                    items={itemsByExpense.get(shareTarget.id) ?? []}
+                    friend={friend}
+                    meName={ownHandle ?? undefined}
+                    onClose={() => setShareExpense(null)}
+                    onSaved={() => onUpdate?.(['expenses', 'receipts'])}
+                />
             )}
 
         </div>

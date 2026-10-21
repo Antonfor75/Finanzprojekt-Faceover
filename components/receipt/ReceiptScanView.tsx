@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { ArrowLeft, Camera, Loader2, Trash2, AlertCircle, ScanLine, Image as ImageIcon } from 'lucide-react'
 import AgentPanel from './AgentPanel'
+import ShareToggle from '@/components/sharing/ShareToggle'
+import type { Expense } from '@/app/types'
 import DiscardReceiptDialog from './DiscardReceiptDialog'
 import { agentViewOf } from './agentView'
 import { deriveFields, isActive, itemsTotal, parseAmountInput, RECEIPT_CATEGORIES, type PendingItem } from '@/utils/receiptScan/fields'
@@ -16,7 +18,10 @@ type Props = {
     pendingId: string | null
     onPendingChange: (id: string | null) => void
     onBack: () => void
-    onSaved?: () => void
+    /** Bon gespeichert. `shareExpense` ist gesetzt, wenn er mit dem Freund geteilt werden soll (öffnet dann das Teilen-Fenster). */
+    onSaved?: (shareExpense?: Expense) => void
+    /** Verknüpfter Freund (geteilte Einkäufe): dann gibt es den Schalter "Mit <name> teilen". */
+    friend?: { handle: string } | null
 }
 
 /**
@@ -29,7 +34,7 @@ type Props = {
  * freigegeben oder verworfen wird. Bewusst mit Kontrollschritt: ein falscher Betrag würde sonst
  * unbemerkt ins Budget wandern.
  */
-export default function ReceiptScanView({ pendingId, onPendingChange, onBack, onSaved }: Props) {
+export default function ReceiptScanView({ pendingId, onPendingChange, onBack, onSaved, friend = null }: Props) {
     const rows = usePendingReceipts()
     usePollWhileReading(rows)
     const row = pendingId ? rows.find((r) => r.id === pendingId) ?? null : null
@@ -39,6 +44,7 @@ export default function ReceiptScanView({ pendingId, onPendingChange, onBack, on
     const [error, setError] = useState<string | null>(null)
     const [saving, setSaving] = useState(false)
     const [confirmDiscard, setConfirmDiscard] = useState(false)
+    const [shareWithFriend, setShareWithFriend] = useState(false)
     const cameraInput = useRef<HTMLInputElement>(null)
     const galleryInput = useRef<HTMLInputElement>(null)
 
@@ -83,10 +89,25 @@ export default function ReceiptScanView({ pendingId, onPendingChange, onBack, on
         if (!row) return
         setSaving(true)
         setError(null)
+        // Vor dem Speichern festhalten, was geteilt werden soll: danach ist der offene Bon weg.
+        const toShare = friend && shareWithFriend && fields && Number.isFinite(parsedAmount) ? fields : null
         const res = await acceptPending(row.id)
         setSaving(false)
         if (!res.ok) { setError(res.error); return }
-        onSaved?.()
+        const saved: Expense | undefined = toShare
+            ? {
+                id: res.expenseId,
+                created_at: new Date().toISOString(),
+                description: toShare.store.trim() || toShare.category,
+                amount: Math.round(parsedAmount * 100) / 100,
+                expense_date: toShare.date,
+                category: toShare.category,
+                account_id: null,
+                transfer_id: null,
+            }
+            : undefined
+        setShareWithFriend(false)
+        onSaved?.(saved)
         onPendingChange(null)
         closeView()
     }
@@ -274,6 +295,8 @@ export default function ReceiptScanView({ pendingId, onPendingChange, onBack, on
                                 </div>
                             ))}
                         </div>
+
+                        {friend && <ShareToggle handle={friend.handle} checked={shareWithFriend} onChange={setShareWithFriend} />}
 
                         <div className="flex gap-3 pt-2">
                             <button onClick={() => setConfirmDiscard(true)} disabled={active || saving} className="press flex-1 py-4 rounded-xl font-semibold bg-muted text-foreground disabled:opacity-60">

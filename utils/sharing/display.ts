@@ -1,7 +1,7 @@
 import type { Expense } from '@/app/types'
 
 /** Deutsches Geldformat: "1.234,50 €". */
-function formatEuro(v: number): string {
+export function formatEuro(v: number): string {
     const [int, dec] = Math.abs(v).toFixed(2).split('.')
     return `${v < 0 ? '-' : ''}${int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${dec} €`
 }

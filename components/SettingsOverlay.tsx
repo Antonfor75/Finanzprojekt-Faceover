@@ -12,6 +12,7 @@ import FunAccountHub from '@/components/FunAccountHub'
 import FriendLinkScreen from '@/components/sharing/FriendLinkScreen'
 import { isDemoMode } from '@/lib/data/mode'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
+import type { FriendState } from '@/utils/sharing/types'
 import { Button } from '@/components/ui/button'
 import { useIncomeEditor } from '@/components/settings/useIncomeEditor'
 import { useAccountEditor } from '@/components/settings/useAccountEditor'
@@ -31,9 +32,11 @@ type SettingsOverlayProps = {
     onLogout: () => void
     onUpdate?: () => void
     expenses: Expense[]
+    /** Stand der Freundschaft aus „Gemeinsam teilen“ (das Dashboard braucht ihn fürs Teilen). */
+    onFriendStateChange?: (state: FriendState) => void
 }
 
-export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts = [], incomeSources = [], onLogout, onUpdate, expenses }: SettingsOverlayProps) {
+export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts = [], incomeSources = [], onLogout, onUpdate, expenses, onFriendStateChange }: SettingsOverlayProps) {
     // const [budget, setBudget] = useState<string | number>(settings?.monthly_budget || 0) // REMOVED: Calculated dynamically now
     const [showImportWizard, setShowImportWizard] = useState(false)
     const [showHelp, setShowHelp] = useState(false)
@@ -150,7 +153,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
 
     // --- GEMEINSAM TEILEN (Freund verknüpfen) ---
     if (showFriendLink) {
-        return <FriendLinkScreen onBack={() => setShowFriendLink(false)} />
+        return <FriendLinkScreen onBack={() => setShowFriendLink(false)} onStateChange={onFriendStateChange} />
     }
 
     // --- SPASSKONTO (GRUPPEN) SUB-VIEW ---

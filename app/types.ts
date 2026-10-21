@@ -89,7 +89,7 @@ export type ReceiptItem = {
     unit?: 'stk' | 'kg' | null
     unit_price?: number | null
     total_price: number
-    source: 'rewe' | 'manual' // 'rewe' = früherer E-Mail-Import (eingestellt), Daten bleiben
+    source: 'rewe' | 'manual' | 'shared' // 'rewe' = früherer E-Mail-Import (eingestellt), Daten bleiben; 'shared' = Kopie des Partners beim Teilen nach Artikeln
     shared_purchase_id?: string | null // geteilter Einkauf (drizzle/0013)
     shared_away?: boolean // Artikel gehört nach dem Teilen dem Partner (nicht in meiner Analyse)
 }
