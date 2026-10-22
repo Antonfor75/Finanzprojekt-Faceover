@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { supabase } from '@/utils/supabase'
-import { sharedExpenseGuard } from '@/utils/sharing/display'
+import { planExpenseDelete, planExpenseEdit } from '@/utils/sharing/display'
 
 export async function addExpense(formData: FormData) {
     let description = formData.get('description') as string
@@ -86,11 +86,10 @@ export async function updateExpense(id: number, formData: FormData): Promise<{ e
         .select('shared_purchase_id, amount, expense_date')
         .eq('id', id)
         .maybeSingle()
-    if (existing?.shared_purchase_id) {
-        const changed = Number(existing.amount) !== amount || String(existing.expense_date ?? '').slice(0, 10) !== expense_date.slice(0, 10)
-        const blocked = changed ? sharedExpenseGuard(existing, 'update-amount') : null
-        if (blocked) return { error: blocked }
-        const { error } = await supabase.from('expenses').update({ description, category }).eq('id', id)
+    const plan = planExpenseEdit(existing, { description, category, amount, expense_date })
+    if (plan.kind === 'blocked') return { error: plan.message }
+    if (plan.kind === 'shared-text-only') {
+        const { error } = await supabase.from('expenses').update(plan.patch).eq('id', id)
         if (error) {
             console.error('Error updating expense:', error)
             return {}
@@ -120,10 +119,8 @@ export async function deleteExpense(id: number): Promise<{ error?: string }> {
         .select('shared_purchase_id')
         .eq('id', id)
         .maybeSingle()
-    if (existing) {
-        const blocked = sharedExpenseGuard(existing, 'delete')
-        if (blocked) return { error: blocked }
-    }
+    const blocked = planExpenseDelete(existing)
+    if (blocked) return { error: blocked }
 
     // Angehängte Artikel (optionale Zusatzinfo) mitlöschen, sonst bleiben Waisen zurück.
     const { error: itemsError } = await supabase

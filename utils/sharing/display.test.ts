@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { shareBadgeText, shareSubline, sharedExpenseGuard } from './display'
+import { shareBadgeText, shareSubline, sharedExpenseGuard, sharedUpdateBlocked, planExpenseEdit, planExpenseDelete } from './display'
 
 describe('shareBadgeText / shareSubline', () => {
     it('ergibt null bei nicht geteilter Ausgabe', () => {
@@ -45,5 +45,48 @@ describe('sharedExpenseGuard', () => {
     it('lehnt das Ändern von Betrag und Datum einer geteilten Ausgabe ab', () => {
         expect(sharedExpenseGuard({ shared_purchase_id: 'abc' }, 'update-amount'))
             .toBe('Geteilte Ausgabe – Betrag über „Teilung ändern“ anpassen.')
+    })
+})
+
+describe('sharedUpdateBlocked', () => {
+    const shared = { shared_purchase_id: 'abc', amount: 9.52, expense_date: '2026-10-20T12:00:00.000Z' }
+    it('erlaubt alles bei nicht geteilter Ausgabe', () => {
+        expect(sharedUpdateBlocked({ shared_purchase_id: null, amount: 5, expense_date: '2026-10-20' }, { amount: 7, expense_date: '2026-10-21' })).toBeNull()
+        expect(sharedUpdateBlocked(undefined, { amount: 7, expense_date: '2026-10-21' })).toBeNull()
+    })
+    it('erlaubt bei geteilter Ausgabe, wenn Betrag und Datum gleich bleiben (nur Beschreibung/Kategorie)', () => {
+        expect(sharedUpdateBlocked(shared, { amount: 9.52, expense_date: '2026-10-20' })).toBeNull()
+    })
+    it('lehnt eine Betragsänderung ab', () => {
+        expect(sharedUpdateBlocked(shared, { amount: 10, expense_date: '2026-10-20' }))
+            .toBe('Geteilte Ausgabe – Betrag über „Teilung ändern“ anpassen.')
+    })
+    it('lehnt eine Datumsänderung ab', () => {
+        expect(sharedUpdateBlocked(shared, { amount: 9.52, expense_date: '2026-10-19' }))
+            .toBe('Geteilte Ausgabe – Betrag über „Teilung ändern“ anpassen.')
+    })
+    it('versteht den Betrag auch als Postgres-Text', () => {
+        expect(sharedUpdateBlocked({ ...shared, amount: '9.52' as unknown as number }, { amount: 9.52, expense_date: '2026-10-20' })).toBeNull()
+    })
+})
+
+describe('planExpenseEdit / planExpenseDelete', () => {
+    const shared = { shared_purchase_id: 'abc', amount: 9.52, expense_date: '2026-10-20' }
+    const form = { description: 'Neu', category: 'Essen', amount: 9.52, expense_date: '2026-10-20' }
+    it('lässt nicht geteilte Ausgaben normal bearbeiten', () => {
+        expect(planExpenseEdit({ shared_purchase_id: null, amount: 1, expense_date: '2026-10-20' }, form)).toEqual({ kind: 'normal' })
+        expect(planExpenseEdit(undefined, form)).toEqual({ kind: 'normal' })
+    })
+    it('lehnt bei geteilter Ausgabe Betrag oder Datum ab', () => {
+        expect(planExpenseEdit(shared, { ...form, amount: 12 })).toEqual({ kind: 'blocked', message: 'Geteilte Ausgabe – Betrag über „Teilung ändern“ anpassen.' })
+        expect(planExpenseEdit(shared, { ...form, expense_date: '2026-10-21' }).kind).toBe('blocked')
+    })
+    it('schreibt bei geteilter Ausgabe ohne Betrags-/Datumsänderung nur Beschreibung und Kategorie', () => {
+        expect(planExpenseEdit(shared, form)).toEqual({ kind: 'shared-text-only', patch: { description: 'Neu', category: 'Essen' } })
+    })
+    it('lehnt das Löschen einer geteilten Ausgabe ab, erlaubt es sonst', () => {
+        expect(planExpenseDelete({ shared_purchase_id: 'abc' })).toBe('Geteilte Ausgabe – bitte über „Für beide löschen“ entfernen.')
+        expect(planExpenseDelete({ shared_purchase_id: null })).toBeNull()
+        expect(planExpenseDelete(null)).toBeNull()
     })
 })
