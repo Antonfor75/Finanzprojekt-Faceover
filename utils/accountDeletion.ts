@@ -41,3 +41,27 @@ export async function wipeUserRows(client: WipeClient, userId: string): Promise<
         }
     }
 }
+
+/**
+ * Beendet die Freundschaft und alle Teilungen eines Nutzers, bevor seine Ausgaben gelöscht werden (Zurücksetzen).
+ * Sonst bliebe die Kopie des Freundes auf eine nicht mehr vorhandene Ausgabe verwiesen. Beim Löschen der
+ * Teilungen werden die Verweise der Ausgaben und Artikel des Freundes über ON DELETE SET NULL gelöst; die
+ * Kopie bleibt bei ihm als normale Ausgabe mit Hinweistext stehen. Die Spalten sind einzeln gefiltert (kein .or()).
+ * Nicht vorhandene Tabellen (42P01) werden übersprungen, jeder andere Fehler bricht ab.
+ */
+export const SHARING_CLEANUP: ReadonlyArray<{ table: string; column: string }> = [
+    { table: 'shared_purchases', column: 'creator_id' },
+    { table: 'shared_purchases', column: 'partner_id' },
+    { table: 'friendships', column: 'requester_id' },
+    { table: 'friendships', column: 'addressee_id' },
+]
+
+export async function endUserSharing(client: WipeClient, userId: string): Promise<void> {
+    if (!userId) throw new Error('Keine User-ID.')
+    for (const { table, column } of SHARING_CLEANUP) {
+        const { error } = await client.from(table).delete().eq(column, userId)
+        if (error && error.code !== '42P01') {
+            throw new Error(`${table}: ${error.message}`)
+        }
+    }
+}

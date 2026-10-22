@@ -3,6 +3,7 @@
 import { supabaseAdmin } from '@/utils/supabase/admin'
 import { assertAdmin } from '@/utils/adminGuard'
 import { removeAllReceiptImages } from '@/lib/receiptScanStorage'
+import { endUserSharing } from '@/utils/accountDeletion'
 
 export async function getUsers() {
     try {
@@ -91,6 +92,8 @@ const USER_TABLES = [
 async function wipeUserData(userId: string) {
     // Bonbilder offener Kassenbons (Storage) zuerst — die Zeilen dazu verschwinden gleich mit.
     await removeAllReceiptImages(userId).catch((e) => console.warn('Bonbilder löschen:', e))
+    // Freundschaft und Teilungen zuerst beenden: sonst zeigt die Kopie des Freundes auf eine gelöschte Ausgabe.
+    await endUserSharing(supabaseAdmin, userId)
     // Nacheinander, nicht parallel: die Reihenfolge Kinder-vor-Eltern haelt nur so.
     for (const table of USER_TABLES) {
         const { error } = await supabaseAdmin.from(table).delete().eq('user_id', userId)
