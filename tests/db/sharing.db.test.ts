@@ -1,6 +1,6 @@
 import { describe, expect } from 'vitest'
 import type { FriendState, ShareItem } from '@/utils/sharing/types'
-import { asAdmin, asUser, dbTest, loadMigration, makeUser, sqlError, type Tx } from './dbTest'
+import { asAdmin, asUser, dbTest, ensureMigration, makeUser, sqlError, type Tx } from './dbTest'
 
 const NOT_SHAREABLE = 'Diese Buchung kann nicht geteilt werden.'
 const TOO_MUCH = 'Die Artikel des Partners ergeben mehr als den Gesamtbetrag.'
@@ -37,8 +37,9 @@ async function insertExpense(tx: Tx, userId: string, fields: { amount: number; c
 
 /** Lädt 0012 + 0013, legt anton/lena (befreundet) und carla an; A hat die REWE-Ausgabe mit 8 Artikeln. */
 async function setup(tx: Tx, opts: { friends?: boolean } = {}): Promise<World> {
-    await loadMigration(tx, 'drizzle/0012_friendships.sql')
-    await loadMigration(tx, 'drizzle/0013_shared_purchases.sql')
+    // Auf der Live-Datenbank sind beide Migrationen schon eingespielt: dann nicht erneut laden (ALTER TABLE-Sperren).
+    await ensureMigration(tx, 'drizzle/0012_friendships.sql', 'public.friendships')
+    await ensureMigration(tx, 'drizzle/0013_shared_purchases.sql', 'public.shared_purchases')
     const [a, b, c] = [await makeUser(tx), await makeUser(tx), await makeUser(tx)]
     for (const [id, handle] of [[a, 'anton'], [b, 'lena'], [c, 'carla']] as const) {
         await asUser(tx, id)

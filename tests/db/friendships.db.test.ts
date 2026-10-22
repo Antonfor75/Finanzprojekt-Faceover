@@ -1,13 +1,15 @@
 import { describe, expect } from 'vitest'
 import type { FriendState } from '@/utils/sharing/types'
-import { asAdmin, asAnon, asUser, dbTest, loadMigration, makeUser, sqlError, type Tx } from './dbTest'
+import { asAdmin, asAnon, asUser, dbTest, ensureMigration, makeUser, sqlError, type Tx } from './dbTest'
 
 const MIGRATION = 'drizzle/0012_friendships.sql'
+/** Ist die Tabelle schon da (Live-Datenbank), wird die Migration nicht erneut eingespielt. */
+const load = (tx: Tx) => ensureMigration(tx, MIGRATION, 'public.friendships')
 const PATTERN_ERROR = 'Der Kontoname darf nur a–z, 0–9, . und _ enthalten (3–20 Zeichen).'
 
 /** Spielt die Migration ein und legt Konten mit Namen an. Danach läuft alles als admin. */
 async function setup(tx: Tx, handles: string[]): Promise<string[]> {
-    await loadMigration(tx, MIGRATION)
+    await load(tx)
     const ids: string[] = []
     for (const handle of handles) {
         const id = await makeUser(tx)
@@ -39,7 +41,7 @@ async function respond(tx: Tx, from: string, requestId: string, accept: boolean)
 
 describe('Kontoname', () => {
     dbTest("set_my_handle(' Lena ') gibt 'lena' zurück", async (tx) => {
-        await loadMigration(tx, MIGRATION)
+        await load(tx)
         const a = await makeUser(tx)
         await asUser(tx, a)
         const [row] = await tx<{ h: string }[]>`select set_my_handle(' Lena ') as h`
@@ -65,7 +67,7 @@ describe('Kontoname', () => {
 
     for (const bad of ['ab', 'a'.repeat(21), 'le na', 'lena!', 'ä-name', '', '   ']) {
         dbTest(`ungültiger Name ${JSON.stringify(bad)} scheitert mit der Musterregel-Meldung`, async (tx) => {
-            await loadMigration(tx, MIGRATION)
+            await load(tx)
             const a = await makeUser(tx)
             await asUser(tx, a)
             expect(await sqlError(tx, (sp) => sp`select set_my_handle(${bad})`)).toBe(PATTERN_ERROR)
@@ -73,7 +75,7 @@ describe('Kontoname', () => {
     }
 
     dbTest('ohne Anmeldung (anon) ist set_my_handle nicht ausführbar', async (tx) => {
-        await loadMigration(tx, MIGRATION)
+        await load(tx)
         await asAnon(tx)
         expect(await sqlError(tx, (sp) => sp`select set_my_handle('lena')`)).toMatch(/permission denied/)
     })
@@ -292,7 +294,7 @@ describe('Rechte', () => {
     })
 
     dbTest('anon darf die Funktionen nicht ausführen, authenticated schon', async (tx) => {
-        await loadMigration(tx, MIGRATION)
+        await load(tx)
         const rows = await tx<{ fn: string; anon: boolean; auth: boolean }[]>`
             select p.proname as fn,
                    has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
@@ -336,7 +338,7 @@ describe('Name und Freundschaft', () => {
     })
 
     dbTest('ohne auth.uid() melden die Funktionen "Nicht angemeldet."', async (tx) => {
-        await loadMigration(tx, MIGRATION)
+        await load(tx)
         await tx.unsafe('set local role authenticated')
         await tx`select set_config('request.jwt.claims', '{"role":"authenticated"}', true)`
         expect(await sqlError(tx, (sp) => sp`select get_friend_state()`)).toBe('Nicht angemeldet.')

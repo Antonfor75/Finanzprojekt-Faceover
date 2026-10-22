@@ -66,6 +66,17 @@ export async function loadMigration(tx: Tx, file: string): Promise<void> {
     }
 }
 
+/**
+ * Spielt eine Migration nur ein, wenn ihre Tabelle (`marker`, z. B. 'public.shared_purchases') noch nicht existiert.
+ * Die Migrationen 0012/0013 sind auf der Live-Datenbank eingespielt: ihr DDL (ALTER TABLE … ADD COLUMN IF NOT EXISTS)
+ * würde bei jedem Test kurz ACCESS-EXCLUSIVE-Sperren auf expenses/receipt_items nehmen. Dann testen die Tests die dort
+ * eingespielten Funktionen; auf einer leeren Datenbank (ohne Tabelle) wird die Datei wie bisher geladen.
+ */
+export async function ensureMigration(tx: Tx, file: string, marker: string): Promise<void> {
+    const [row] = await tx<{ present: boolean }[]>`select to_regclass(${marker}::text) is not null as present`
+    if (!row.present) await loadMigration(tx, file)
+}
+
 /** Legt ein Wegwerf-Konto in auth.users an (nur innerhalb der Transaktion). */
 export async function makeUser(tx: Tx, email = `sdd-test-${randomUUID()}@example.invalid`): Promise<string> {
     await asAdmin(tx)
