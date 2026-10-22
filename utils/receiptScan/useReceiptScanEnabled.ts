@@ -16,7 +16,15 @@ import { hasReceiptScan } from './access'
  * Bewusst klein gehalten: steckt im Dashboard-Paket, der Scanner selbst wird erst bei Bedarf geladen.
  */
 export function useReceiptScanEnabled(): boolean {
-    const [enabled, setEnabled] = useState(false)
+    return useReceiptScanAccess() === true
+}
+
+/**
+ * Wie useReceiptScanEnabled, unterscheidet aber "noch nicht bekannt" (null) von "nicht freigeschaltet"
+ * (false) — nötig, wenn man auf die Antwort warten muss (z. B. beim Empfangen eines geteilten Bons).
+ */
+export function useReceiptScanAccess(): boolean | null {
+    const [enabled, setEnabled] = useState<boolean | null>(() => (isDemoMode() ? false : null))
     useEffect(() => {
         if (isDemoMode()) return
         let cancelled = false

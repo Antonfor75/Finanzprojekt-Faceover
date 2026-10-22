@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next'
+import { shareTargetManifest } from '@/utils/receiptScan/shareTarget'
 
 export default function manifest(): MetadataRoute.Manifest {
     return {
@@ -16,5 +17,8 @@ export default function manifest(): MetadataRoute.Manifest {
                 type: 'image/png',
             },
         ],
+        // "Teilen" aus anderen Apps (z. B. Kaufland-Bon als PDF): Ablauf in utils/receiptScan/shareTarget.ts.
+        // Nur freigeschaltete Konten nehmen den Bon an, alle anderen sehen einen Hinweis.
+        share_target: shareTargetManifest(),
     }
 }
