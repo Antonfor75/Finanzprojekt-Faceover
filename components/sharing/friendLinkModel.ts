@@ -38,11 +38,30 @@ export function canSendRequest(input: string): boolean {
     return HANDLE_PATTERN.test(normalizeHandleInput(input))
 }
 
-/** Die Anfrage, deren Brief beim Start gezeigt wird (die älteste offene), sonst null. */
-export function letterFor(state: FriendState): FriendState['incoming'][number] | null {
+/**
+ * Die Anfrage, deren Brief gezeigt wird (die älteste offene, die nicht auf später gestellt wurde), sonst null.
+ * Zurückgestellte Anfragen werden einzeln übersprungen, damit weitere Anfragen trotzdem ankommen.
+ */
+export function letterFor(state: FriendState, dismissedIds: readonly string[] = []): FriendState['incoming'][number] | null {
     // Mit bestehender Freundschaft gäbe es nur eine Fehlermeldung beim Annehmen.
     if (state.friend) return null
-    return state.incoming[0] ?? null
+    return state.incoming.find((r) => !dismissedIds.includes(r.id)) ?? null
+}
+
+/** Offene Anfragen, deren Brief auf später gestellt wurde (für den Hinweis auf der Startseite). */
+export function postponedLetters(state: FriendState, dismissedIds: readonly string[]): FriendState['incoming'] {
+    if (state.friend) return []
+    return state.incoming.filter((r) => dismissedIds.includes(r.id))
+}
+
+/** Hinweis auf der Startseite zu zurückgestellten Briefen; null, wenn keiner wartet. */
+export function letterHint(state: FriendState, dismissedIds: readonly string[]): { count: number; text: string } | null {
+    const waiting = postponedLetters(state, dismissedIds)
+    if (waiting.length === 0) return null
+    const text = waiting.length === 1
+        ? `Freundschaftsanfrage von @${waiting[0].handle} wartet`
+        : `${waiting.length} Freundschaftsanfragen warten`
+    return { count: waiting.length, text }
 }
 
 export function bannerText(friendHandle: string, count: number): string {

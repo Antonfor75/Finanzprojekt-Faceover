@@ -25,6 +25,8 @@ export default function FriendLinkView({ state, onChange, onBack }: {
     const [busy, setBusy] = useState(false)
     const [flying, setFlying] = useState(false)
     const [confirmEnd, setConfirmEnd] = useState(false)
+    // Eigenen Kontonamen ändern (geht nur, solange keine Freundschaft besteht)
+    const [editingHandle, setEditingHandle] = useState(false)
 
     const link = describeLink(state)
 
@@ -35,7 +37,14 @@ export default function FriendLinkView({ state, onChange, onBack }: {
         const res = await settle(actSetHandle(normalizeHandleInput(handleInput)))
         setBusy(false)
         if (!res.ok) { setError(res.error); return }
+        setEditingHandle(false)
         onChange({ ...state, handle: res.data })
+    }
+
+    const startEditHandle = () => {
+        setHandleInput(state.handle ?? '')
+        setError(null)
+        setEditingHandle(true)
     }
 
     const connect = async () => {
@@ -91,14 +100,16 @@ export default function FriendLinkView({ state, onChange, onBack }: {
         </>
     )
 
-    // --- Ohne Kontoname: zuerst den eigenen Namen wählen ---
-    if (!state.handle) {
+    // --- Ohne Kontoname (oder beim Ändern): den eigenen Namen wählen ---
+    if (!state.handle || editingHandle) {
         return (
             <div className="fixed inset-0 z-50 flex h-dvh w-screen justify-center overflow-hidden bg-background text-foreground animate-in fade-in slide-in-from-right-8 duration-300 ease-[var(--ease-out-strong)]">
                 {header}
                 <div className="flex h-full w-full max-w-lg flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-[calc(env(safe-area-inset-top)+4.5rem)]">
                     <h1 className="text-center font-display text-2xl font-bold">Gemeinsames Konto</h1>
-                    <p className="mt-2 text-center text-[15px] text-muted-foreground">Wähle zuerst deinen Kontoname, damit dich dein Freund findet.</p>
+                    <p className="mt-2 text-center text-[15px] text-muted-foreground">
+                        {state.handle ? 'Wähle deinen neuen Kontonamen, damit dich dein Freund findet.' : 'Wähle zuerst deinen Kontonamen, damit dich dein Freund findet.'}
+                    </p>
 
                     <div className="mt-12">
                         <label htmlFor="own-handle-input" className="mb-2 block pl-1 text-xs font-medium text-muted-foreground">Dein Kontoname</label>
@@ -129,6 +140,16 @@ export default function FriendLinkView({ state, onChange, onBack }: {
                     >
                         Speichern
                     </button>
+                    {editingHandle && (
+                        <button
+                            type="button"
+                            onClick={() => { setEditingHandle(false); setError(null) }}
+                            disabled={busy}
+                            className="press mt-2.5 h-[52px] rounded-full border border-border bg-card text-base font-semibold text-foreground"
+                        >
+                            Abbrechen
+                        </button>
+                    )}
                 </div>
             </div>
         )
@@ -157,6 +178,11 @@ export default function FriendLinkView({ state, onChange, onBack }: {
                     <div className="absolute left-1.5 top-[22px] flex w-20 flex-col items-center gap-2">
                         <div className={`${AVATAR} bg-primary text-primary-foreground`}>{state.handle.charAt(0).toUpperCase()}</div>
                         <span data-testid="own-handle" className="max-w-full truncate font-semibold">@{state.handle}</span>
+                        {!state.friend && (
+                            <button type="button" data-testid="own-handle-edit" onClick={startEditHandle} className="press -mt-1 text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                                Ändern
+                            </button>
+                        )}
                     </div>
                     <div className="absolute right-1.5 top-[22px] flex w-20 flex-col items-center gap-2">
                         <div className={`${AVATAR} transition-colors duration-300 ${partnerClass}`}>{filled || partnerInitial ? partnerInitial : '?'}</div>

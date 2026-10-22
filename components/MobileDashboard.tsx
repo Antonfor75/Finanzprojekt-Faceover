@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { loadFunSummary, type FunSummary } from '@/lib/data/funSummary'
 import type { DashboardRefresh } from '@/lib/data/dashboardData'
-import { sharedExpenseGuard } from '@/utils/sharing/display'
+import { planExpenseDelete, planExpenseEdit } from '@/utils/sharing/display'
 import { addFunGroupExpense, updateTransfer, deleteTransfer } from '@/lib/data/actions'
 import { DatePicker } from '@/components/ui/date-picker'
 // import DashboardHealth from './DashboardHealth' // REMOVED
@@ -28,7 +28,8 @@ import { isDemoMode } from '@/lib/data/mode'
 import { actGetFriendState, actRespondFriendRequest, actMarkSharesSeen } from '@/app/actions/sharing'
 import FriendRequestLetter from '@/components/sharing/FriendRequestLetter'
 import SharesChangedBanner from '@/components/sharing/SharesChangedBanner'
-import { bannerFor, letterFor, settle } from '@/components/sharing/friendLinkModel'
+import LetterHint from '@/components/sharing/LetterHint'
+import { bannerFor, letterFor, letterHint, settle } from '@/components/sharing/friendLinkModel'
 import type { FriendState } from '@/utils/sharing/types'
 import { groupItemsByExpense } from '@/utils/receiptItems'
 import { redirectToShare } from '@/components/sharing/shareSheetModel'
@@ -236,20 +237,36 @@ export default function MobileDashboard({
     // (so steht „Teilen“ nach dem Verknüpfen sofort bereit, ohne zweiten Abruf).
     const [friend, setFriend] = useState<{ handle: string } | null>(null)
     const [ownHandle, setOwnHandle] = useState<string | null>(null)
+    // Teilen-Fenster: die Ausgabe, die gerade geteilt wird (Stand beim Öffnen, danach der frische aus der Liste).
+    const [shareExpense, setShareExpense] = useState<Expense | null>(null)
+    const friendRef = useRef<{ handle: string } | null>(null) // letzter Freund, auch innerhalb von Callbacks aktuell
     useEffect(() => {
         if (isDemoMode()) return
         let cancelled = false
         settle(actGetFriendState()).then(res => {
             if (cancelled) return
-            if (res.ok) { setFriendState(res.data); setFriend(res.data.friend); setOwnHandle(res.data.handle) }
+            if (res.ok) { friendRef.current = res.data.friend; setFriendState(res.data); setFriend(res.data.friend); setOwnHandle(res.data.handle) }
             else console.warn('Freundschaftsstand nicht geladen:', res.error)
         })
         return () => { cancelled = true }
     }, [])
-    const onFriendStateChange = useCallback((state: FriendState) => { setFriend(state.friend); setOwnHandle(state.handle) }, [])
+    // Briefe, die auf „Später“ gestellt wurden (nur für diese Sitzung); die Startseite zeigt dann einen Hinweis.
+    const [laterLetters, setLaterLetters] = useState<string[]>([])
+    // Eine einzige Stelle für jeden neuen Freundschaftsstand (Brief annehmen, Verknüpfen-Bildschirm): hält Freund, Name,
+    // Brief und Banner gleich aktuell. Endet die Freundschaft, tragen die Ausgaben noch ihre Teilungs-ID: dann neu laden
+    // (sonst führt Löschen/Ändern ins Leere) und ein offenes Teilen-Fenster schließen.
+    const onFriendStateChange = useCallback((state: FriendState) => {
+        const hadFriend = !!friendRef.current
+        friendRef.current = state.friend
+        setFriend(state.friend)
+        setOwnHandle(state.handle)
+        setFriendState(state)
+        if (hadFriend && !state.friend) {
+            setShareExpense(null)
+            onUpdate?.(['expenses', 'receipts'])
+        }
+    }, [onUpdate])
 
-    // Teilen-Fenster: die Ausgabe, die gerade geteilt wird (Stand beim Öffnen, danach der frische aus der Liste).
-    const [shareExpense, setShareExpense] = useState<Expense | null>(null)
     // Löschen/Ändern einer geteilten Ausgabe und „Teilen“ im Verlauf: ohne geladenen Freund Meldung statt wirkungslosem Tipp.
     const requestShare = (expense: Expense) => {
         const r = redirectToShare(expense, !!friend, 'delete')
@@ -257,14 +274,16 @@ export default function MobileDashboard({
         else if (r.message) alert(r.message)
     }
     const shareTarget = shareExpense ? (serverExpenses.find(e => e.id === shareExpense.id) ?? shareExpense) : null
-    const letter = friendState ? letterFor(friendState) : null
+    const letter = friendState ? letterFor(friendState, laterLetters) : null
+    const lettersWaiting = friendState ? letterHint(friendState, laterLetters) : null
     const sharesBanner = friendState ? bannerFor(friendState) : null
 
     const answerLetter = async (accept: boolean): Promise<string | null> => {
         if (!letter) return null
         const res = await settle(actRespondFriendRequest(letter.id, accept))
         if (!res.ok) return res.error
-        setFriendState(res.data)
+        onFriendStateChange(res.data) // auch Freund/Name aktualisieren, damit „Teilen“ gleich bereitsteht
+        if (accept) onUpdate?.(['expenses', 'receipts']) // der Freund wird verbunden: Teilungen neu laden
         return null
     }
 
@@ -305,9 +324,17 @@ export default function MobileDashboard({
         const existing = expenses.find(e => e.id === id)
 
         // Geteilte Ausgabe: Betrag und Datum nur über „Teilung ändern“ (sonst weicht die Kopie des Partners ab).
-        if (existing?.shared_purchase_id && (Number(existing.amount) !== amount || existing.expense_date.slice(0, 10) !== expense_date.slice(0, 10))) {
-            const blocked = sharedExpenseGuard(existing, 'update-amount')
-            if (blocked) { alert(blocked); if (redirectToShare(existing, !!friend, 'update-amount').open) setShareExpense(existing); return } // danach gleich „Teilung ändern“ öffnen
+        // Beschreibung und Kategorie bleiben änderbar und ändern nur die eigene Kopie.
+        const plan = planExpenseEdit(existing, { description, category, amount, expense_date })
+        if (plan.kind === 'blocked') {
+            alert(plan.message)
+            if (existing && redirectToShare(existing, !!friend, 'update-amount').open) setShareExpense(existing) // danach gleich „Teilung ändern“ öffnen
+            return
+        }
+        if (plan.kind === 'shared-text-only') {
+            await supabase.from('expenses').update(plan.patch).eq('id', id)
+            onUpdate?.(['expenses'])
+            return
         }
 
         if (existing?.transfer_id) {
@@ -331,7 +358,7 @@ export default function MobileDashboard({
         const { data: expense } = await supabase.from('expenses').select('*').eq('id', id).single()
 
         // Geteilte Ausgabe: nicht still nur die eigene Kopie löschen, sondern über „Für beide löschen“.
-        const blocked = expense ? sharedExpenseGuard(expense, 'delete') : null
+        const blocked = planExpenseDelete(expense)
         if (blocked) { alert(blocked); return }
 
         // Umbuchung Girokonto <-> Spaßkonto: beide Seiten zusammen löschen (Spaßkonto-Saldo wird korrigiert)
@@ -642,6 +669,9 @@ export default function MobileDashboard({
 
             {sharesBanner && (
                 <SharesChangedBanner count={sharesBanner.count} friendHandle={sharesBanner.friendHandle} onOpen={openSharedChanges} />
+            )}
+            {view === 'entry' && lettersWaiting && !letter && (
+                <LetterHint text={lettersWaiting.text} lowered={!!sharesBanner} onOpen={() => setLaterLetters([])} />
             )}
 
             {/* === ENTRY VIEW: FOKUS-RING (Konzept A) + INSIGHTS (Konzept B) === */}
@@ -1043,7 +1073,7 @@ export default function MobileDashboard({
 
             {/* Eingehende Freundschaftsanfrage als Brief (Vollbild) */}
             {letter && (
-                <FriendRequestLetter key={letter.id} request={letter} ownHandle={friendState?.handle} onAnswer={answerLetter} />
+                <FriendRequestLetter key={letter.id} request={letter} ownHandle={friendState?.handle} onAnswer={answerLetter} onLater={() => setLaterLetters(l => [...l, letter.id])} />
             )}
 
             {/* Beleg-Scanner (Vollbild) */}

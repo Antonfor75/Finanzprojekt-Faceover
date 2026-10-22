@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { FriendState } from '@/utils/sharing/types'
 import {
-    bannerFor, bannerText, canSendRequest, describeLink, letterFor, normalizeHandleInput, settle, OFFLINE_ERROR,
+    bannerFor, bannerText, canSendRequest, describeLink, letterFor, letterHint, postponedLetters, normalizeHandleInput, settle, OFFLINE_ERROR,
 } from './friendLinkModel'
 
 const base: FriendState = { handle: 'anton', friend: null, outgoing: null, incoming: [], unseenShares: 0 }
@@ -52,6 +52,27 @@ describe('letterFor', () => {
     })
     it('kein Brief, wenn schon ein Freund besteht (Annehmen wäre abgelehnt)', () => {
         expect(letterFor({ ...base, incoming, friend: { handle: 'x' } })).toBeNull()
+    })
+})
+
+describe('postponedLetters / letterHint', () => {
+    const incoming = [
+        { id: 'a', handle: 'lena', created_at: '2026-10-01T10:00:00Z' },
+        { id: 'b', handle: 'max', created_at: '2026-10-02T10:00:00Z' },
+    ]
+    it('kein Hinweis, solange nichts zurückgestellt ist', () => {
+        expect(letterHint({ ...base, incoming }, [])).toBeNull()
+        expect(letterHint(base, ['a'])).toBeNull()
+    })
+    it('Hinweis mit Namen bei einer zurückgestellten Anfrage', () => {
+        expect(letterHint({ ...base, incoming }, ['a'])).toEqual({ count: 1, text: 'Freundschaftsanfrage von @lena wartet' })
+    })
+    it('Hinweis mit Anzahl bei mehreren', () => {
+        expect(letterHint({ ...base, incoming }, ['a', 'b'])).toEqual({ count: 2, text: '2 Freundschaftsanfragen warten' })
+    })
+    it('erloschene Anfragen (nicht mehr offen) zählen nicht, mit Freund gibt es keinen Hinweis', () => {
+        expect(postponedLetters({ ...base, incoming: [incoming[1]] }, ['a'])).toEqual([])
+        expect(letterHint({ ...base, incoming, friend: { handle: 'x' } }, ['a'])).toBeNull()
     })
 })
 

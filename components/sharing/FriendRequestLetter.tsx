@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DoveSvg } from './Dove'
 import type { FriendState } from '@/utils/sharing/types'
 
@@ -10,15 +10,28 @@ type Request = FriendState['incoming'][number]
  * Eingehende Freundschaftsanfrage als Brief (Entwurf B4): Die Taube sitzt neben dem Umschlag,
  * Antippen öffnet die Klappe, der Brief gleitet nach oben und die Knöpfe blenden ein.
  * `onAnswer` darf einen Fehlertext zurückgeben; der erscheint unter den Knöpfen.
+ * „Später“ (sofort erreichbar, auch bevor der Brief geöffnet ist) und Escape schieben den Brief weg, damit die
+ * App nie blockiert ist; die Startseite zeigt dann einen Hinweis, der ihn wieder öffnet.
  */
-export default function FriendRequestLetter({ request, ownHandle, onAnswer }: {
+export default function FriendRequestLetter({ request, ownHandle, onAnswer, onLater }: {
     request: Request
     ownHandle?: string | null
     onAnswer: (accept: boolean) => void | string | null | Promise<void | string | null>
+    onLater?: () => void
 }) {
     const [open, setOpen] = useState(false)
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | null>(null)
+
+    const laterRef = useRef(onLater)
+    useEffect(() => { laterRef.current = onLater }, [onLater])
+    const canDismiss = !!onLater
+    useEffect(() => {
+        if (!canDismiss) return
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') laterRef.current?.() }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [canDismiss])
 
     const answer = async (accept: boolean) => {
         if (busy) return
@@ -91,6 +104,11 @@ export default function FriendRequestLetter({ request, ownHandle, onAnswer }: {
                         Ablehnen
                     </button>
                 </div>
+                {onLater && (
+                    <button type="button" onClick={onLater} className="press mt-2 h-11 rounded-full px-6 text-sm font-medium text-muted-foreground hover:text-foreground">
+                        Später
+                    </button>
+                )}
             </div>
         </div>
     )
