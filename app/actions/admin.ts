@@ -39,6 +39,8 @@ export async function setReceiptScan(userId: string, enabled: boolean) {
             await removeAllReceiptImages(userId)
             const { error: delError } = await supabaseAdmin.from('pending_receipts').delete().eq('user_id', userId)
             if (delError) throw new Error(delError.message)
+            // Freunde und geteilte Einkäufe gibt es nur mit Scan-Freischaltung: Freundschaft und Teilungen enden sofort.
+            await endUserSharing(supabaseAdmin, userId)
         }
         return { success: true as const }
     } catch (error) {

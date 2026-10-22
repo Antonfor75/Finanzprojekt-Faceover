@@ -34,9 +34,11 @@ type SettingsOverlayProps = {
     expenses: Expense[]
     /** Stand der Freundschaft aus „Gemeinsam teilen“ (das Dashboard braucht ihn fürs Teilen). */
     onFriendStateChange?: (state: FriendState) => void
+    /** „Gemeinsam teilen“ gibt es nur für Konten mit Kassenbon-Scan; sonst fehlt der Eintrag ganz. */
+    friendsEnabled?: boolean
 }
 
-export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts = [], incomeSources = [], onLogout, onUpdate, expenses, onFriendStateChange }: SettingsOverlayProps) {
+export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts = [], incomeSources = [], onLogout, onUpdate, expenses, onFriendStateChange, friendsEnabled = false }: SettingsOverlayProps) {
     // const [budget, setBudget] = useState<string | number>(settings?.monthly_budget || 0) // REMOVED: Calculated dynamically now
     const [showImportWizard, setShowImportWizard] = useState(false)
     const [showHelp, setShowHelp] = useState(false)
@@ -271,7 +273,7 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
                     </button>
 
-                    {!isDemoMode() && (
+                    {!isDemoMode() && friendsEnabled && (
                         <button
                             onClick={() => setShowFriendLink(true)}
                             className="ledger-row w-full text-left group cursor-pointer"

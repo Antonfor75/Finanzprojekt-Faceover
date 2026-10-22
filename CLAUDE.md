@@ -52,6 +52,8 @@ Six tables in `src/db/schema.ts`, all scoped by `user_id uuid default auth.uid()
 
 **Kassenbon-Scan (Gemini):** only for accounts with `app_metadata.receipt_scan = true` (toggled in the Chefansicht app via the `chef-admin` Edge Function, or in `app/admin`). Server Actions in `app/actions/receiptScan.ts` check the flag, store the open receipt in `pending_receipts` and its image in the private bucket `receipt-scans` (both deleted on save/discard), and call Gemini with `GEMINI_API_KEY` (server-only; optional `GEMINI_MODELS`): Flash-Lite reads first (fast, larger free quota; Flash as fallback), and when the items don't add up Flash re-checks once (self-correction in `utils/receiptScan/analyze.ts`; hence `maxDuration = 180` in `app/layout.tsx`). Measure changes with `npm run eval:receipts` (labels live outside this public repo). Pure rules + tests in `utils/receiptScan/`, UI in `components/receipt/` (mirrors the Handy-App).
 
+**Friends / shared purchases are scan-only too:** `components/sharing/*`, `app/actions/sharing.ts` and the RPCs (`set_my_handle`, `send_friend_request`, `respond_friend_request`, migration `0014`) only work for accounts with `app_metadata.receipt_scan` — the dashboard doesn't even fetch the friend state otherwise, and switching the scan off ends friendship and shares (`endUserSharing` in `utils/accountDeletion.ts`, same in the `chef-admin` function).
+
 Admin area lives under `app/admin/*` and is gated by the hardcoded email `chef@anton.de` (redirected in `app/page.tsx`).
 
 ## Styling & UI Conventions (see `DESIGN.md` and `RULES.md`)

@@ -77,12 +77,17 @@ export async function ensureMigration(tx: Tx, file: string, marker: string): Pro
     if (!row.present) await loadMigration(tx, file)
 }
 
-/** Legt ein Wegwerf-Konto in auth.users an (nur innerhalb der Transaktion). */
-export async function makeUser(tx: Tx, email = `sdd-test-${randomUUID()}@example.invalid`): Promise<string> {
+/**
+ * Legt ein Wegwerf-Konto in auth.users an (nur innerhalb der Transaktion). Standardmäßig mit
+ * freigeschaltetem Kassenbon-Scan (app_metadata.receipt_scan) — Freunde gibt es nur dafür (Migration 0014);
+ * `{ scan: false }` für ein Konto ohne Freischaltung.
+ */
+export async function makeUser(tx: Tx, email = `sdd-test-${randomUUID()}@example.invalid`, opts: { scan?: boolean } = {}): Promise<string> {
     await asAdmin(tx)
+    const appMeta = JSON.stringify(opts.scan === false ? {} : { receipt_scan: true })
     const [row] = await tx<{ id: string }[]>`
         insert into auth.users (id, instance_id, aud, role, email, encrypted_password, created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
-        values (${randomUUID()}, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', ${email}, 'x', now(), now(), '{}'::jsonb, '{}'::jsonb)
+        values (${randomUUID()}, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', ${email}, 'x', now(), now(), ${appMeta}::text::jsonb, '{}'::jsonb)
         returning id`
     return row.id
 }

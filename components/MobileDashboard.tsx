@@ -241,17 +241,22 @@ export default function MobileDashboard({
     }, []) // Run ONCE on mount. onUpdate dependency caused infinite loop.
 
     // --- GETEILTE EINKÄUFE: Brief (eingehende Anfrage) und Hinweis-Banner beim Start ---
+    // Nur für Konten mit Kassenbon-Scan (receiptScan): ohne Freischaltung wird nichts abgerufen und nichts gezeigt
+    // (die *Raw-Zustände bleiben dann leer bzw. werden ausgeblendet, auch wenn der Scan später abgeschaltet wird).
     // Ein Fehler (z. B. offline) darf das Dashboard nicht stören: dann gibt es einfach weder Brief noch Banner.
-    const [friendState, setFriendState] = useState<FriendState | null>(null)
+    const [friendStateRaw, setFriendState] = useState<FriendState | null>(null)
     // Verknüpfter Freund fürs Teilen. Wird beim Start geladen und von „Gemeinsam teilen“ aktuell gehalten
     // (so steht „Teilen“ nach dem Verknüpfen sofort bereit, ohne zweiten Abruf).
-    const [friend, setFriend] = useState<{ handle: string } | null>(null)
-    const [ownHandle, setOwnHandle] = useState<string | null>(null)
+    const [friendRaw, setFriend] = useState<{ handle: string } | null>(null)
+    const [ownHandleRaw, setOwnHandle] = useState<string | null>(null)
+    const friendState = receiptScan ? friendStateRaw : null
+    const friend = receiptScan ? friendRaw : null
+    const ownHandle = receiptScan ? ownHandleRaw : null
     // Teilen-Fenster: die Ausgabe, die gerade geteilt wird (Stand beim Öffnen, danach der frische aus der Liste).
     const [shareExpense, setShareExpense] = useState<Expense | null>(null)
     const friendRef = useRef<{ handle: string } | null>(null) // letzter Freund, auch innerhalb von Callbacks aktuell
     useEffect(() => {
-        if (isDemoMode()) return
+        if (isDemoMode() || !receiptScan) return
         let cancelled = false
         settle(actGetFriendState()).then(res => {
             if (cancelled) return
@@ -259,7 +264,7 @@ export default function MobileDashboard({
             else console.warn('Freundschaftsstand nicht geladen:', res.error)
         })
         return () => { cancelled = true }
-    }, [])
+    }, [receiptScan])
     // Briefe, die auf „Später“ gestellt wurden (nur für diese Sitzung); die Startseite zeigt dann einen Hinweis.
     const [laterLetters, setLaterLetters] = useState<string[]>([])
     // Eine einzige Stelle für jeden neuen Freundschaftsstand (Brief annehmen, Verknüpfen-Bildschirm): hält Freund, Name,
@@ -943,6 +948,7 @@ export default function MobileDashboard({
                             onUpdate={onUpdate}
                             expenses={expenses}
                             onFriendStateChange={onFriendStateChange}
+                            friendsEnabled={receiptScan}
                             onBack={() => setView('entry')}
                         />
                     </div>

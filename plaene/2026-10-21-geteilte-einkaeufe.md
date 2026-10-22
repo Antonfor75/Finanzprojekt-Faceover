@@ -530,3 +530,15 @@ Repo `C:\Anton\Cashflow-AndroidApp`, Branch `feature/geteilte-einkaeufe`. Erst b
 - [ ] **Step 2: Web ausliefern.** Erst den Branch in `main` bringen (PR oder Merge nach Wahl des Nutzers), dann `/push-web-app`.
 - [ ] **Step 3: Handy ausliefern.** Branch `feature/geteilte-einkaeufe` in den Hauptzweig des Handy-Repos mergen, dann `/push-local-app` (OTA, kein neues APK nötig).
 - [ ] **Step 4: Abschlusstest live.** Zwei Testkonten, eines im Web, eines auf dem Handy, Ablauf wie Task 7 Step 2. Danach den Status in `plaene/UEBERSICHT.md` auf „ausgeführt“ setzen und committen.
+
+---
+
+## Nachtrag 2026-10-22: Freunde nur mit Kassenbon-Scan
+
+Entscheidung des Nutzers: Nur wer für den Kassenbon-Scan freigeschaltet ist (`app_metadata.receipt_scan = true`), darf Freundschaften schließen, teilen und sieht die Anzeige dazu.
+
+- **Anzeige (Web):** `MobileDashboard` ruft den Freundesstand nur mit Freischaltung ab; ohne sie fehlen Brief, Banner, Hinweis, Teilen-Schalter, „Teilen“ im Verlauf und der Einstellungs-Eintrag „Gemeinsam teilen“.
+- **Server:** `app/actions/sharing.ts` prüft den Merker frisch beim Auth-Server. Die Datenbank prüft ihn zusätzlich (Migration `0014_friends_scan_only.sql`: `set_my_handle`, `send_friend_request`, `respond_friend_request`), weil die Handy-App die RPCs direkt aufruft. Ein Ziel-Konto ohne Scan gilt als „nicht gefunden“. Teilungen setzen eine Freundschaft voraus.
+- **Abschalten:** `setReceiptScan` (Web-Admin und `chef-admin`) beendet Freundschaft und Teilungen (`endUserSharing`); die Ausgaben bleiben stehen.
+- **Handy-App:** Die Oberfläche ist dort noch nicht ausgeblendet; ohne Freischaltung kommt die Meldung „Freunde sind für dein Konto nicht freigeschaltet.“ aus der Datenbank. Ausblenden in der Handy-App bleibt offen.
+- **E2E:** `e2e/sharing.spec.ts` braucht Testkonten mit Scan-Freischaltung.

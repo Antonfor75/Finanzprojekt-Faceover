@@ -7,6 +7,7 @@ import { budgetRing, selectHistoryTab } from './dashboard-flow'
 // Zwei echte Konten gegen Supabase. Zugänge in der .env:
 //   TEST_EMAIL / TEST_PASSWORD     (Konto 1, schickt die Anfrage)
 //   TEST2_EMAIL / TEST2_PASSWORD   (Konto 2, nimmt sie an)
+// Beide Konten brauchen die Freischaltung des Kassenbon-Scans (Chefansicht bzw. /admin): Freunde gibt es nur dafür.
 // Ohne diese Werte wird übersprungen (statt fehlzuschlagen), wie main-flow.spec.ts.
 const E1 = process.env.TEST_EMAIL
 const P1 = process.env.TEST_PASSWORD

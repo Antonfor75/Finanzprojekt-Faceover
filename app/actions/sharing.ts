@@ -3,21 +3,28 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
 import * as api from '@/utils/sharing/api'
+import { hasReceiptScan } from '@/utils/receiptScan/access'
 import type { FriendState, SaveShareInput, SharedPurchase } from '@/utils/sharing/types'
 
 /**
- * Geteilte Einkäufe (Freundschaft + Teilung). Jede Action ist eine dünne Hülle um die gleichnamige
- * Funktion in utils/sharing/api.ts, läuft als angemeldeter Nutzer (RLS) und reicht die deutsche
- * Fehlermeldung der Datenbank unverändert durch.
+ * Geteilte Einkäufe (Freundschaft + Teilung) — nur für Konten mit Kassenbon-Scan
+ * (app_metadata.receipt_scan, gesetzt in der Chefansicht). Jede Action ist eine dünne Hülle um die
+ * gleichnamige Funktion in utils/sharing/api.ts, läuft als angemeldeter Nutzer (RLS) und reicht die
+ * deutsche Fehlermeldung der Datenbank unverändert durch. Die Datenbank prüft den Merker zusätzlich
+ * (Migration 0014), weil die Handy-App die Funktionen direkt aufruft.
  */
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
+const NOT_ENABLED = 'Freunde sind für dein Konto nicht freigeschaltet.'
+
 async function run<T>(fn: (sb: Awaited<ReturnType<typeof createClient>>) => Promise<T>, revalidate = false): Promise<Result<T>> {
     try {
         const sb = await createClient()
+        // Frisch vom Auth-Server (nicht aus dem Cookie): ein ausgeschalteter Merker gilt sofort.
         const { data: { user } } = await sb.auth.getUser()
         if (!user) return { ok: false, error: 'Nicht angemeldet.' }
+        if (!hasReceiptScan(user)) return { ok: false, error: NOT_ENABLED }
         const data = await fn(sb)
         if (revalidate) revalidatePath('/')
         return { ok: true, data }
