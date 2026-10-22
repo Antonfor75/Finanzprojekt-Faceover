@@ -110,8 +110,12 @@ export default function DatenschutzPage() {
                 <h2>7. Speicherdauer</h2>
                 <p>
                     Deine Kontodaten und Einträge werden gespeichert, solange dein Konto besteht. Löschst du
-                    dein Konto (Einstellungen → „Konto löschen“), werden alle zugehörigen Daten unverzüglich
-                    entfernt. Server-Logs des Hosters werden nach kurzer Zeit automatisch gelöscht.
+                    dein Konto (Einstellungen → „Konto löschen“), wird es sofort gesperrt und du wirst überall
+                    abgemeldet. Deine Daten bleiben noch 30 Tage gespeichert, damit sich ein versehentliches
+                    Löschen beheben lässt, und werden danach automatisch und endgültig gelöscht; offene
+                    Kassenbons samt Fotos entfernen wir sofort. Wünschst du die sofortige endgültige Löschung,
+                    schreib uns an die Adresse in Abschnitt 8. Server-Logs des Hosters werden nach kurzer Zeit
+                    automatisch gelöscht.
                 </p>
             </section>
 

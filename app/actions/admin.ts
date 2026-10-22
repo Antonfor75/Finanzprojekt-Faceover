@@ -3,7 +3,7 @@
 import { supabaseAdmin } from '@/utils/supabase/admin'
 import { assertAdmin } from '@/utils/adminGuard'
 import { removeAllReceiptImages } from '@/lib/receiptScanStorage'
-import { endUserSharing } from '@/utils/accountDeletion'
+import { DELETION_FLAG, endUserSharing } from '@/utils/accountDeletion'
 
 export async function getUsers() {
     try {
@@ -40,6 +40,26 @@ export async function setReceiptScan(userId: string, enabled: boolean) {
             const { error: delError } = await supabaseAdmin.from('pending_receipts').delete().eq('user_id', userId)
             if (delError) throw new Error(delError.message)
         }
+        return { success: true as const }
+    } catch (error) {
+        return { success: false as const, error: error instanceof Error ? error.message : 'Unbekannter Fehler' }
+    }
+}
+
+/**
+ * Ein vom Nutzer gelöschtes Konto (Frist läuft noch, siehe utils/accountDeletion.ts) wieder
+ * freigeben: Sperre weg, Löschvermerk weg — alle Daten sind noch da. Nur der Admin kann das.
+ */
+export async function restoreDeletedAccount(userId: string) {
+    try {
+        await assertAdmin()
+        if (!userId) throw new Error('userId fehlt.')
+        // null entfernt den Schlüssel aus app_metadata (GoTrue führt zusammen).
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+            ban_duration: 'none',
+            app_metadata: { [DELETION_FLAG]: null },
+        })
+        if (error) throw new Error(error.message)
         return { success: true as const }
     } catch (error) {
         return { success: false as const, error: error instanceof Error ? error.message : 'Unbekannter Fehler' }

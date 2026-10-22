@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase'
-import { getUsers, createUser, deleteUserData as deleteUser, resetUserData as resetUser, setReceiptScan } from '@/app/actions/admin'
+import { getUsers, createUser, deleteUserData as deleteUser, resetUserData as resetUser, setReceiptScan, restoreDeletedAccount } from '@/app/actions/admin'
+import { deletionRequestedAt, purgeAfter } from '@/utils/accountDeletion'
 import InviteCodePanel from '@/components/admin/InviteCodePanel'
 import PasswordInput from '@/components/PasswordInput'
 import { MIN_PASSWORD_LENGTH } from '@/utils/authRules'
@@ -250,6 +251,25 @@ export default function AdminPage() {
                                     <span className="font-bold text-lg break-all pr-20">{user.email}</span>
                                     <span className="text-xs text-gray-400 font-mono mt-1 break-all">ID: {user.id}</span>
                                     <span className="text-xs text-gray-400">Erstellt: {new Date(user.created_at).toLocaleDateString()}</span>
+
+                                    {/* Vom Nutzer gelöscht: Daten bleiben bis zum Ende der Frist, dann löscht der tägliche Lauf endgültig */}
+                                    {deletionRequestedAt(user) && (
+                                        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                                            <span className="px-2 py-1 rounded-lg bg-amber-100 text-amber-800 font-bold">
+                                                Gelöscht – Daten bis {purgeAfter(deletionRequestedAt(user)!).toLocaleDateString()} aufbewahrt
+                                            </span>
+                                            <button
+                                                onClick={async () => {
+                                                    const res = await restoreDeletedAccount(user.id)
+                                                    if (res.success) await fetchUsers()
+                                                    else alert('Fehler: ' + res.error)
+                                                }}
+                                                className="px-3 py-1 rounded-lg border-2 border-green-600 text-green-700 font-bold bg-white"
+                                            >
+                                                Wiederherstellen
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {/* Kassenbon-Scan (Gemini) nur für freigeschaltete Konten */}
                                     {user.email !== ADMIN_EMAIL && (

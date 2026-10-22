@@ -75,12 +75,13 @@ export default function AccountLegalSection() {
                 <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 bg-card border border-border shadow-xl mx-4 max-w-[calc(100%-2rem)]">
                     <DialogHeader>
                         <DialogTitle className="font-display text-xl font-semibold tracking-tight text-foreground text-left">
-                            Konto endgültig löschen?
+                            Konto löschen?
                         </DialogTitle>
                         <DialogDescription className="text-sm text-muted-foreground text-left leading-relaxed">
-                            Dein Konto und <strong className="text-foreground">alle</strong> Einträge, Konten, Fixkosten,
-                            Einnahmen und Bons werden sofort und unwiderruflich gelöscht. Sichere vorher bei Bedarf
-                            deine Daten über den Backup-Knopf oben in den Einstellungen.
+                            Dein Konto wird sofort gesperrt und du wirst abgemeldet. Deine Daten (Einträge, Konten,
+                            Fixkosten, Einnahmen, Bons) bleiben noch <strong className="text-foreground">30 Tage</strong> gespeichert,
+                            damit sich ein Versehen beheben lässt, und werden danach endgültig gelöscht. Sichere
+                            vorher bei Bedarf deine Daten über den Backup-Knopf oben in den Einstellungen.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -109,7 +110,7 @@ export default function AccountLegalSection() {
                             disabled={busy || !confirmEmail.trim()}
                             className="press w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base text-white bg-[var(--chart-neg-heavy)] disabled:opacity-50"
                         >
-                            {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Konto unwiderruflich löschen'}
+                            {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Konto löschen'}
                         </button>
                         <button
                             type="button"

@@ -18,7 +18,37 @@ export const USER_TABLES = [
     'income_sources',
 ] as const
 
-type DeleteResult = { error: { code?: string; message: string } | null }
+/**
+ * Konto löschen mit Frist: Das Konto wird sofort gesperrt, die Daten bleiben aber mindestens
+ * DELETION_GRACE_DAYS Tage in der Datenbank (Wiederherstellung bei Versehen); erst danach löscht
+ * der tägliche Lauf (app/api/purge-deleted-accounts) alles endgültig. Der Zeitpunkt der Löschung
+ * steht in app_metadata.deletion_requested_at — nur die Service-Role kann ihn setzen.
+ */
+export const DELETION_GRACE_DAYS = 30
+export const DELETION_FLAG = 'deletion_requested_at'
+/** "Für immer" gesperrt (GoTrue kennt nur Dauern, kein Datum). */
+export const BAN_FOREVER = '876000h'
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** Zeitpunkt der Löschanfrage aus app_metadata; null, wenn keine (gültige) gesetzt ist. */
+export function deletionRequestedAt(user: { app_metadata?: Record<string, unknown> | null } | null | undefined): Date | null {
+    const raw = user?.app_metadata?.[DELETION_FLAG]
+    if (typeof raw !== 'string') return null
+    const date = new Date(raw)
+    return Number.isNaN(date.getTime()) ? null : date
+}
+
+/** Ab wann die Daten endgültig gelöscht werden dürfen: frühestens nach der vollen Frist. */
+export function purgeAfter(requestedAt: Date): Date {
+    return new Date(requestedAt.getTime() + DELETION_GRACE_DAYS * DAY_MS)
+}
+
+export function isDueForPurge(requestedAt: Date | null, now: Date = new Date()): boolean {
+    return !!requestedAt && now.getTime() >= purgeAfter(requestedAt).getTime()
+}
+
+type DeleteResult ={ error: { code?: string; message: string } | null }
 
 /** Minimale Form eines Supabase-Clients, damit die Logik ohne Netz testbar bleibt. */
 export type WipeClient = {

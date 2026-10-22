@@ -65,4 +65,5 @@ Admin area lives under `app/admin/*` and is gated by the hardcoded email `chef@a
 
 - **PWA:** `app/manifest.ts`, `public/service-worker.js`, `components/SWRegister.tsx`.
 - **Bank statement import:** `components/ImportWizard.tsx` + `utils/parseBankStatement.ts` / `utils/parseFullImport.ts` (uses `pdfjs-dist`); PDF export via `jspdf` + `jspdf-autotable`.
+- **Konto löschen mit Frist:** „Konto löschen“ (`app/actions/account.ts`) sperrt das Konto sofort (GoTrue-Ban, `app_metadata.deletion_requested_at`) und meldet überall ab; die Daten bleiben `DELETION_GRACE_DAYS` (30) Tage, bis der tägliche Vercel-Cron `app/api/purge-deleted-accounts` (braucht `CRON_SECRET`, `vercel.json`) sie über `lib/accountPurge.ts` endgültig löscht. Wiederherstellen kann der Admin in `/admin`. Frist/Regeln: `utils/accountDeletion.ts`.
 - Debug/log leftovers (`*.log`, `schema_*.json`, `scripts/userdata*.json`) and Playwright outputs are git-ignored — never commit them (the repo is public).

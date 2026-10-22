@@ -64,7 +64,10 @@ export default function LoginScreen() {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
 
         if (error) {
-            setError(error.message)
+            // Gesperrt = Konto wurde gelöscht und liegt noch in der 30-Tage-Frist (utils/accountDeletion.ts).
+            setError(/banned/i.test(error.message)
+                ? 'Dieses Konto wurde gelöscht. Innerhalb von 30 Tagen lässt es sich auf Anfrage wiederherstellen — schreib dazu an die Adresse aus dem Impressum.'
+                : error.message)
             setLoading(false)
             return
         }

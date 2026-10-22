@@ -23,6 +23,8 @@ Alle Pläne für Web-App, Handy-App „Mein Cashflow“ und Chefansicht liegen i
   Danach: Bons aus anderen Apps per „Teilen“ empfangen (Web Share Target, `share_target` im Manifest): Der Service Worker fängt den POST auf `/share-receipt` ab, legt die Dateien in IndexedDB und leitet auf `/?share=ok`; die Startseite holt sie ab, verkleinert sie und startet den Scan (nur freigeschaltete Konten, sonst Hinweis). Tests, Lint der geänderten Dateien und Build grün; Service-Worker-Pfad im Browser geprüft.
   **Fehlt noch:** ein echter Scan über die Live-Seite (auch per Teilen vom Handy, nur mit installierter PWA); danach echte Personen freischalten.
 
+- **Konto löschen mit 30 Tagen Frist** (Web, kein eigener Plan): Löschen sperrt das Konto sofort, die Daten bleiben 30 Tage in Supabase und werden dann vom täglichen Cron (`/api/purge-deleted-accounts`, `CRON_SECRET`) endgültig gelöscht; Admin kann in `/admin` wiederherstellen. Datenschutzerklärung und Hinweis im Dialog angepasst.
+
 - [Web-App professionalisieren](2026-10-08-webapp-professionalisierung.md) (Web + Chefansicht): Impressum, Datenschutzerklärung, Datenschutz-Häkchen bei der Registrierung und „Konto löschen“ sind gebaut. Dazu kommen ein Demo-Modus unter `/demo` mit Beispieldaten nur im Browser und eine geführte Tour. Einladungscodes gelten jetzt für mehrere Personen, im Web-Admin und in der Chefansicht. Alles ist live (main, Migration 0008, Chef-APK installiert).
   **Fehlt noch:** eine echte Registrierung mit einem Mehrfach-Code, ein paralleler Einlöse-Test und der Live-Check, ob sich die Login-Seite scrollen lässt.
 

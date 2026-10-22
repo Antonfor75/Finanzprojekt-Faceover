@@ -1,5 +1,35 @@
 import { describe, it, expect } from 'vitest'
-import { wipeUserRows, endUserSharing, USER_TABLES, type WipeClient } from './accountDeletion'
+import {
+    wipeUserRows, endUserSharing, USER_TABLES, deletionRequestedAt, isDueForPurge, purgeAfter, DELETION_GRACE_DAYS, DELETION_FLAG,
+    type WipeClient,
+} from './accountDeletion'
+
+describe('Löschfrist', () => {
+    const requested = new Date('2026-10-01T12:00:00.000Z')
+
+    it('liest den Zeitpunkt nur aus gültigem app_metadata', () => {
+        expect(deletionRequestedAt({ app_metadata: { [DELETION_FLAG]: requested.toISOString() } })).toEqual(requested)
+        expect(deletionRequestedAt({ app_metadata: {} })).toBeNull()
+        expect(deletionRequestedAt({ app_metadata: { [DELETION_FLAG]: 'kein-datum' } })).toBeNull()
+        expect(deletionRequestedAt({ app_metadata: { [DELETION_FLAG]: 123 } })).toBeNull()
+        expect(deletionRequestedAt(null)).toBeNull()
+    })
+
+    it('die Frist beträgt mindestens 30 Tage', () => {
+        expect(DELETION_GRACE_DAYS).toBeGreaterThanOrEqual(30)
+        expect(purgeAfter(requested).toISOString()).toBe('2026-10-31T12:00:00.000Z')
+    })
+
+    it('löscht erst nach der vollen Frist endgültig', () => {
+        expect(isDueForPurge(requested, new Date('2026-10-31T11:59:59.999Z'))).toBe(false)
+        expect(isDueForPurge(requested, new Date('2026-10-31T12:00:00.000Z'))).toBe(true)
+        expect(isDueForPurge(requested, new Date('2026-12-01T00:00:00.000Z'))).toBe(true)
+    })
+
+    it('ohne Löschanfrage wird nie etwas endgültig gelöscht', () => {
+        expect(isDueForPurge(null, new Date('2030-01-01T00:00:00.000Z'))).toBe(false)
+    })
+})
 
 function fakeClient(failOn?: { table: string; code?: string }) {
     const calls: { table: string; column: string; value: string }[] = []
