@@ -41,7 +41,6 @@ export function sharedExpenseGuard(e: Pick<Expense, 'shared_purchase_id'>, op: '
 /**
  * Schutz beim Bearbeiten einer geteilten Ausgabe: abgelehnt wird nur, wenn sich Betrag oder Datum wirklich ändern.
  * Beschreibung und Kategorie bleiben änderbar. Gibt die Meldung zurück oder null, wenn die Änderung erlaubt ist.
- * (Die Web-App hat dieselbe Prüfung noch inline in app/actions.ts und MobileDashboard und sollte diese Funktion übernehmen.)
  */
 export function sharedUpdateBlocked(
     existing: Pick<Expense, 'shared_purchase_id' | 'amount' | 'expense_date'> | null | undefined,
