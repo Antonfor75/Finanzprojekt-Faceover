@@ -6,6 +6,7 @@ import { subMonths } from 'date-fns'
 import { ChevronDown } from 'lucide-react'
 import { Expense, ReceiptItem, Product } from '@/app/types'
 import { isTransferExpense } from '@/utils/transfer'
+import { aggregateProducts, groupItemsByExpense, isStoreSource } from '@/utils/receiptItems'
 
 /**
  * Analyse-Tab "Einkäufe": Kuchendiagramm der Ausgaben nach Quelle.
@@ -62,15 +63,8 @@ export default function PurchasesTab({ expenses, receiptItems, products }: Props
         return map
     }, [products])
 
-    const itemsByExpense = useMemo(() => {
-        const map = new Map<number, ReceiptItem[]>()
-        for (const item of receiptItems) {
-            const list = map.get(item.expense_id)
-            if (list) list.push(item)
-            else map.set(item.expense_id, [item])
-        }
-        return map
-    }, [receiptItems])
+    // Ohne die Artikel, die beim Teilen zum Partner gewandert sind (shared_away).
+    const itemsByExpense = useMemo(() => groupItemsByExpense(receiptItems), [receiptItems])
 
     const slices = useMemo<Slice[]>(() => {
         const now = new Date()
@@ -89,7 +83,7 @@ export default function PurchasesTab({ expenses, receiptItems, products }: Props
 
             // Store-Quelle (über die Artikel) schlägt die Ausgaben-Kategorie.
             const items = itemsByExpense.get(expense.id)
-            const storeSource = items?.find((i) => i.source !== 'manual')?.source
+            const storeSource = items?.find((i) => isStoreSource(i.source))?.source
             const key = storeSource ? `store:${storeSource}` : `cat:${expense.category || 'Sonstiges'}`
 
             let slice = map.get(key)
@@ -127,35 +121,7 @@ export default function PurchasesTab({ expenses, receiptItems, products }: Props
         if (!selected) return []
 
         if (selected.kind === 'store') {
-            type Group = { name: string; qty: number; hasKg: boolean; hasPiece: boolean; lines: number; total: number }
-            const groups = new Map<string, Group>()
-            for (const expenseId of selected.expenseIds) {
-                for (const item of itemsByExpense.get(expenseId) || []) {
-                    const key = item.product_id ? `p:${item.product_id}` : `r:${item.name_raw}`
-                    const name = (item.product_id && productNameById.get(item.product_id)) || item.name_raw
-                    let g = groups.get(key)
-                    if (!g) {
-                        g = { name, qty: 0, hasKg: false, hasPiece: false, lines: 0, total: 0 }
-                        groups.set(key, g)
-                    }
-                    g.qty += Number(item.quantity) || 1
-                    if (item.unit === 'kg') g.hasKg = true
-                    else g.hasPiece = true
-                    g.lines += 1
-                    g.total += Number(item.total_price)
-                }
-            }
-            return [...groups.values()]
-                .sort((a, b) => b.total - a.total)
-                .map((g) => ({
-                    label: g.name,
-                    sub: g.hasKg && !g.hasPiece
-                        ? `${(Math.round(g.qty * 1000) / 1000)} kg`
-                        : g.hasKg
-                            ? `${g.lines}×`
-                            : `${Math.round(g.qty)}×`,
-                    value: g.total,
-                }))
+            return aggregateProducts(itemsByExpense, selected.expenseIds, (id) => productNameById.get(id))
         }
 
         return [...selected.expenses]

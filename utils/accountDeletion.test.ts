@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { wipeUserRows, USER_TABLES, type WipeClient } from './accountDeletion'
+import { wipeUserRows, endUserSharing, USER_TABLES, type WipeClient } from './accountDeletion'
 
 function fakeClient(failOn?: { table: string; code?: string }) {
     const calls: { table: string; column: string; value: string }[] = []
@@ -48,6 +48,41 @@ describe('wipeUserRows', () => {
     it('verweigert eine leere User-ID', async () => {
         const { client, calls } = fakeClient()
         await expect(wipeUserRows(client, '')).rejects.toThrow()
+        expect(calls).toHaveLength(0)
+    })
+})
+
+describe('endUserSharing', () => {
+    it('löscht Teilungen (als creator und als partner) vor den Freundschaften (als requester und addressee)', async () => {
+        const { client, calls } = fakeClient()
+        await endUserSharing(client, 'user-1')
+        expect(calls).toEqual([
+            { table: 'shared_purchases', column: 'creator_id', value: 'user-1' },
+            { table: 'shared_purchases', column: 'partner_id', value: 'user-1' },
+            { table: 'friendships', column: 'requester_id', value: 'user-1' },
+            { table: 'friendships', column: 'addressee_id', value: 'user-1' },
+        ])
+    })
+
+    it('fasst keine Ausgaben an (die Kopie des Freundes löst ON DELETE SET NULL)', async () => {
+        const { client, calls } = fakeClient()
+        await endUserSharing(client, 'user-1')
+        expect(calls.map(c => c.table)).not.toContain('expenses')
+    })
+
+    it('überspringt fehlende Tabellen (42P01), bricht aber bei echtem Fehler ab', async () => {
+        const missing = fakeClient({ table: 'shared_purchases', code: '42P01' })
+        await endUserSharing(missing.client, 'user-1')
+        expect(missing.calls).toHaveLength(4)
+
+        const broken = fakeClient({ table: 'shared_purchases', code: '42501' })
+        await expect(endUserSharing(broken.client, 'user-1')).rejects.toThrow('shared_purchases')
+        expect(broken.calls.map(c => c.table)).not.toContain('friendships')
+    })
+
+    it('verweigert eine leere User-ID', async () => {
+        const { client, calls } = fakeClient()
+        await expect(endUserSharing(client, '')).rejects.toThrow()
         expect(calls).toHaveLength(0)
     })
 })

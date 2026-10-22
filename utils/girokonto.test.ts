@@ -39,3 +39,28 @@ describe('calculateGirokontoTimeline mit Umbuchungen', () => {
         expect(timeline.every((t) => t.transfer_val === 0)).toBe(true)
     })
 })
+
+describe('calculateGirokontoTimeline bei geteilten Ausgaben', () => {
+    it('Teilen einer Ausgabe in einer alten Woche ändert den Kontostand ab diesem Tag', () => {
+        const run = (amount: number) => calculateGirokontoTimeline(
+            [ex(1, 4.5, 28), ex(2, amount, 21), ex(3, 7, 5)], income, fixed, 200,
+        )
+        const voll = run(19.48)
+        const geteilt = run(9.96)
+
+        expect(geteilt.finalBalance - voll.finalBalance).toBeCloseTo(9.52, 10)
+
+        expect(geteilt.timeline).toHaveLength(voll.timeline.length)
+        const teilungstag = day(21)
+        const key = (t: { date: Date }) => t.date.toISOString().slice(0, 10)
+        voll.timeline.forEach((t, i) => {
+            const g = geteilt.timeline[i]
+            if (t.date.getTime() < new Date(teilungstag).getTime()) {
+                expect(g.balance).toBeCloseTo(t.balance, 10)
+            } else {
+                expect(g.balance - t.balance).toBeCloseTo(9.52, 10)
+            }
+            expect(key(g)).toBe(key(t))
+        })
+    })
+})

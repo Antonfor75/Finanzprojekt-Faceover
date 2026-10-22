@@ -1,4 +1,5 @@
 import { supabase } from '@/utils/supabase'
+import { expenseForRestore, countActiveShares, restoreSharesWarning, type BackupExpense } from '@/utils/restoreExpenses'
 
 /** Backup aus einem PDF-Report wiederherstellen (ersetzt alle aktuellen Daten nach Rückfrage). */
 export async function restoreBackup(event: React.ChangeEvent<HTMLInputElement>, onUpdate?: () => void) {
@@ -28,8 +29,19 @@ export async function restoreBackup(event: React.ChangeEvent<HTMLInputElement>, 
             if (!user) return
 
             if (confirm('Achtung: Dies wird alle aktuellen Daten löschen und durch das Backup ersetzen. Fortfahren?')) {
+                // Geteilte Ausgaben: das Backup kennt die Teilungen nicht; sie werden auf dieser Seite gelöst.
+                const { data: sharedNow, error: sharedErr } = await supabase.from('expenses').select('id, shared_purchase_id').not('shared_purchase_id', 'is', null)
+                if (sharedErr) console.error('Error checking shared expenses:', sharedErr)
+                const activeShares = countActiveShares(sharedNow)
+                if (activeShares > 0 && !confirm(restoreSharesWarning(activeShares))) return
+
                 // 1. Delete all existing
-                await supabase.from('expenses').delete().neq('id', 0)
+                const { error: wipeError } = await supabase.from('expenses').delete().neq('id', 0)
+                if (wipeError) {
+                    console.error('Error deleting expenses:', wipeError)
+                    alert(`Wiederherstellen abgebrochen: Die bestehenden Ausgaben konnten nicht gelöscht werden (${wipeError.message}).`)
+                    return
+                }
                 await supabase.from('fixed_costs').delete().neq('id', 0)
                 await supabase.from('accounts').delete().neq('id', 0)
                 await supabase.from('income_sources').delete().neq('id', 0)
@@ -88,22 +100,17 @@ export async function restoreBackup(event: React.ChangeEvent<HTMLInputElement>, 
 
                 // 6. Restore Expenses (with updated account_id)
                 if (data.expenses?.length) {
-                    const expensesToInsert = data.expenses.map((exp: any) => {
-                        const { id, user_id, created_at, ...expData } = exp
-                        if (expData.account_id && accountIdMap.has(expData.account_id)) {
-                            expData.account_id = accountIdMap.get(expData.account_id)
-                        } else {
-                            expData.account_id = null
-                        }
-                        // Ensure date exists
-                        if (!expData.expense_date && expData.created_at) expData.expense_date = expData.created_at
-                        if (!expData.expense_date) expData.expense_date = new Date().toISOString()
-
-                        return { ...expData, user_id: user.id }
-                    })
+                    // Teilungs-Verweise werden gelöst (sonst lehnt der Fremdschlüssel das ganze Einfügen ab).
+                    const nowIso = new Date().toISOString()
+                    const expensesToInsert = data.expenses.map((exp: BackupExpense) => expenseForRestore(exp, accountIdMap, user.id, nowIso))
                     // Bulk insert
                     const { error } = await supabase.from('expenses').insert(expensesToInsert)
-                    if (error) console.error('Error restoring expenses:', error)
+                    if (error) {
+                        console.error('Error restoring expenses:', error)
+                        onUpdate?.()
+                        alert(`Die Ausgaben konnten nicht wiederhergestellt werden (${error.message}). Die übrigen Daten wurden wiederhergestellt.`)
+                        return
+                    }
                 }
 
                 onUpdate?.()

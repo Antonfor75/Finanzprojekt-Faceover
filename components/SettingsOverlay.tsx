@@ -2,14 +2,17 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { applyTheme, loadTheme, getSavedTheme, THEMES } from '@/utils/theme'
-import { ChevronRight, LogOut, Download, Upload, FileText, HelpCircle, Sparkles } from 'lucide-react'
+import { ChevronRight, LogOut, Download, Upload, FileText, HelpCircle, Sparkles, Users } from 'lucide-react'
 import ImportWizard from '@/components/ImportWizard'
 import HelpModal from '@/components/HelpModal'
 import AccountLegalSection from '@/components/legal/AccountLegalSection'
 // Set worker source for pdfjs
 import { preloadPdf, withPdf } from '@/lib/pdf'
 import FunAccountHub from '@/components/FunAccountHub'
+import FriendLinkScreen from '@/components/sharing/FriendLinkScreen'
+import { isDemoMode } from '@/lib/data/mode'
 import { Expense, FixedCost, Settings, Account, IncomeSource } from '@/app/types'
+import type { FriendState } from '@/utils/sharing/types'
 import { Button } from '@/components/ui/button'
 import { useIncomeEditor } from '@/components/settings/useIncomeEditor'
 import { useAccountEditor } from '@/components/settings/useAccountEditor'
@@ -29,14 +32,17 @@ type SettingsOverlayProps = {
     onLogout: () => void
     onUpdate?: () => void
     expenses: Expense[]
+    /** Stand der Freundschaft aus „Gemeinsam teilen“ (das Dashboard braucht ihn fürs Teilen). */
+    onFriendStateChange?: (state: FriendState) => void
 }
 
-export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts = [], incomeSources = [], onLogout, onUpdate, expenses }: SettingsOverlayProps) {
+export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts = [], incomeSources = [], onLogout, onUpdate, expenses, onFriendStateChange }: SettingsOverlayProps) {
     // const [budget, setBudget] = useState<string | number>(settings?.monthly_budget || 0) // REMOVED: Calculated dynamically now
     const [showImportWizard, setShowImportWizard] = useState(false)
     const [showHelp, setShowHelp] = useState(false)
     const [showFixedCosts, setShowFixedCosts] = useState(false)
     const [showFunHub, setShowFunHub] = useState(false)
+    const [showFriendLink, setShowFriendLink] = useState(false)
 
     // Income Sources State
     const [showIncome, setShowIncome] = useState(false)
@@ -143,6 +149,11 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
     // --- ACCOUNTS SUB-VIEW ---
     if (showAccounts) {
         return <AccountsView editor={accountEditor} onBack={() => setShowAccounts(false)} accounts={accounts} fixedCosts={fixedCosts} />
+    }
+
+    // --- GEMEINSAM TEILEN (Freund verknüpfen) ---
+    if (showFriendLink) {
+        return <FriendLinkScreen onBack={() => setShowFriendLink(false)} onStateChange={onFriendStateChange} />
     }
 
     // --- SPASSKONTO (GRUPPEN) SUB-VIEW ---
@@ -259,6 +270,19 @@ export default function SettingsOverlay({ onBack, settings, fixedCosts, accounts
                         </div>
                         <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
                     </button>
+
+                    {!isDemoMode() && (
+                        <button
+                            onClick={() => setShowFriendLink(true)}
+                            className="ledger-row w-full text-left group cursor-pointer"
+                        >
+                            <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4 text-partner" strokeWidth={1.75} />
+                                <span className="text-base font-semibold text-foreground">Gemeinsam teilen</span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-0.5" strokeWidth={1.75} />
+                        </button>
+                    )}
                 </div>
 
                 {/* Design */}

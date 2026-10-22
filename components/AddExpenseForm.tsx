@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { supabase } from '@/utils/supabase'
 import { addAccountExpense } from '@/lib/data/actions'
 import { Account, Expense } from '@/app/types'
+import ShareToggle from '@/components/sharing/ShareToggle'
 
 type ExpenseDraft = Pick<Expense, 'description' | 'amount' | 'expense_date' | 'category'>
 
@@ -29,11 +30,15 @@ import { de } from 'date-fns/locale'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
-export default function AddExpenseForm({ accounts = [], onRefresh, onOptimisticAdd }: {
+export default function AddExpenseForm({ accounts = [], onRefresh, onOptimisticAdd, friend = null, onShareRequested }: {
     accounts?: Account[],
     onRefresh?: () => void,
     // Normale Budget-Ausgabe sofort anzeigen; `save` speichert und wirft bei Fehler (Meldung = Text für alert)
-    onOptimisticAdd?: (draft: ExpenseDraft, save: () => Promise<void>) => void
+    onOptimisticAdd?: (draft: ExpenseDraft, save: () => Promise<void>) => void,
+    // Verknüpfter Freund (geteilte Einkäufe): dann gibt es den Schalter "Mit <name> teilen"
+    friend?: { handle: string } | null,
+    // Die Ausgabe ist gespeichert und soll geteilt werden: öffnet das Teilen-Fenster dafür
+    onShareRequested?: (expense: Expense) => void
 }) {
     const formRef = useRef<HTMLFormElement>(null)
     const [loading, setLoading] = useState(false)
@@ -44,6 +49,10 @@ export default function AddExpenseForm({ accounts = [], onRefresh, onOptimisticA
     const funAccounts = accounts.filter(a => a.type === 'fun')
     // 'budget' = normal weekly budget, otherwise the fun account id
     const [paymentSource, setPaymentSource] = useState<'budget' | number>('budget')
+    // Teilen geht nur bei normalen Budget-Ausgaben (nicht vom Sparkonto/Spaßkonto bezahlt)
+    const [categoryValue, setCategoryValue] = useState('Essen')
+    const [share, setShare] = useState(false)
+    const canShare = !!friend && !!onOptimisticAdd && !!onShareRequested && paymentSource === 'budget' && !categoryValue.startsWith('account:')
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -86,8 +95,11 @@ export default function AddExpenseForm({ accounts = [], onRefresh, onOptimisticA
             // unten bleiben beim alten Ablauf, weil sie vorher das Guthaben prüfen)
             if (onOptimisticAdd && !category.startsWith('account:')) {
                 const draft: ExpenseDraft = { description, amount, expense_date, category }
+                const wantsShare = canShare && share
                 formRef.current?.reset()
                 setDate(new Date())
+                setShare(false)
+                setCategoryValue('Essen')
                 setLoading(false)
                 onOptimisticAdd(draft, async () => {
                     // Sitzung lokal lesen statt getUser() (spart eine Runde zu Supabase Auth);
@@ -95,12 +107,17 @@ export default function AddExpenseForm({ accounts = [], onRefresh, onOptimisticA
                     const { data: { session } } = await supabase.auth.getSession()
                     const user = session?.user
                     if (!user) throw new Error('Fehler: Nicht eingeloggt')
-                    const { error: insertError } = await supabase
-                        .from('expenses')
-                        .insert([{ ...draft, user_id: user.id, account_id: null }])
-                    if (insertError) {
-                        console.error('Error inserting expense:', insertError)
+                    const row = { ...draft, user_id: user.id, account_id: null }
+                    // Zum Teilen wird die ID der neuen Ausgabe gebraucht, sonst bleibt der Ablauf wie gehabt.
+                    const result = wantsShare
+                        ? await supabase.from('expenses').insert([row]).select('id').single()
+                        : { data: null, error: (await supabase.from('expenses').insert([row])).error }
+                    if (result.error) {
+                        console.error('Error inserting expense:', result.error)
                         throw new Error('Fehler beim Speichern.')
+                    }
+                    if (result.data) {
+                        onShareRequested?.({ ...draft, id: result.data.id as number, created_at: new Date().toISOString(), account_id: null, transfer_id: null })
                     }
                 })
                 return
@@ -287,6 +304,7 @@ export default function AddExpenseForm({ accounts = [], onRefresh, onOptimisticA
                     name="category"
                     className="w-full text-right bg-transparent border-none py-3.5 pl-24 pr-4 outline-none appearance-none font-medium text-foreground text-sm"
                     defaultValue="Essen"
+                    onChange={(e) => setCategoryValue(e.target.value)}
                 >
                     <optgroup label="Kategorien">
                         <option value="Essen">Essen 🍔</option>
@@ -308,6 +326,9 @@ export default function AddExpenseForm({ accounts = [], onRefresh, onOptimisticA
                     )}
                 </select>
             </div>
+
+            {/* Geteilter Einkauf: nach dem Eintragen öffnet sich das Teilen-Fenster */}
+            {canShare && friend && <ShareToggle handle={friend.handle} checked={share} onChange={setShare} />}
 
             {/* Hidden description */}
             <input type="hidden" name="description" value="" />

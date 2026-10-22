@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { supabase } from '@/utils/supabase'
+import { planExpenseDelete, planExpenseEdit } from '@/utils/sharing/display'
 
 export async function addExpense(formData: FormData) {
     let description = formData.get('description') as string
@@ -63,7 +64,7 @@ export async function addExpense(formData: FormData) {
     revalidatePath('/')
 }
 
-export async function updateExpense(id: number, formData: FormData) {
+export async function updateExpense(id: number, formData: FormData): Promise<{ error?: string }> {
     let description = formData.get('description') as string
     const amount = parseFloat(formData.get('amount') as string)
     const expense_date = formData.get('date') as string
@@ -75,7 +76,26 @@ export async function updateExpense(id: number, formData: FormData) {
     }
 
     if (isNaN(amount) || !expense_date) {
-        return
+        return {}
+    }
+
+    // Geteilte Ausgabe: Betrag und Datum nur über „Teilung ändern“ (sonst weicht die Kopie des Partners ab).
+    // Beschreibung und Kategorie bleiben änderbar.
+    const { data: existing } = await supabase
+        .from('expenses')
+        .select('shared_purchase_id, amount, expense_date')
+        .eq('id', id)
+        .maybeSingle()
+    const plan = planExpenseEdit(existing, { description, category, amount, expense_date })
+    if (plan.kind === 'blocked') return { error: plan.message }
+    if (plan.kind === 'shared-text-only') {
+        const { error } = await supabase.from('expenses').update(plan.patch).eq('id', id)
+        if (error) {
+            console.error('Error updating expense:', error)
+            return {}
+        }
+        revalidatePath('/')
+        return {}
     }
 
     const { error } = await supabase
@@ -85,13 +105,23 @@ export async function updateExpense(id: number, formData: FormData) {
 
     if (error) {
         console.error('Error updating expense:', error)
-        return
+        return {}
     }
 
     revalidatePath('/')
+    return {}
 }
 
-export async function deleteExpense(id: number) {
+export async function deleteExpense(id: number): Promise<{ error?: string }> {
+    // Geteilte Ausgabe: nicht nur die eigene Kopie löschen, sondern über „Für beide löschen“ (delete_shared).
+    const { data: existing } = await supabase
+        .from('expenses')
+        .select('shared_purchase_id')
+        .eq('id', id)
+        .maybeSingle()
+    const blocked = planExpenseDelete(existing)
+    if (blocked) return { error: blocked }
+
     // Angehängte Artikel (optionale Zusatzinfo) mitlöschen, sonst bleiben Waisen zurück.
     const { error: itemsError } = await supabase
         .from('receipt_items')
@@ -106,10 +136,11 @@ export async function deleteExpense(id: number) {
 
     if (error) {
         console.error('Error deleting expense:', error)
-        return
+        return {}
     }
 
     revalidatePath('/')
+    return {}
 }
 
 // Consolidated Settings Update

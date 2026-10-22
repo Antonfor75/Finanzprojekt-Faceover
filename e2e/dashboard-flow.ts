@@ -7,7 +7,7 @@ import { de } from 'date-fns/locale'
 export const budgetRing = (page: Page) => page.locator('[data-tour="budget-ring"]')
 
 /** Historie-Tab wählen. Per Tastatur, weil in der Demo das Banner oben die Tab-Mitte überdeckt. */
-async function selectHistoryTab(page: Page, name: 'Kalender' | 'Liste' | 'Analyse') {
+export async function selectHistoryTab(page: Page, name: 'Kalender' | 'Liste' | 'Analyse') {
     const tab = page.locator('[data-tour="history-tabs"]').getByRole('tab', { name })
     await tab.focus()
     await tab.press('Enter')
